@@ -1,0 +1,35 @@
+name: Feature / task
+description: Propose work. Follow issues/SCHEMA.md so an autonomous agent can pick it up.
+labels: ["type: feature", "p3"]
+body:
+  - type: markdown
+    attributes:
+      value: "Use the same sections as issues/SCHEMA.md: Context, Scope, Acceptance criteria, Technical notes, Security & privacy, UX notes, Test plan, Dependencies, Definition of done."
+  - type: textarea
+    id: context
+    attributes: { label: Context }
+    validations: { required: true }
+  - type: textarea
+    id: scope
+    attributes: { label: Scope (In / Out) }
+    validations: { required: true }
+  - type: textarea
+    id: ac
+    attributes: { label: Acceptance criteria, value: "- [ ] " }
+    validations: { required: true }
+  - type: textarea
+    id: tech
+    attributes: { label: Technical notes }
+  - type: textarea
+    id: sec
+    attributes: { label: Security & privacy }
+    validations: { required: true }
+  - type: textarea
+    id: ux
+    attributes: { label: UX notes }
+  - type: textarea
+    id: test
+    attributes: { label: Test plan }
+  - type: input
+    id: deps
+    attributes: { label: Dependencies (issue numbers or SN keys) }

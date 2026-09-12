@@ -1,0 +1,39 @@
+name: Bug report
+description: Something is broken
+labels: ["type: bug", "p2"]
+body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options: [iPad, Android tablet, Web, iOS phone, Android phone]
+    validations: { required: true }
+  - type: input
+    id: device
+    attributes:
+      label: Device, OS version, app version / commit
+      placeholder: "iPad Pro M4 · iPadOS 26.0 · 0.3.1 (build 120)"
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes: { label: Expected behaviour }
+  - type: textarea
+    id: actual
+    attributes: { label: Actual behaviour (attach screenshots / recording) }
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security
+      options:
+        - label: This is NOT a security vulnerability (security issues must be reported privately — see SECURITY.md)
+          required: true

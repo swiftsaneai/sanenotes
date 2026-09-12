@@ -1,0 +1,42 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Secrets — never commit. Provide via CI secrets or local env files listed here.
+.env
+.env.*
+*.pem
+*.p8
+*.p12
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+secrets/
+
+# Node
+node_modules/
+
+# Flutter / Dart (app/ and packages/)
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/build/
+**/coverage/
+**/*.g.dart.bak
+**/ios/Pods/
+**/ios/.symlinks/
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+
+# Publish state (per-machine)
+issues/.published.json
+
+# Design tool caches
+design/.thumbnail

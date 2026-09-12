@@ -1,0 +1,7 @@
+# Security-sensitive paths require maintainer review.
+*                         @jatinsingh1603
+/docs/security/           @jatinsingh1603
+/.github/                 @jatinsingh1603
+/packages/sane_crypto/    @jatinsingh1603
+/packages/sane_sync/      @jatinsingh1603
+/app/lib/auth/            @jatinsingh1603

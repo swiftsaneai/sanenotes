@@ -1,0 +1,12 @@
+[
+  { "title": "M0 Foundations", "description": "Repo, monorepo scaffold, CI/DevSecOps pipeline, design tokens, core document model, ADRs, threat model. Everything later builds on this." },
+  { "title": "M1 Ink Editor Alpha", "description": "Pen-first editor on iPad, Android tablet and Web: ink engine, brushes, pages, undo, local storage, palette dock. Lag-proof latency budget met." },
+  { "title": "M2 Library & Documents", "description": "Notebook library, subjects, templates, PDF import/annotation, images, typed text, basic search." },
+  { "title": "M3 Audio & Recognition", "description": "Audio recording synced to ink/text, on-device transcription, handwriting recognition & search, OCR, math." },
+  { "title": "M4 Identity, Sync & Privacy", "description": "Sign in with Google/Microsoft/Apple + phone OTP (bypass in dev), profiles, local-first sync through the user's iCloud Drive / Google Drive, end-to-end encryption, backup/restore." },
+  { "title": "M5 Phones & Platform Parity", "description": "iPhone and Android phone experiences, device/OS/architecture compatibility matrix, performance hardening on low-end hardware, foldables." },
+  { "title": "M6 Collaboration, Sharing & Sage AI", "description": "Sharing & export, real-time collaboration, comments, Sane Sage on-device AI (summaries, Q&A, flashcards), study tools." },
+  { "title": "M7 Beta Hardening & Security Audit", "description": "Penetration test, MASVS/ASVS verification, accessibility audit, perf soak, store-readiness, privacy labels." },
+  { "title": "M8 Launch & Growth", "description": "Billing & entitlements, student verification, marketing site, store launch, opt-in telemetry, support & docs." },
+  { "title": "Backlog", "description": "Ideas and lower-priority work not yet scheduled." }
+]
