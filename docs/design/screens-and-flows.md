@@ -549,6 +549,9 @@ Upgrade "Start trial" ─▶ plan=pro, close
 
 1. **Product name inconsistency.** The live template says "Sane" / "Sane Notes", but a screenshot shows
    "**SS Notes**" and the backup option is "**SS Cloud**". Which is canonical? Should backup read "Sane Cloud"?
+   *Resolved* in [`../product/prd-03-identity-sync-privacy-settings-billing.md`](../product/prd-03-identity-sync-privacy-settings-billing.md)
+   §0.4: canonical name is **Sane Notes**; there is **no first-party cloud** (locked decision 3), so "SS Cloud"
+   is removed (not renamed) — backup targets are the user's own iCloud Drive / Google Drive.
 2. **Trash is non-functional.** `navItem: 'trash'` always renders empty ("stays here for 30 days"), and no
    notebook has a delete/restore action anywhere. How is a notebook deleted, restored, or purged? Is there a
    30-day auto-purge and a "restore" affordance?
