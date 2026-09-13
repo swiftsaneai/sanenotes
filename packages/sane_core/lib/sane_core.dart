@@ -100,7 +100,7 @@ abstract interface class NoteRepository {
   Future<Result<void>> save(Note note);
 
   /// Deletes one note by its identity.
-  Future<Result<void>> delete(String id);
+  Future<Result<void>> remove(String id);
 
   /// Reads a presentation preference, defaulting when absent.
   Future<Result<String>> preference(String key, String fallback);

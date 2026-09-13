@@ -1,11 +1,11 @@
 {
-    "name": "sane_notes",
-    "short_name": "sane_notes",
+    "name": "Sane Notes",
+    "short_name": "Sane Notes",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Private, local-first notes.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

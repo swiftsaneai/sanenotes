@@ -43,3 +43,7 @@ design/.thumbnail
 
 # Rolling rate-limit ledger (per-machine)
 .rate-budget.json
+
+# Local compiler metadata (contains machine-specific paths)
+app/web/*.js.deps
+app/web/*.js.map

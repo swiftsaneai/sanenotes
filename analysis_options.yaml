@@ -6,3 +6,8 @@ analyzer:
     strict-casts: true
     strict-inference: true
     strict-raw-types: true
+
+linter:
+  rules:
+    # Keep complete user-facing sentences readable; dart format owns wrapping.
+    lines_longer_than_80_chars: false
