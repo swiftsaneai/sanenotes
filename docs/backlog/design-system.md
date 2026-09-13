@@ -1641,7 +1641,7 @@ Smoke: `apps/gallery/test/gallery_boots_test.dart` (the app builds and lists use
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-PHN-001](compat.md#sn-phn-001) |
-| Depends on | [SN-PHN-002](compat.md#sn-phn-002), [SN-DS-019](design-system.md#sn-ds-019), [SN-TPL-006](templates.md#sn-tpl-006), [SN-SHR-014](sharing-export.md#sn-shr-014) |
+| Depends on | [SN-PHN-002](compat.md#sn-phn-002), [SN-DS-019](design-system.md#sn-ds-019), [SN-TPL-006](templates.md#sn-tpl-006) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PLATFORM-3` |
 | Extra labels | agent-ready |
 
@@ -1664,7 +1664,7 @@ The design's five modal overlays — Onboarding, Templates ("New notebook" / "Pa
 - [ ] All four sheets render correctly in all 17 looks and dark mode, including the glass/wallpaper surface treatments.
 
 #### Technical notes
-Add a `showSaneSheet` helper in `app/lib/shell/` wrapping `showModalBottomSheet` with `useSafeArea: true`, `isScrollControlled: true`, `showDragHandle` mapped to the look grip, and the unsaved-input guard; the four overlays choose sheet-vs-dialog presentation from the size class ([SN-PHN-002](compat.md#sn-phn-002)) at their call site, reusing their existing body widgets unchanged. Do not fork the overlay bodies — same widget, different host — so the 17 looks and behaviour are preserved (docs/design/component-inventory.md, CLAUDE.md §9). Keyboard handling from [SN-GPHN-002](editor.md#sn-gphn-002). Route/deep-link behaviour is unchanged (ADR-0003). Never branch on platform identity (CLAUDE.md §8).
+Add a `showSaneSheet` helper in `app/lib/shell/` wrapping `showModalBottomSheet` with `useSafeArea: true`, `isScrollControlled: true`, `showDragHandle` mapped to the look grip, and the unsaved-input guard; the four overlays choose sheet-vs-dialog presentation from the size class ([SN-PHN-002](compat.md#sn-phn-002)) at their call site, reusing their existing body widgets unchanged. Do not fork the overlay bodies — same widget, different host — so the 17 looks and behaviour are preserved (docs/design/component-inventory.md, CLAUDE.md §9). Keyboard handling from [SN-GPHN-002](editor.md#sn-gphn-002). Route/deep-link behaviour is unchanged (ADR-0003). Never branch on platform identity (CLAUDE.md §8). The shared `showSaneSheet` policy and the Templates/PDF/Upgrade adoptions ship in M5; [SN-SHR-014](sharing-export.md#sn-shr-014) (Share overlay, M6) adopts it at its own call site later.
 
 #### Security & privacy
 None beyond baseline, with one control. **T-SHEET-SNAPSHOT** — a Share sheet showing a link/permission or an Upgrade sheet is captured in the task-switcher snapshot; the shell-level screenshot/lock deterrent ([SN-PHN-015](security.md#sn-phn-015)) must cover sheets too, so a protected notebook's share link is not exposed (MASVS-PLATFORM-3, MASVS-PRIVACY-2, CWE-200). Baseline: no field values (invite emails, pasted links) logged (MASVS-PRIVACY-1, CWE-532); the paste-a-link import path stays behind the inbound-validation gate ([SN-PHN-014](notifications.md#sn-phn-014)) and this presentation change must not bypass it. No new permission or egress.
@@ -1680,7 +1680,7 @@ Source: docs/design/screens-and-flows.md §8-§13 (Templates, Import, Share, Upg
 - `app/integration_test/phone_overlays_test.dart` — patrol run opening each overlay on a phone profile.
 
 #### Dependencies
-[SN-PHN-002](compat.md#sn-phn-002), [SN-DS-019](design-system.md#sn-ds-019), [SN-TPL-006](templates.md#sn-tpl-006), [SN-SHR-014](sharing-export.md#sn-shr-014)
+[SN-PHN-002](compat.md#sn-phn-002) (size class), [SN-DS-019](design-system.md#sn-ds-019) (sheet chrome), [SN-TPL-006](templates.md#sn-tpl-006) (Templates overlay adopting the sheet). The Share overlay [SN-SHR-014](sharing-export.md#sn-shr-014) (M6) adopts this `showSaneSheet` policy when it is built; it is a consumer, not a scheduling dependency.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -2051,7 +2051,7 @@ The user-visible value is consistency: a component that exists in the inventory 
 | Size | M |
 | SDLC | design |
 | Parent | [SN-DS-001](design-system.md#sn-ds-001) |
-| Depends on | [SN-DS-022](design-system.md#sn-ds-022), [SN-LIB-008](library.md#sn-lib-008), [SN-SYNC-020](sync.md#sn-sync-020) |
+| Depends on | [SN-DS-022](design-system.md#sn-ds-022), [SN-LIB-008](library.md#sn-lib-008) |
 | Security controls | `CWE-209`, `MASVS-PRIVACY-1` |
 | Extra labels | needs-design |
 
@@ -2076,7 +2076,7 @@ The user-visible value is consistency: a component that exists in the inventory 
 
 #### Technical notes
 
-Keep it a single markdown table per surface group so it renders in the docs site ([SN-DOC-005](docs.md#sn-doc-005)) and diffs cleanly. Cross-link each row to its owning issue key using the same double-brace token convention the other docs use. Where a state depends on plan, record both the Free and Pro rendering. Where a state depends on profile lock or guest mode, say so — several surfaces must degrade differently for a locked profile ([SN-AUTH-014](auth.md#sn-auth-014)) and for guest ([SN-AUTH-010](auth.md#sn-auth-010)).
+Keep it a single markdown table per surface group so it renders in the docs site ([SN-DOC-005](docs.md#sn-doc-005)) and diffs cleanly. Cross-link each row to its owning issue key using the same double-brace token convention the other docs use. Where a state depends on plan, record both the Free and Pro rendering. Where a state depends on profile lock or guest mode, say so — several surfaces must degrade differently for a locked profile ([SN-AUTH-014](auth.md#sn-auth-014)) and for guest ([SN-AUTH-010](auth.md#sn-auth-010)). The sync-status rows here are implemented by [SN-SYNC-020](sync.md#sn-sync-020) (M4), which consumes this matrix; the doc is authored in M2 independently.
 
 #### Security & privacy
 
@@ -2091,8 +2091,7 @@ References: `ux-principles.md` §4.1–4.4 (the decisive defaults), `component-i
 Documentation-led, but verifiable: a `scripts/check-states-matrix.mjs` (or an extension of the component-inventory gate, [SN-GUX-006](design-system.md#sn-gux-006)) that asserts every surface in `screens-and-flows.md` §1 has a row and every non-N/A cell cites a copy key that exists in the ARB. Per-state widget tests stay with the owning issues; this issue adds the consistency check and the checklist.
 
 #### Dependencies
-
-[SN-DS-022](design-system.md#sn-ds-022), [SN-LIB-008](library.md#sn-lib-008), [SN-SYNC-020](sync.md#sn-sync-020)
+[SN-DS-022](design-system.md#sn-ds-022), [SN-LIB-008](library.md#sn-lib-008). This authored matrix supplies the sync-status rows that [SN-SYNC-020](sync.md#sn-sync-020) (sync status UI, M4) implements; SYNC-020 consumes the doc and is not a scheduling dependency.
 
 #### Definition of done
 

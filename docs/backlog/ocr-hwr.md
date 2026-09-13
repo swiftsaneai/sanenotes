@@ -246,7 +246,7 @@ SN-FND-002 (monorepo scaffold), SN-CORE-004 (SQLite/blob store), SN-INK-002 (str
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #267 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -303,7 +303,7 @@ SN-FND-002 (scaffold), SN-CORE-002 (Result/Failure, model entities).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #268 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -360,7 +360,7 @@ SN-HWR-002 (interfaces/registry), SN-INK-002 (stroke capture).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #269 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -417,7 +417,7 @@ SN-HWR-002 (registry reads model availability).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #270 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -473,7 +473,7 @@ SN-HWR-002 (registry). Coordinates with [SN-HWR-019](ocr-hwr.md#sn-hwr-019) (clo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #271 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -530,7 +530,7 @@ SN-HWR-003 (ink recognizer), SN-SRCH-002 (FTS index), SN-CORE-004 (persistence).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #272 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -587,7 +587,7 @@ SN-HWR-003 (recognizer), SN-ED-004 (lasso selection). Gated by [SN-BILL-001](bil
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #273 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -644,7 +644,7 @@ SN-HWR-007 (conversion result to correct). Feeds [SN-HWR-016](ocr-hwr.md#sn-hwr-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #274 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M3 Audio & Recognition |
@@ -701,7 +701,7 @@ SN-HWR-003 (recognizer), SN-HWR-008 (confidence/correction). Related editing ges
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #275 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -758,7 +758,7 @@ SN-HWR-002 (registry), SN-MED-001 (image import). Feeds [SN-HWR-006](ocr-hwr.md#
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #276 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -815,7 +815,7 @@ SN-HWR-010 (OCR engines), SN-PDF-002 (PDF render/text extraction).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #277 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -872,7 +872,7 @@ SN-HWR-002 (registry), SN-INK-002 (stroke polylines). Tool UX in [SN-SHP-001](sh
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #278 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -929,7 +929,7 @@ SN-HWR-003 (recognition bounds), SN-ED-004 (selection). Command UX PRD-ED-187 / 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #279 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -986,7 +986,7 @@ SN-HWR-002 (registry), SN-HWR-008 (correction UX). Cloud path [SN-HWR-019](ocr-h
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #280 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -995,7 +995,7 @@ SN-HWR-002 (registry), SN-HWR-008 (correction UX). Cloud path [SN-HWR-019](ocr-h
 | Size | L |
 | SDLC | implementation |
 | Parent | [SN-HWR-001](ocr-hwr.md#sn-hwr-001) |
-| Depends on | [SN-HWR-014](ocr-hwr.md#sn-hwr-014), [SN-BILL-001](billing.md#sn-bill-001) |
+| Depends on | [SN-HWR-014](ocr-hwr.md#sn-hwr-014) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-STORAGE-1`, `OWASP-A03`, `CWE-117`, `CWE-400` |
 | Extra labels | agent-ready, innovation |
 
@@ -1014,7 +1014,7 @@ The mock's "Solve math" returns a canned string (screens Open Q8); PRD-LB-307 re
 - [ ] The worked solution is inserted as editable content beneath the source ink, which is preserved.
 
 #### Technical notes
-`packages/sane_ml/lib/src/math/solver.dart` — a symbolic engine (CAS) evaluating the recognised expression from [SN-HWR-014](ocr-hwr.md#sn-hwr-014); bound recursion/step counts (CWE-400). Steps rendered by the editor target (PRD-ED-112). Free/Pro via `sane_billing` ([SN-BILL-001](billing.md#sn-bill-001)). **Engine choice** is an on-device CAS by default with a documented cloud-LLM/Mathpix escalation for hard cases (ADR-0016 decision 7); record any library in the SBOM. Cover the domains in PRD-LB-307.
+`packages/sane_ml/lib/src/math/solver.dart` — a symbolic engine (CAS) evaluating the recognised expression from [SN-HWR-014](ocr-hwr.md#sn-hwr-014); bound recursion/step counts (CWE-400). Steps rendered by the editor target (PRD-ED-112). Free/Pro via `sane_billing` ([SN-BILL-001](billing.md#sn-bill-001)). **Engine choice** is an on-device CAS by default with a documented cloud-LLM/Mathpix escalation for hard cases (ADR-0016 decision 7); record any library in the SBOM. Cover the domains in PRD-LB-307. Ships without SN-BILL-001: the Pro gate consumes the `EntitlementProvider` contract ([SN-BILL-012](billing.md#sn-bill-012)) with a permissive stub until billing lands in M8.
 
 #### Security & privacy
 On-device by default (MASVS-PRIVACY-1); cloud solve only per-request with the banner (OWASP-A03). Expressions/solutions are note content: local, E2E-encryptable, never logged (MASVS-STORAGE-1, CWE-117). Bound solver work to avoid CPU exhaustion on adversarial input (CWE-400). Never present a fabricated answer as authoritative.
@@ -1026,7 +1026,7 @@ Selection bar "Solve math" (design/Sane Notes.dc.html §7.4; §14 Upgrade overla
 `packages/sane_ml/test/math_solver_test.dart` (per-domain fixtures: algebra/trig/calculus/matrices; correct results + step ordering; error state), `app/test/editor/solve_math_gate_test.dart` (Free overlay, Pro path), golden of a worked solution across looks.
 
 #### Dependencies
-SN-HWR-014 (recognised expression/LaTeX), SN-BILL-001 (Pro gate). Cloud escalation [SN-HWR-019](ocr-hwr.md#sn-hwr-019); render PRD-ED-112.
+[SN-HWR-014](ocr-hwr.md#sn-hwr-014) (recognised expression/LaTeX). The Pro gate reads the `sane_billing` EntitlementProvider contract ([SN-BILL-012](billing.md#sn-bill-012)); a permissive stub (fail-open) stands in until billing ships in M8, so SN-BILL-001 is not a scheduling blocker. Cloud escalation [SN-HWR-019](ocr-hwr.md#sn-hwr-019); render PRD-ED-112.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)
@@ -1043,7 +1043,7 @@ SN-HWR-014 (recognised expression/LaTeX), SN-BILL-001 (Pro gate). Cloud escalati
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #281 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1100,7 +1100,7 @@ SN-HWR-003 (recognizer context), SN-HWR-008 (correction pairs).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #282 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M3 Audio & Recognition |
@@ -1157,7 +1157,7 @@ SN-HWR-006 (recognised text), SN-HWR-016 (dictionary suppression). Correction re
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #283 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M3 Audio & Recognition |
@@ -1214,7 +1214,7 @@ SN-HWR-006 (recognised text). Actions/reminders via [SN-NOTF-001](notifications.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #284 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M3 Audio & Recognition |
@@ -1271,7 +1271,7 @@ SN-HWR-002 (registry routes cloud engines through this gate). Used by [SN-HWR-00
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #285 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1385,7 +1385,7 @@ SN-HWR-006 (stroke↔text map), SN-HWR-010 (image OCR). Part of [SN-A11Y-001](a1
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #286 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1442,7 +1442,7 @@ SN-HWR-010 (OCR), SN-HWR-019 (cloud gate). Packs [SN-HWR-004](ocr-hwr.md#sn-hwr-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #309 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |

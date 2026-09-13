@@ -10,7 +10,7 @@
   - [SN-BRS-004](brushes.md#sn-brs-004) **Implement input-bound response curves and the global pressure curve** · p1 · feature · M · M1 Ink Editor Alpha
   - [SN-BRS-005](brushes.md#sn-brs-005) **Implement BrushRef and the document brush dictionary for reproducible strokes** · p1 · feature · M · M1 Ink Editor Alpha
   - [SN-BRS-006](brushes.md#sn-brs-006) **Implement the brush registry: sets, versioning and reset points** · p2 · feature · M · M2 Library & Documents
-  - [SN-BRS-007](brushes.md#sn-brs-007) **Build the Shape/Grain texture pipeline (content-addressed, shader reuse)** · p2 · task · M · M2 Library & Documents
+  - [SN-BRS-007](brushes.md#sn-brs-007) **Build the Shape/Grain texture pipeline (content-addressed, shader reuse)** · p2 · task · M · M1 Ink Editor Alpha
   - [SN-BRS-008](brushes.md#sn-brs-008) **Ship the default stock pen set (>=12 presets) as pure data** · p1 · feature · M · M1 Ink Editor Alpha
     - [SN-BRS-009](brushes.md#sn-brs-009) **Author the Fountain Pen preset (velocity + light pressure, the default)** · p1 · task · S · M1 Ink Editor Alpha
     - [SN-BRS-010](brushes.md#sn-brs-010) **Author the Ballpoint preset (constant weight, everyday opaque pen)** · p1 · task · XS · M1 Ink Editor Alpha
@@ -21,7 +21,7 @@
     - [SN-BRS-015](brushes.md#sn-brs-015) **Author the Brush Pen / Calligraphy preset (azimuth nib, angle lock)** · p2 · task · M · M2 Library & Documents
     - [SN-BRS-016](brushes.md#sn-brs-016) **Author decorative & effect pens: dashed/dotted, pattern, neon-glow, pixel** · p3 · task · M · M5 Phones & Platform Parity
   - [SN-BRS-017](brushes.md#sn-brs-017) **Implement the highlighter (chisel, multiply-behind ink, own layer)** · p1 · feature · M · M1 Ink Editor Alpha
-  - [SN-BRS-018](brushes.md#sn-brs-018) **Implement straight-line and smart (PDF/text-snap) highlighter modes** · p2 · feature · M · M3 Audio & Recognition
+  - [SN-BRS-018](brushes.md#sn-brs-018) **Implement straight-line and smart (PDF/text-snap) highlighter modes** · p2 · feature · M · M2 Library & Documents
   - [SN-BRS-019](brushes.md#sn-brs-019) **Implement eraser modes (stroke, precision-split, target filter, gestures)** · p1 · feature · M · M1 Ink Editor Alpha
   - [SN-BRS-020](brushes.md#sn-brs-020) **Implement quick colour palettes (INK/DARK_INK/HL) with tool-snap rules** · p1 · feature · M · M1 Ink Editor Alpha
   - [SN-BRS-021](brushes.md#sn-brs-021) **Build the full colour picker (Disc, Value/HEX, Harmony, Eyedropper)** · p2 · feature · L · M2 Library & Documents
@@ -413,7 +413,7 @@ Surface: the brush picker / library reached by long-pressing the Pen tool (pen-a
 | GitHub | #150 |
 | Type | task |
 | Priority | p2 |
-| Milestone | M2 Library & Documents |
+| Milestone | M1 Ink Editor Alpha |
 | Platforms | all |
 | Areas | brushes, perf |
 | Size | M |
@@ -438,7 +438,7 @@ Stamped and textured pens (pencil paper-grain, textured marker, charcoal, patter
 - [ ] A decompression/zip-bomb style image (tiny file, huge decoded size) is capped before allocation (CWE-400 test).
 
 #### Technical notes
-Files: `packages/sane_render/lib/src/texture/` (shaders live with painting) + `packages/sane_brushes/lib/src/texture/grain.dart` (behaviour). Content-address hashing via `sane_crypto`; blobs from SN-CORE-004. Precache shaders offline under Impeller to avoid first-use jank (rendering-and-performance.md §7; ADR-0008). Image decode off the UI isolate via `Isolate.run` (CLAUDE.md §8). Implements ADR-0009 §6.
+Files: `packages/sane_render/lib/src/texture/` (shaders live with painting) + `packages/sane_brushes/lib/src/texture/grain.dart` (behaviour). Content-address hashing via `sane_crypto`; blobs from SN-CORE-004. Precache shaders offline under Impeller to avoid first-use jank (rendering-and-performance.md §7; ADR-0008). Image decode off the UI isolate via `Isolate.run` (CLAUDE.md §8). Implements ADR-0009 §6. Scheduled in M1: the Shape/Grain texture pipeline is foundational to M1 brush presets ([SN-BRS-012](brushes.md#sn-brs-012) Graphite Pencil) and the M1 shader-reuse perf work ([SN-PERF-017](perf.md#sn-perf-017)).
 
 #### Security & privacy
 Shape/Grain images are untrusted input even for first-party where a document carries custom textures: validate type/size, cap resources before decode, parse off the UI isolate, content-address so a malicious texture cannot overwrite a built-in (ADR-0009 Security-impact; CLAUDE.md §7.8). IDs: MASVS-STORAGE-1, MASVS-CODE-4, CWE-400 (resource caps), CWE-20 (input validation).
@@ -1040,7 +1040,7 @@ Surface: the highlighter tool in the palette dock (screens §7.3). When active, 
 | GitHub | #153 |
 | Type | feature |
 | Priority | p2 |
-| Milestone | M3 Audio & Recognition |
+| Milestone | M2 Library & Documents |
 | Platforms | all |
 | Areas | brushes, pdf |
 | Size | M |
@@ -1054,8 +1054,8 @@ Surface: the highlighter tool in the palette dock (screens §7.3). When active, 
 Two highlighter modes make marking feel effortless: a straight-line mode (draw-and-hold snaps to an axis-aware straight highlight) for underlining and margin bars, and a smart mode that snaps to PDF text or typed-text bounds so dragging across text produces a clean per-line highlight anchored to the text (pen-and-brush-spec §3; PRD-ED-067/068). Smart highlighting requires a text/OCR layer under the ink and does not apply to handwriting.
 
 #### Scope
-**In:** the straight-line toggle (dwell-to-straighten: draw over text, the line auto-straightens and snaps horizontal); the smart mode (long-press or drag over PDF text / typed text to snap-highlight to text baseline/x-height, anchored so it moves with reflow/export); the anchor model that ties a snapped highlight to the underlying text run; graceful no-op on handwriting (smart mode does nothing without a text layer).
-**Out:** the base highlighter ([SN-BRS-017](brushes.md#sn-brs-017)), the PDF text layer (SN-PDF-002), the OCR/typed-text layer (SN-HWR / SN-TXT), the dwell-gesture trigger plumbing (SN-ED gestures).
+**In:** the highlighter tool and its palette toggle/secondary options; the straight-line mode (dwell-to-straighten: draw over text, the line auto-straightens and snaps horizontal); the smart mode over typed-text / OCR text (drag to snap-highlight to text baseline/x-height); the shared anchor model that ties a snapped highlight to the underlying text run so it moves with reflow/export; graceful no-op on handwriting (smart mode does nothing without a text layer). Snapping onto a PDF's text layer and PDF text-markup annotations are handed to [SN-PDF-014](pdf.md#sn-pdf-014).
+**Out:** the base highlighter ([SN-BRS-017](brushes.md#sn-brs-017)); the PDF text layer (SN-PDF-002); the OCR/typed-text layer (SN-HWR / SN-TXT); the dwell-gesture trigger plumbing (SN-ED gestures); and the PDF text-markup layer - snapping highlights to PDF text quads, the markup subtypes (underline/strikeout/squiggly), page-space annotation persistence and XFDF export - which is owned by [SN-PDF-014](pdf.md#sn-pdf-014) and consumes this tool.
 
 #### Acceptance criteria
 - [ ] Straight-line mode: drawing over text and holding snaps to a straight highlight; it snaps horizontal and is axis-aware (widget test + golden).
@@ -1065,7 +1065,7 @@ Two highlighter modes make marking feel effortless: a straight-line mode (draw-a
 - [ ] Dwell time for straight-line is configurable (default ~0.5 s) and a keyboard alternative exists via the shape tool (PRD-ED-068 A11y).
 
 #### Technical notes
-Files: `packages/sane_brushes/lib/src/highlighter/straight_line.dart`, `smart_snap.dart`. Smart snap reads the on-device PDF text layer (SN-PDF-002; PDFKit/pdfium/pdf.js) or the typed-text/OCR layer — never a network fetch. Straight-line reuses the dwell recogniser shared with QuickLine (pen-and-brush-spec §7; SN-ED gestures). Implements PRD-ED-067/068.
+Files: `packages/sane_brushes/lib/src/highlighter/straight_line.dart`, `smart_snap.dart`. Smart snap reads the on-device PDF text layer (SN-PDF-002; PDFKit/pdfium/pdf.js) or the typed-text/OCR layer — never a network fetch. Straight-line reuses the dwell recogniser shared with QuickLine (pen-and-brush-spec §7; SN-ED gestures). Implements PRD-ED-067/068. Scheduled in M2 with PDF annotation: the straight-line/smart (PDF text-snap) highlighter is consumed by the PDF Smart Highlighter ([SN-PDF-014](pdf.md#sn-pdf-014), M2); its only dependency ([SN-BRS-017](brushes.md#sn-brs-017)) is M1.
 
 #### Security & privacy
 Snapping reads only the on-device text layer; nothing leaves the device (CLAUDE.md §7.1). The PDF text layer is untrusted parsed input handled by SN-PDF off the UI isolate; this feature consumes its output only. IDs: MASVS-PRIVACY-1, MASVS-PLATFORM-1.

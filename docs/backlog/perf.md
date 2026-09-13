@@ -707,7 +707,7 @@ Unit: deferred-load failure handling per feature. Integration: a cold-start trac
 | Size | S |
 | SDLC | verification |
 | Parent | [SN-PERF-001](perf.md#sn-perf-001) |
-| Depends on | [SN-PERF-003](perf.md#sn-perf-003), [SN-PERF-018](perf.md#sn-perf-018) |
+| Depends on | [SN-PERF-018](perf.md#sn-perf-018) |
 | Security controls | — |
 | Extra labels | agent-ready |
 
@@ -727,7 +727,7 @@ The gates are defined in terms of p95, p99 and peak, and they fail a PR that reg
 - [ ] A synthetic fixture proves the gate distinguishes a 3% shift within noise (pass) from a 20% regression (fail).
 
 #### Technical notes
-Compute both a within-run statistic (p95/p99 of frames in one run) and an across-run statistic (median of the per-run p99) so a single unlucky run does not decide a merge. Prefer a trimmed or bootstrap confidence interval over assuming normality — frame-time distributions are heavily skewed. Preconditions come from the device config ([SN-PERF-004](perf.md#sn-perf-004)) and are read on-device: battery via platform APIs, thermal via the probe from [SN-PERF-015](perf.md#sn-perf-015), brightness set by the runner script. Record every precondition value in the result so an old result can be audited.
+Compute both a within-run statistic (p95/p99 of frames in one run) and an across-run statistic (median of the per-run p99) so a single unlucky run does not decide a merge. Prefer a trimmed or bootstrap confidence interval over assuming normality — frame-time distributions are heavily skewed. Preconditions come from the device config ([SN-PERF-004](perf.md#sn-perf-004)) and are read on-device: battery via platform APIs, thermal via the probe from [SN-PERF-015](perf.md#sn-perf-015), brightness set by the runner script. Record every precondition value in the result so an old result can be audited. The gate workflow [SN-PERF-003](perf.md#sn-perf-003) (M1) consumes this protocol; the protocol itself is defined in M0 in `tools/perf_harness` and does not depend on the gate.
 
 #### Security & privacy
 None beyond baseline. The protocol records device state, never content, and all numbers stay local to the runner and the repo (ADR-0011: no vendor analytics). A precondition that requires disabling a security feature is never acceptable: runs happen on a normally configured device, not one with verification disabled.
@@ -739,7 +739,7 @@ No user-facing surface. The developer experience is the point: a failing perf ch
 Unit: statistics implementation (percentiles, trimming, confidence interval) against fixed vectors; precondition evaluator tests for each failing state. Integration: a noise-floor run on one slot producing a profile; a fixture-driven gate test with a within-noise and an over-noise series. Docs: the protocol lives in `tools/perf_harness/README.md` and is linked from the budgets doc.
 
 #### Dependencies
-[SN-PERF-003](perf.md#sn-perf-003), [SN-PERF-018](perf.md#sn-perf-018)
+[SN-PERF-018](perf.md#sn-perf-018) (budget values). This defines the protocol standalone in `tools/perf_harness`; the CI perf gate [SN-PERF-003](perf.md#sn-perf-003) (M1) consumes it, so PERF-003 is a consumer, not a scheduling dependency.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -825,7 +825,7 @@ Infrastructure verification rather than unit tests: a smoke workflow that claims
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-PERF-001](perf.md#sn-perf-001) |
-| Depends on | [SN-PERF-020](perf.md#sn-perf-020), [SN-PERF-022](perf.md#sn-perf-022), [SN-PERF-015](perf.md#sn-perf-015) |
+| Depends on | [SN-PERF-020](perf.md#sn-perf-020), [SN-PERF-022](perf.md#sn-perf-022) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-STORAGE-2` |
 | Extra labels | agent-ready, sec: privacy-by-design |
 
@@ -845,7 +845,7 @@ The jank triage runbook and its automated analyser ([SN-PERF-020](perf.md#sn-per
 - [ ] Enabling the HUD survives a hot restart but not an app update, so a forgotten HUD cannot ship enabled on someone's device forever.
 
 #### Technical notes
-Drive the HUD from the same `FrameTiming` stream the harness uses so one source of truth reports build and raster separately; paint it in its own `RepaintBoundary` in an overlay above the editor, never inside the canvas layer. The ring buffer must pre-allocate — a diagnostic that allocates per frame would create the jank it exists to find ([SN-PERF-021](perf.md#sn-perf-021)). Reuse the redacted logging facade's rules for anything written to disk.
+Drive the HUD from the same `FrameTiming` stream the harness uses so one source of truth reports build and raster separately; paint it in its own `RepaintBoundary` in an overlay above the editor, never inside the canvas layer. The ring buffer must pre-allocate — a diagnostic that allocates per frame would create the jank it exists to find ([SN-PERF-021](perf.md#sn-perf-021)). Reuse the redacted logging facade's rules for anything written to disk. Thermal/quality-ladder fields are populated when [SN-PERF-015](perf.md#sn-perf-015) (M5) lands; the core HUD ships in M2.
 
 #### Security & privacy
 This is a diagnostics surface in a zero-server, content-free product, so the deny-list is the design: no note text, no titles, no OCR output, no file paths containing user names, no stable device identifiers (ADR-0011; [SN-TEL-003](telemetry.md#sn-tel-003) deny-by-default serialiser is the model to follow). Captures live in app-private storage, are excluded from backups where note data is ([SN-AND-030](security.md#sn-and-030)), and are deletable from Settings. No egress path exists in this issue at all (MASVS-PRIVACY-1, MASVS-STORAGE-2).
@@ -857,7 +857,7 @@ Internal-facing. The HUD is a compact, monospaced, translucent panel, draggable 
 Widget: HUD rendering in light/dark with golden snapshots; a test asserting it paints outside the ink repaint scope. Unit: ring-buffer allocation behaviour, capture serialiser against the content deny-list, enable-state lifetime across restart and update. Integration: enable, ink for ten seconds, capture, and feed the file to the triage CLI in the same test.
 
 #### Dependencies
-[SN-PERF-020](perf.md#sn-perf-020), [SN-PERF-022](perf.md#sn-perf-022), [SN-PERF-015](perf.md#sn-perf-015)
+[SN-PERF-020](perf.md#sn-perf-020) (triage analyser feed), [SN-PERF-022](perf.md#sn-perf-022). The core HUD (frame time, fps, latency proxy, tile-cache) ships in M2; the thermal and quality-ladder fields are populated when [SN-PERF-015](perf.md#sn-perf-015) (M5) lands, so PERF-015 is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -1385,7 +1385,7 @@ Two honest surfaces, both from `sane_ui`: an inline capability message where a f
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #326 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |

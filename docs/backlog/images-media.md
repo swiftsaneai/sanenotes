@@ -41,7 +41,7 @@
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-AND-001](compat.md#sn-and-001) |
-| Depends on | [SN-MED-005](images-media.md#sn-med-005), [SN-PRV-004](privacy.md#sn-prv-004), [SN-MED-003](images-media.md#sn-med-003) |
+| Depends on | [SN-MED-005](images-media.md#sn-med-005), [SN-MED-003](images-media.md#sn-med-003) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PLATFORM-1`, `MASVS-STORAGE-2`, `CWE-200` |
 | Extra labels | — |
 
@@ -61,7 +61,7 @@
 - [ ] A CI manifest check fails the build if `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, `READ_MEDIA_VISUAL_USER_SELECTED` or `READ_EXTERNAL_STORAGE` appear without a documented waiver; the Play Data Safety form ([SN-PRV-015](privacy.md#sn-prv-015)) matches.
 
 #### Technical notes
-Jetpack `ActivityResultContracts.PickVisualMedia` / `PickMultipleVisualMedia` behind the existing `sane_*` media entry point, or the equivalent through the Flutter plugin already chosen in [SN-MED-005](images-media.md#sn-med-005) — the requirement is the *picker*, not a specific plugin. Take the returned URI's read permission for the current call only (`FLAG_GRANT_READ_URI_PERMISSION`), stream it to the ingest pipeline ([SN-MED-003](images-media.md#sn-med-003)), then drop it. Reuse the manifest checker from [SN-GAND-006](release.md#sn-gand-006).
+Jetpack `ActivityResultContracts.PickVisualMedia` / `PickMultipleVisualMedia` behind the existing `sane_*` media entry point, or the equivalent through the Flutter plugin already chosen in [SN-MED-005](images-media.md#sn-med-005) — the requirement is the *picker*, not a specific plugin. Take the returned URI's read permission for the current call only (`FLAG_GRANT_READ_URI_PERMISSION`), stream it to the ingest pipeline ([SN-MED-003](images-media.md#sn-med-003)), then drop it. Reuse the manifest checker from [SN-GAND-006](release.md#sn-gand-006). The `PickVisualMedia` picker requires no runtime permission, so this does not depend on [SN-PRV-004](privacy.md#sn-prv-004).
 
 #### Security & privacy
 This is a privacy-by-design control, not just a compatibility fix: no permission means no access to the user's library, which is exactly what the privacy dashboard claims ([SN-PRV-002](privacy.md#sn-prv-002)) and what the Data Safety form declares (MASVS-PRIVACY-1). Content URIs from another app are untrusted input (MASVS-PLATFORM-1, CWE-20): validate MIME and size caps, decode off-isolate, strip EXIF/location ([SN-MED-004](images-media.md#sn-med-004)), and never log the URI or filename ([SN-SEC-021](security.md#sn-sec-021), CWE-532).
@@ -73,7 +73,7 @@ Follow `docs/design/screens-and-flows.md` insert-media flow: the picker is the O
 `integration_test` + patrol driving the system picker on API 29, 33 and 36 emulators; a widget test for the partial-grant branch using a fake platform channel; a unit test asserting the manifest permission allow-list. Manual on the Galaxy Tab (Samsung's picker skin differs). Files: `app/test/media/android_photo_picker_test.dart`, `integration_test/android_media_pick_test.dart`, manifest fixture in `tools/ci/`.
 
 #### Dependencies
-[SN-MED-005](images-media.md#sn-med-005), [SN-PRV-004](privacy.md#sn-prv-004), [SN-MED-003](images-media.md#sn-med-003)
+[SN-MED-005](images-media.md#sn-med-005) (insert-media entry point), [SN-MED-003](images-media.md#sn-med-003) (ingest pipeline). The system photo picker needs **no** runtime permission, so this does not depend on the permissions panel [SN-PRV-004](privacy.md#sn-prv-004) (M4).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -161,7 +161,7 @@ Unit tests for the model + pipeline (`packages/sane_core/test/media/`, `app/test
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #351 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -218,7 +218,7 @@ No direct chrome; this is the data substrate for the image object (docs/design/s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #352 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -227,7 +227,7 @@ No direct chrome; this is the data substrate for the image object (docs/design/s
 | Size | L |
 | SDLC | implementation |
 | Parent | [SN-MED-001](images-media.md#sn-med-001) |
-| Depends on | [SN-MED-002](images-media.md#sn-med-002), [SN-CORE-004](storage.md#sn-core-004), [SN-CRY-001](security.md#sn-cry-001) |
+| Depends on | [SN-MED-002](images-media.md#sn-med-002), [SN-CORE-004](storage.md#sn-core-004) |
 | Security controls | `MASVS-STORAGE-1`, `MASVS-CODE-4`, `MASVS-PLATFORM-2`, `CWE-20`, `CWE-400`, `CWE-409`, `CWE-770` |
 | Extra labels | agent-ready |
 
@@ -246,7 +246,7 @@ Every media source — Photos, Camera, Files, Scan, paste, drop, GIF still-frame
 - [ ] Inserting an image never causes a frame > 16.7 ms on the reference iPad while writing (profile timeline attached); a thumbnail is produced and cached for library/canvas display.
 
 #### Technical notes
-Prefer maintained platform image decoders over hand-rolled parsers (checklist §1 SHOULD); use `dart:ui` `instantiateImageCodec` with `targetWidth/targetHeight` for scaled decode where possible, and the `image` package (pure Dart) only for format transforms/EXIF work on the isolate. Caps and quality are tokens/config, not literals. Encrypt via `sane_crypto` chunked AEAD ([SN-CRY-001](security.md#sn-cry-001), ADR-0007) — never write plaintext image bytes to the blob store. Blob write goes through the `sane_core` store interface ([SN-CORE-004](storage.md#sn-core-004)), on the storage isolate (overview §6). HEIC decode uses the platform codec (iOS native; Android via platform decoder; web falls back to canvas decode or rejects with guidance). Implements PRD-LB-181 (image objects), PRD-LB-224 (media stored separately from note JSON), PRD-ED-113. Never hop isolates on the hot draw path (CLAUDE.md §8).
+Prefer maintained platform image decoders over hand-rolled parsers (checklist §1 SHOULD); use `dart:ui` `instantiateImageCodec` with `targetWidth/targetHeight` for scaled decode where possible, and the `image` package (pure Dart) only for format transforms/EXIF work on the isolate. Caps and quality are tokens/config, not literals. Encrypt via `sane_crypto` chunked AEAD ([SN-CRY-001](security.md#sn-cry-001), ADR-0007) — never write plaintext image bytes to the blob store. Blob write goes through the `sane_core` store interface ([SN-CORE-004](storage.md#sn-core-004)), on the storage isolate (overview §6). HEIC decode uses the platform codec (iOS native; Android via platform decoder; web falls back to canvas decode or rejects with guidance). Implements PRD-LB-181 (image objects), PRD-LB-224 (media stored separately from note JSON), PRD-ED-113. Never hop isolates on the hot draw path (CLAUDE.md §8). Encryption consumes the `sane_crypto` chunked-AEAD `Encryptor` interface ([SN-CRY-005](security.md#sn-cry-005)); the blob store applies it, with a dev-only passthrough until the crypto backend lands in M4 — not blocked on the SN-CRY-001 epic.
 
 #### Security & privacy
 This is the input-validation gate (checklist §1, TM-D-01/TM-T-06): validate type/size/dimensions before decode; cap resources before decoding to block decompression/pixel bombs (CWE-400, CWE-409, CWE-770); parse off the UI isolate with bounded memory; fail closed to a `Failure`, never a partial image or a raw thrown exception. Decoded bytes and blobs are E2E-encrypted before egress (decision 3). No image content or paths logged (object ids as opaque short hashes). IDs: MASVS-STORAGE-1, MASVS-CODE-4, MASVS-PLATFORM-2, CWE-20, CWE-400, CWE-409, CWE-770.
@@ -258,7 +258,7 @@ Surface: invoked from the Insert-media overlay ([SN-MED-005](images-media.md#sn-
 `app/test/features/media/image_ingest_test.dart` (MIME sniffing, caps, downscale ratio, dedupe, encryption-before-write), `image_ingest_fuzz_test.dart` (renamed payloads, truncated/malformed headers, bomb inputs fail closed), `image_ingest_bench_test.dart` (decode off UI isolate, no frame > 16.7 ms). Parser corpus feeds the verification-stage fuzz job (CLAUDE.md §10).
 
 #### Dependencies
-[SN-MED-002](images-media.md#sn-med-002) (media object/model), [SN-CORE-004](storage.md#sn-core-004) (blob store + persistence), [SN-CRY-001](security.md#sn-cry-001) (blob encryption).
+[SN-MED-002](images-media.md#sn-med-002) (media object/model), [SN-CORE-004](storage.md#sn-core-004) (blob store + persistence). Encryption is applied through the `sane_crypto` chunked-AEAD interface ([SN-CRY-005](security.md#sn-cry-005)); the blob store's encryption hook is a dev-only passthrough until the crypto backend lands in M4, so the SN-CRY-001 epic is not a scheduling blocker (no plaintext media ships in release before the backend exists).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans, fuzz)
@@ -275,7 +275,7 @@ Surface: invoked from the Insert-media overlay ([SN-MED-005](images-media.md#sn-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #353 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -332,7 +332,7 @@ Surface: a subtle "Location & metadata removed" affordance in the insert confirm
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #354 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -389,7 +389,7 @@ Surface: new Insert-media overlay modelled on the Import PDF overlay layout (doc
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #355 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -446,7 +446,7 @@ Surface: Editor canvas object manipulation (docs/design/screens-and-flows.md §7
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #356 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -503,7 +503,7 @@ Surface: image crop/mask mode from the object context bar (docs/design/screens-a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #357 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -560,7 +560,7 @@ Surface: canvas paste + drop (docs/design/gestures-and-shortcuts.md paste shortc
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #358 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -617,7 +617,7 @@ Surface: "Document scan" source in the Insert-media picker ([SN-MED-005](images-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #359 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -674,7 +674,7 @@ Surface: the "on-device recognition" posture users see (docs/design/screens-and-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #360 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -731,7 +731,7 @@ Surface: Stickers panel from the Insert-media picker (docs/design/screens-and-fl
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #361 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -788,7 +788,7 @@ Surface: My Elements panel (Insert-media picker → Elements; docs/design/screen
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #362 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -845,7 +845,7 @@ Surface: media context bar lock/caption actions and the sticky-note object (docs
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #363 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -902,7 +902,7 @@ Surface: GIF source in the Insert-media picker (docs/design/screens-and-flows.md
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #364 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |

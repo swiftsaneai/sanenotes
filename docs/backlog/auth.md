@@ -805,7 +805,7 @@ Profiles claim separate notebooks and looks, but the mock only swaps the avatar.
 
 #### Scope
 **In:** partitioning every profile-scoped store by profile id — notebooks/pages/attachments, preferences (SET), sync config, search index, thumbnails/caches; making the active-profile provider re-derive the whole app tree on switch; scoping per-profile encryption sub-keys where a profile is locked ([SN-AUTH-014](auth.md#sn-auth-014)).
-**Out:** the biometric lock itself ([SN-AUTH-014](auth.md#sn-auth-014)), device-scoped settings that intentionally stay shared (e.g. wallpaper sane.wall is device-scoped, PRD-SET-013), and cross-device sync partitioning (SN-SYNC-001, which uses one target per profile).
+**Out:** the biometric lock itself ([SN-AUTH-014](auth.md#sn-auth-014)); device-scoped settings that intentionally stay shared (e.g. wallpaper sane.wall is device-scoped, PRD-SET-013); cross-device sync partitioning (SN-SYNC-001, which uses one target per profile); and the library-surface application of this mechanism - verifying every library view is profile-scoped, the library profile-switch UX and library thumbnail/cover cache keying - which is owned by [SN-LIB-023](library.md#sn-lib-023) and consumes this partitioning. This issue owns the underlying per-profile partitioning mechanism (schema scope, query/index/cache scoping, per-profile sub-keys, active-profile provider).
 
 #### Acceptance criteria
 - [ ] Switching profiles swaps the entire visible dataset — notebooks, look, wallpaper (per its scope), preferences and sync config — verified by an integration test, not just the avatar (PRD-PROF-004).
@@ -967,7 +967,7 @@ SN-AUTH-007, SN-AUTH-014; export handoff SN-SET-001; deletion mechanics [SN-AUTH
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-AUTH-001](auth.md#sn-auth-001) |
-| Depends on | [SN-AUTH-007](auth.md#sn-auth-007), [SN-BILL-001](billing.md#sn-bill-001) |
+| Depends on | [SN-AUTH-007](auth.md#sn-auth-007) |
 | Security controls | `MASVS-AUTH-1`, `ASVS-V6`, `OWASP-A01`, `CWE-863` |
 | Extra labels | needs-decision, sec: masvs |
 
@@ -986,7 +986,7 @@ A Pro entitlement is account-scoped and shared across all local profiles on that
 - [ ] The household-grant behaviour is implemented behind the documented default with a marker for the maintainer decision.
 
 #### Technical notes
-Read the entitlement from SN-BILL-001's provider (app_user_id keyed to the signed-in account, PRD-BILL-011). Feature gates query an EntitlementProvider (Riverpod) that returns the verified object; guest returns Free. Do not persist a plain isPro boolean. Leave a // needs-decision marker citing PRD-PROF-006/§15.6 for the household scope. This is identity↔billing glue only; the purchase/verify machinery is SN-BILL-001.
+Read the entitlement from SN-BILL-001's provider (app_user_id keyed to the signed-in account, PRD-BILL-011). Feature gates query an EntitlementProvider (Riverpod) that returns the verified object; guest returns Free. Do not persist a plain isPro boolean. Leave a // needs-decision marker citing PRD-PROF-006/§15.6 for the household scope. This is identity↔billing glue only; the purchase/verify machinery is SN-BILL-001. Ships without SN-BILL-001: feature gates read the `EntitlementProvider` contract ([SN-BILL-004](billing.md#sn-bill-004)) — a permissive stub (guest = Free) is used until the billing provider lands in M8.
 
 #### Security & privacy
 Threats: forged Pro entitlement (TM-S-05, CWE-863 — countered by reading the server-verified object, not a disk flag), authorization confusion across profiles (A01). Controls: MASVS-AUTH-1, ASVS V6, OWASP-A01. Fail-open is deliberate and non-punitive (a failed check must never lock a user out of their own notes). No note keys are involved. needs-decision: household/family scope.
@@ -998,7 +998,7 @@ None beyond baseline — this task exposes state; the Upgrade/Manage UI is SN-BI
 Unit: app/test/auth/entitlement_scope_test.dart (Pro account → all profiles Pro; guest → Free; forged disk flag ignored; failure → Free, note-taking unaffected). Integration: switch profiles without entitlement change; offline grace uses last-known-good.
 
 #### Dependencies
-SN-AUTH-007, SN-BILL-001.
+[SN-AUTH-007](auth.md#sn-auth-007) (local profiles). This is identity↔billing glue: it exposes the verified entitlement object from the `sane_billing` EntitlementProvider contract ([SN-BILL-004](billing.md#sn-bill-004)/[SN-BILL-012](billing.md#sn-bill-012)) to every profile. A permissive stub (guest = Free) stands in until billing ships in M8, so SN-BILL-001 is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)
@@ -1081,7 +1081,7 @@ SN-AUTH-002, SN-AUTH-008.
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-AUTH-001](auth.md#sn-auth-001) |
-| Depends on | [SN-AUTH-002](auth.md#sn-auth-002), [SN-AUTH-013](auth.md#sn-auth-013), [SN-PRV-001](privacy.md#sn-prv-001) |
+| Depends on | [SN-AUTH-002](auth.md#sn-auth-002), [SN-AUTH-013](auth.md#sn-auth-013), [SN-PRV-001](privacy.md#sn-prv-001), [SN-PRV-006](privacy.md#sn-prv-006) |
 | Security controls | `MASVS-PRIVACY-3`, `MASVS-STORAGE-1`, `ASVS-V6`, `OWASP-A01`, `CWE-212`, `CWE-459` |
 | Extra labels | agent-ready, sec: privacy-by-design |
 
@@ -1089,8 +1089,8 @@ SN-AUTH-002, SN-AUTH-008.
 The app MUST provide self-service account deletion reachable from Settings/Privacy (Apple requires an in-app account-deletion path when accounts exist) and MUST distinguish three scopes the user chooses between: (a) sign out (keep local notes, drop tokens); (b) delete cloud data (wipe the encrypted store in the user's own cloud + disconnect provider); (c) delete account (revoke identity + entitlement association at the provider) — PRD-DEL-001..004, PRD-PRIV-003. Because notes are E2EE in the user's own cloud, Sane holds no note content to delete: deletion is the user removing their own cloud store + keys. Deletion MUST offer export-first, require explicit typed/confirmed consent, and complete or clearly report partial completion.
 
 #### Scope
-**In:** the deletion surface (Settings → Privacy & export / Account) offering the three scopes; export-first handoff; explicit typed/confirmed consent; local wipe of a profile's data + keys + thumbnails + caches + search index; disconnecting the cloud provider and deleting the encrypted cloud store; requesting identity/entitlement removal at the providers; a completion/partial-completion report.
-**Out:** the export archive builder (SN-SET-001 / BKP), the cloud store mechanics (SN-SYNC-001), the entitlement provider API (SN-BILL-001), and telemetry-aggregate deletion (SN-TEL, best-effort).
+**In:** the deletion surface (Settings → Privacy & export / Account) offering the three scopes; export-first handoff; explicit typed/confirmed consent; identity/entitlement revocation at the providers (delete-account); disconnecting the cloud provider and deleting the encrypted cloud store; invoking the per-scope local erasure engine owned by [SN-PRV-006](privacy.md#sn-prv-006) and surfacing its result; a completion/partial-completion report.
+**Out:** the local erasure engine that securely wipes a profile's DB rows, blobs, thumbnails, caches, search index and Keychain/Keystore keys and verifies no residue - owned by [SN-PRV-006](privacy.md#sn-prv-006), which this flow calls; the export archive builder (SN-SET-001 / BKP); the cloud store mechanics (SN-SYNC-001); the entitlement provider API (SN-BILL-001); and telemetry-aggregate deletion (SN-TEL, best-effort).
 
 #### Acceptance criteria
 - [ ] The dashboard offers the three clearly-labelled scopes and lets the user choose (PRD-DEL-001).
@@ -1101,7 +1101,7 @@ The app MUST provide self-service account deletion reachable from Settings/Priva
 - [ ] Deletion states plainly what is and is not recoverable (zero-knowledge: once cloud store + keys are gone, data is unrecoverable) (PRD-DEL-002).
 
 #### Technical notes
-Local wipe operates on the profile partition ([SN-AUTH-013](auth.md#sn-auth-013)) — cascade-delete drift rows, blobs, FTS index, thumbnails; remove keys via sane_secure_store. Cloud delete + provider disconnect calls into SN-SYNC-001's cloud adapter (ciphertext store) — for account-delete, also call the entitlement/identity provider removal (SN-BILL-001). Wrap each scope as a resumable step returning Result so partial completion is reportable (PRD-DEL-004, OWASP-A10 exceptional conditions). Surface this under the privacy dashboard (SN-PRV-001, PRD-PRIV-003).
+Local wipe is delegated to the erasure engine ([SN-PRV-006](privacy.md#sn-prv-006)), invoked with the chosen scope over the profile partition ([SN-AUTH-013](auth.md#sn-auth-013)); this issue orchestrates it rather than reimplementing the drift/blob/FTS/thumbnail/keystore removal. Cloud delete + provider disconnect calls into SN-SYNC-001's cloud adapter (ciphertext store) — for account-delete, also call the entitlement/identity provider removal (SN-BILL-001). Wrap each scope as a resumable step returning Result so partial completion is reportable (PRD-DEL-004, OWASP-A10 exceptional conditions). Surface this under the privacy dashboard (SN-PRV-001, PRD-PRIV-003).
 
 #### Security & privacy
 Threats: incomplete erasure leaving recoverable data (CWE-212/459, LINDDUN Non-compliance), orphaned entitlement blocking re-signup, accidental over-deletion of another profile (scoped via [SN-AUTH-013](auth.md#sn-auth-013)). Controls: MASVS-PRIVACY-3 (erasure), MASVS-STORAGE-1, ASVS V6, OWASP-A01. Satisfies GDPR/DPDP/CCPA erasure (PRD-PRIV-003/004). Privacy-by-design: self-service, scoped, honest about zero-knowledge irrecoverability. Update the threat model if the deletion flow changes a stored-asset lifecycle.
@@ -1113,7 +1113,7 @@ Deletion lives in the privacy dashboard (design §12 Privacy & export; PRD-PRIV-
 Unit: app/test/auth/account_deletion_test.dart (each scope removes exactly its data; partial completion reported; other profiles untouched). Security: app/test/security/deletion_residue_test.dart asserts no note/thumbnail/index/key residue after local wipe. Integration (patrol): export-first + typed confirmation gate; delete-account leaves no orphaned entitlement.
 
 #### Dependencies
-SN-AUTH-002, SN-AUTH-013, SN-PRV-001; cloud store SN-SYNC-001; entitlement provider SN-BILL-001; export SN-SET-001.
+SN-AUTH-002, SN-AUTH-013, SN-PRV-001; local erasure engine [SN-PRV-006](privacy.md#sn-prv-006); cloud store SN-SYNC-001; entitlement provider SN-BILL-001; export SN-SET-001.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)

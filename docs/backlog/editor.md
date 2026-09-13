@@ -1239,7 +1239,7 @@ Surface: Editor laser tool (PRD-ED-134), used in presentation ([SN-ED-021](edito
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #246 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1297,7 +1297,7 @@ Surface: Editor presentation (PRD-ED-135). Audience view is chrome-free; present
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #247 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1355,7 +1355,7 @@ Surface: Editor keyboard control + cheat sheet (gestures-and-shortcuts section 6
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #248 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1413,7 +1413,7 @@ Surface: Editor object/canvas context menus (gestures-and-shortcuts section 6.4)
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #249 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1422,7 +1422,7 @@ Surface: Editor object/canvas context menus (gestures-and-shortcuts section 6.4)
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-ED-001](editor.md#sn-ed-001) |
-| Depends on | [SN-ED-002](editor.md#sn-ed-002), [SN-SET-001](settings.md#sn-set-001) |
+| Depends on | [SN-ED-002](editor.md#sn-ed-002) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PLATFORM-1` |
 | Extra labels | agent-ready |
 
@@ -1442,7 +1442,7 @@ The double-tap on Apple Pencil 2/Pro and the S Pen button is the one stylus inte
 - [ ] Double-tap is a separate event that does not interrupt a committed stroke and maps only to non-destructive actions (gestures-and-shortcuts section 7).
 
 #### Technical notes
-Files under `app/lib/features/editor/stylus/double_tap_binding.dart`. Consumes the stylus plugin's double-tap stream (sane_stylus, SN-PHN); reads the action from the profile-prefs provider (SN-SET-001, screens section 12). Applies to [SN-ED-002](editor.md#sn-ed-002) tool controller. Feature-detect via the plugin's capability query, never a device string (gestures-and-shortcuts section 3). Implements PRD-ED-153.
+Files under `app/lib/features/editor/stylus/double_tap_binding.dart`. Consumes the stylus plugin's double-tap stream (sane_stylus, SN-PHN); reads the action from the profile-prefs provider (SN-SET-001, screens section 12). Applies to [SN-ED-002](editor.md#sn-ed-002) tool controller. Feature-detect via the plugin's capability query, never a device string (gestures-and-shortcuts section 3). Implements PRD-ED-153. Reads the double-tap action through the profile-prefs contract ([SN-SET-003](settings.md#sn-set-003)); a default binding (Eraser) is used until Settings lands in M4 — not blocked on the SN-SET-001 epic.
 
 #### Security & privacy
 None beyond baseline: the binding maps a hardware event to an editor action; no note content is touched beyond tool switching; nothing is logged. IDs: MASVS-PRIVACY-1, MASVS-PLATFORM-1.
@@ -1454,7 +1454,7 @@ Surface: Editor stylus double-tap, configured in Settings > Handwriting & stylus
 `app/test/features/editor/stylus/double_tap_binding_test.dart` (each Settings action applied, live setting change, additive dock equivalence, feature-detect graceful no-op, non-destructive mapping, does not interrupt a stroke) using a fake stylus event stream.
 
 #### Dependencies
-[SN-ED-002](editor.md#sn-ed-002) (tool controller), [SN-SET-001](settings.md#sn-set-001) (double-tap action setting). Consumes sane_stylus (SN-PHN).
+[SN-ED-002](editor.md#sn-ed-002) (tool controller). The double-tap action is read from the profile-prefs provider — the `ProfilePrefs`/`SettingsRepository` contract from [SN-SET-003](settings.md#sn-set-003) — with a default binding (Eraser) used until Settings lands in M4, so the SN-SET-001 epic is not a scheduling blocker. Consumes sane_stylus (SN-PHN).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, widget, security scans)
@@ -1471,7 +1471,7 @@ Surface: Editor stylus double-tap, configured in Settings > Handwriting & stylus
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #250 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1529,7 +1529,7 @@ Surface: Editor stylus mastery + QuickMenu + Gesture Controls settings (gestures
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #251 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1587,7 +1587,7 @@ Surface: Editor canvas gestures (gestures-and-shortcuts section 1, section 7). N
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #252 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1645,7 +1645,7 @@ Surface: `SaneToast` + status indicators (screens section 1; ux-principles secti
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #253 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -1654,7 +1654,7 @@ Surface: `SaneToast` + status indicators (screens section 1; ux-principles secti
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-ED-001](editor.md#sn-ed-001) |
-| Depends on | [SN-ED-002](editor.md#sn-ed-002), [SN-SET-001](settings.md#sn-set-001) |
+| Depends on | [SN-ED-002](editor.md#sn-ed-002) |
 | Security controls | `MASVS-PRIVACY-1` |
 | Extra labels | agent-ready |
 
@@ -1674,7 +1674,7 @@ The app must not preemptively teach: there is no coach-marks storm on first laun
 - [ ] No tip blocks a first-time user from writing without opening any menu (ux-principles section 3 rule).
 
 #### Technical notes
-Files under `app/lib/features/editor/tips/`. Reads the Tips setting + per-profile seen-set from the profile-prefs provider (SN-SET-001, screens section 12). Renders as a small dismissible surface above the canvas (reuse `SaneToast`/overlay styling but non-auto-dismiss). Frequency cap in the tips controller. Implements ux-principles section 3 (restraint) and screens section 12 Tips.
+Files under `app/lib/features/editor/tips/`. Reads the Tips setting + per-profile seen-set from the profile-prefs provider (SN-SET-001, screens section 12). Renders as a small dismissible surface above the canvas (reuse `SaneToast`/overlay styling but non-auto-dismiss). Frequency cap in the tips controller. Implements ux-principles section 3 (restraint) and screens section 12 Tips. Reads the Tips toggle + per-profile seen-set via the profile-prefs contract ([SN-SET-003](settings.md#sn-set-003)); defaults (off, in-memory) are used until Settings lands in M4 — not blocked on the SN-SET-001 epic.
 
 #### Security & privacy
 None beyond baseline: tips carry no note content and no PII; the seen-set is a per-profile UI preference stored locally, never logged with content. ID: MASVS-PRIVACY-1.
@@ -1686,7 +1686,7 @@ Surface: Editor tips (ux-principles section 3; screens section 12 'Tips'). Voice
 `app/test/features/editor/tips/editor_tips_test.dart` (only shows when enabled, at-most-one-per-session cap, non-blocking + dismissible, 'don't show tips' turns setting off, seen-set prevents repeats, keyboard dismiss), plus a golden of a tip per look family.
 
 #### Dependencies
-[SN-ED-002](editor.md#sn-ed-002) (editor surface), [SN-SET-001](settings.md#sn-set-001) (Tips toggle + per-profile prefs).
+[SN-ED-002](editor.md#sn-ed-002) (editor surface). The Tips toggle + per-profile seen-set are read from the profile-prefs provider (`ProfilePrefs` contract, [SN-SET-003](settings.md#sn-set-003)); Tips default off with an in-memory seen-set until Settings lands in M4, so the SN-SET-001 epic is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, widget, golden, security scans)
@@ -1703,7 +1703,7 @@ Surface: Editor tips (ux-principles section 3; screens section 12 'Tips'). Voice
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #254 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1761,7 +1761,7 @@ Surface: Editor document tabs + split view (PRD-ED-139/191). Tab bar and split d
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #255 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |

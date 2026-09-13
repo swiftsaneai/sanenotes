@@ -113,7 +113,7 @@ Unit: attachment query + type grouping + isolation (test/library/media_browser_t
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-LIB-001](library.md#sn-lib-001) |
-| Depends on | [SN-DS-020](design-system.md#sn-ds-020), [SN-BRD-003](brand.md#sn-brd-003), [SN-AUTH-007](auth.md#sn-auth-007) |
+| Depends on | [SN-DS-020](design-system.md#sn-ds-020), [SN-BRD-003](brand.md#sn-brd-003) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PLATFORM-3` |
 | Extra labels | agent-ready |
 
@@ -138,7 +138,7 @@ Unit: attachment query + type grouping + isolation (test/library/media_browser_t
 
 #### Technical notes
 
-Compose from `SaneSurface`, `SaneText` (`displayS`/`muted`/`label` roles), `SaneAvatar` and `SaneSageMark`; read the plan from the entitlement provider ([SN-BILL-004](billing.md#sn-bill-004)) behind a narrow interface so the library layer does not depend on billing internals. Place in `app/lib/features/library/widgets/` (or `sane_ui` if the coverage gate [SN-GUX-006](design-system.md#sn-gux-006) assigns them there — update `component-owners.json` accordingly). The wordmark must use `--fd` of the active look; it is text, not an image, so it restyles with the look and stays localisable.
+Compose from `SaneSurface`, `SaneText` (`displayS`/`muted`/`label` roles), `SaneAvatar` and `SaneSageMark`; read the plan from the entitlement provider ([SN-BILL-004](billing.md#sn-bill-004)) behind a narrow interface so the library layer does not depend on billing internals. Place in `app/lib/features/library/widgets/` (or `sane_ui` if the coverage gate [SN-GUX-006](design-system.md#sn-gux-006) assigns them there — update `component-owners.json` accordingly). The wordmark must use `--fd` of the active look; it is text, not an image, so it restyles with the look and stays localisable. Reads the active-profile provider ([SN-AUTH-007](auth.md#sn-auth-007)) and plan via the entitlement provider ([SN-BILL-004](billing.md#sn-bill-004)) behind narrow interfaces; a single-profile stub is used until profiles land in M4.
 
 #### Security & privacy
 
@@ -153,8 +153,7 @@ References: `screens-and-flows.md` §2 and §4, `component-inventory.md` §3, `d
 `app/test/features/library/brand_row_test.dart` (plan label states: free, pro, student, guest; rail variant; pseudo-locale; RTL), `app/test/features/library/profile_switcher_test.dart` (semantics, target size, routing, locked-profile redaction). Golden: both components across a representative look per family × light/dark, plus wallpaper mode. Manual: switch profiles and start a trial with the sidebar open.
 
 #### Dependencies
-
-[SN-DS-020](design-system.md#sn-ds-020), [SN-BRD-003](brand.md#sn-brd-003), [SN-AUTH-007](auth.md#sn-auth-007)
+[SN-DS-020](design-system.md#sn-ds-020), [SN-BRD-003](brand.md#sn-brd-003). The profile switcher and plan label read the active-profile provider ([SN-AUTH-007](auth.md#sn-auth-007)) and the entitlement provider ([SN-BILL-004](billing.md#sn-bill-004)) behind narrow interfaces; a single-profile (guest) stub is used until profiles land in M4, so SN-AUTH-007 is not a scheduling blocker.
 
 #### Definition of done
 
@@ -273,7 +272,7 @@ SN-CORE-002 (entities), SN-CORE-004 (drift persistence), SN-DS-001/SN-DS-020 (de
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #327 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -341,7 +340,7 @@ Widget: `app/test/features/library/library_screen_test.dart` (region order; rece
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #328 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -477,7 +476,7 @@ Unit: `app/test/features/library/greeting_test.dart` (bucket boundaries, name su
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #329 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -545,7 +544,7 @@ Widget: `app/test/features/library/notebook_views_test.dart` (grid vs list rende
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #330 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -681,7 +680,7 @@ Widget: `app/test/features/library/sort_menu_test.dart` (each axis orders correc
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #331 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -749,7 +748,7 @@ Widget: `app/test/features/library/library_states_test.dart` (exact empty copy p
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #332 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -817,7 +816,7 @@ Widget: `app/test/features/library/sidebar_nav_test.dart` (each nav sets state +
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #333 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -885,7 +884,7 @@ Unit: `packages/sane_core/test/library/subject_test.dart` (seed presence + colou
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #334 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -953,7 +952,7 @@ Unit: `packages/sane_core/test/library/folder_tree_test.dart` (10-level nesting;
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #335 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1088,7 +1087,7 @@ Widget: `app/test/features/library/favourite_toggle_test.dart` (toggle flips fla
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #336 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1156,7 +1155,7 @@ Unit: `app/test/features/library/thumbnail_service_test.dart` (off-isolate rende
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #337 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -1224,7 +1223,7 @@ Unit/abuse: `app/test/features/library/cover_decode_test.dart` (oversized/malfor
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #338 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1292,7 +1291,7 @@ Widget: `app/test/features/library/notebook_menu_test.dart` (all entry points op
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #339 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1360,7 +1359,7 @@ Widget: `app/test/features/library/multi_select_test.dart` (enter/exit; Select-A
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #340 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1428,7 +1427,7 @@ Widget: `app/test/features/library/quick_note_test.dart` (each entry point creat
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #341 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1496,7 +1495,7 @@ Unit: `packages/sane_core/test/library/trash_lifecycle_test.dart` (soft-delete c
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #342 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1565,7 +1564,7 @@ Integration: `app/integration_test/library/trash_sync_test.dart` (two-device sim
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #343 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1633,7 +1632,7 @@ Widget: `app/test/features/library/drag_drop_test.dart` (move into folder; reord
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #344 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -1701,7 +1700,7 @@ Widget: `app/test/features/library/notebook_look_test.dart` (set/override/reset 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #345 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1710,19 +1709,19 @@ Widget: `app/test/features/library/notebook_look_test.dart` (set/override/reset 
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-LIB-001](library.md#sn-lib-001) |
-| Depends on | [SN-LIB-003](library.md#sn-lib-003), [SN-AUTH-007](auth.md#sn-auth-007) |
+| Depends on | [SN-LIB-003](library.md#sn-lib-003) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PRIVACY-2`, `OWASP-A01`, `ASVS-V8`, `CWE-532` |
 | Extra labels | agent-ready, innovation |
 
 #### Context
 
-Profiles claim 'separate notebooks and looks', but the mock only changes the avatar/greeting on switch (screens Open Question 15). This issue makes the isolation real: switching the active profile swaps the entire visible dataset. It implements PRD-LB-350 (and the per-account boundary in PRD-LB-351) and is the privacy backbone of a shared family/study device.
+Profiles claim 'separate notebooks and looks', but the mock only changes the avatar/greeting on switch (screens Open Question 15). The underlying per-profile partitioning mechanism (schema scope, query/index/cache scoping, per-profile sub-keys, the active-profile provider) is owned by [SN-AUTH-013](auth.md#sn-auth-013); this issue applies and verifies it across every library surface so switching the active profile swaps the entire visible dataset. It implements PRD-LB-350 (and the per-account boundary in PRD-LB-351) and is the privacy backbone of a shared family/study device.
 
 #### Scope
 
-**In:** making these per-profile so they switch entirely when the active profile changes — notebooks, folders, subjects, tags, covers, recents, favourites, trash, look/theme, wallpaper, and prefs; a fast profile-switch that re-scopes every library query and rebuilds the UI to the new profile's data with no bleed-through; documenting the per-account boundary (identity, entitlement/plan, student-verification, cloud backup destination) that is shared across a user's profiles (PRD-LB-351) and ensuring the library never surfaces another profile's content.
+**In:** verifying every library surface honours the profile partition from [SN-AUTH-013](auth.md#sn-auth-013) - notebooks, folders, subjects, tags, covers, recents, favourites, trash, look/theme, wallpaper, and prefs all switch entirely on profile change with zero bleed-through across All/Recent/Favorites/Shared/Trash, subjects and tags; the fast library profile-switch UX that re-scopes every library query and rebuilds the UI to the new profile's data; keying the library thumbnail/cover caches by profile; and documenting the per-account boundary (identity, entitlement/plan, student-verification, cloud backup destination) shared across a user's profiles (PRD-LB-351).
 
-**Out:** the profile picker and profile CRUD (SN-AUTH-007); identity/account (SN-AUTH-001); the sync store's per-profile partitioning (SN-SYNC-001 implements it; this issue asserts the library respects it); wallpaper storage (settings/per-device).
+**Out:** the underlying per-profile partitioning mechanism - drift schema profileId scope, repository/query scoping, FTS index and cache-directory partitioning, per-profile encryption sub-keys and the active-profile provider - owned by [SN-AUTH-013](auth.md#sn-auth-013), which this issue consumes and verifies; the profile picker and profile CRUD (SN-AUTH-007); identity/account (SN-AUTH-001); the sync store's per-profile partitioning (SN-SYNC-001); wallpaper storage (settings/per-device).
 
 #### Acceptance criteria
 
@@ -1735,7 +1734,7 @@ Profiles claim 'separate notebooks and looks', but the mock only changes the ava
 
 #### Technical notes
 
-The `profileId` scope enforced in [SN-LIB-003](library.md#sn-lib-003) is the mechanism; this issue verifies every library surface passes the active profile and that caches (thumbnails [SN-LIB-014](library.md#sn-lib-014), covers [SN-LIB-015](library.md#sn-lib-015)) are keyed by profile. Active profile lives in the Workspace doc (`activeProfileId`, document-model §1.2) and is set by SN-AUTH-007. Per-account vs per-profile split follows PRD-LB-350/351. This is a privacy boundary, not a hard auth boundary (local profiles are spaces, not accounts) — document that in Technical notes.
+The `profileId` scope is enforced by the persistence mechanism in [SN-AUTH-013](auth.md#sn-auth-013) (and [SN-LIB-003](library.md#sn-lib-003)); this issue verifies every library surface passes the active profile and that caches (thumbnails [SN-LIB-014](library.md#sn-lib-014), covers [SN-LIB-015](library.md#sn-lib-015)) are keyed by profile. Active profile lives in the Workspace doc (`activeProfileId`, document-model §1.2) and is set by SN-AUTH-007. Per-account vs per-profile split follows PRD-LB-350/351. This is a privacy boundary, not a hard auth boundary (local profiles are spaces, not accounts) — document that in Technical notes. Consumes the active-profile provider ([SN-AUTH-007](auth.md#sn-auth-007)) and the profileId-scope partition mechanism ([SN-AUTH-013](auth.md#sn-auth-013)) behind interfaces; the library-surface wiring and per-profile cache keying ship in M2 against a single-profile (guest) stub, with full isolation verified when both land in M4.
 
 #### Security & privacy
 
@@ -1750,8 +1749,7 @@ Resolves screens Open Question 15. The switch feels like changing users: the who
 Unit: `packages/sane_core/test/library/profile_isolation_test.dart` (two profiles; every query type returns only the active profile's rows; per-account fields shared). Widget/integration: `app/integration_test/library/profile_switch_test.dart` (switch swaps notebooks/look/wallpaper/trash; no cache bleed-through; outgoing unsaved state preserved). Security: negative test that a crafted query cannot escape the profile scope.
 
 #### Dependencies
-
-[SN-LIB-003](library.md#sn-lib-003) (scoped queries), SN-AUTH-007 (local profiles).
+[SN-LIB-003](library.md#sn-lib-003) (scoped queries). This wires every library surface to the active-profile provider and the per-profile partition — the `activeProfileId` provider from [SN-AUTH-007](auth.md#sn-auth-007) and the profileId-scope mechanism from [SN-AUTH-013](auth.md#sn-auth-013) — through their interfaces; a single-profile (guest) stub is used until profiles/partitioning land in M4, so neither is a scheduling blocker for the library wiring.
 
 #### Definition of done
 
@@ -1770,7 +1768,7 @@ Unit: `packages/sane_core/test/library/profile_isolation_test.dart` (two profile
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #346 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1838,7 +1836,7 @@ Widget: `app/test/features/library/library_adaptive_test.dart` (column reflow by
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #347 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1906,7 +1904,7 @@ Perf: `app/integration_test/library/library_perf_test.dart` via the perf harness
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #348 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1927,7 +1925,7 @@ Power users repeat the same searches — 'everything tagged #exam in Physics fro
 
 **In:** a 'Save as collection' action from the current filter state (subject + tags + type filters + date range); a SmartCollection entity persisted per profile; pinnable sidebar entries that re-evaluate live (adding a matching notebook updates the collection automatically); rename/edit/delete of a collection; the collection view reusing the standard grid/list.
 
-**Out:** the underlying filter chips/sort ([SN-LIB-005](library.md#sn-lib-005)/[SN-LIB-007](library.md#sn-lib-007)); tags ([SN-LIB-012](library.md#sn-lib-012)); global search (SN-SRCH-001); folders ([SN-LIB-011](library.md#sn-lib-011)).
+**Out:** the underlying filter chips/sort ([SN-LIB-005](library.md#sn-lib-005)/[SN-LIB-007](library.md#sn-lib-007)); tags ([SN-LIB-012](library.md#sn-lib-012)); folders ([SN-LIB-011](library.md#sn-lib-011)); and the search-screen "Save current search as a collection" entry point plus FTS-query-backed collections (a saved full-text query re-run live via the search engine), which are owned by [SN-SRCH-014](search.md#sn-srch-014) and reuse the SmartCollection entity + sidebar this issue defines. This issue owns the SmartCollection entity, its per-profile persistence, the sidebar UI, and live re-evaluation over library metadata (subject/tag/type/date).
 
 #### Acceptance criteria
 
@@ -1974,7 +1972,7 @@ Unit: `packages/sane_core/test/library/smart_collection_test.dart` (predicate ev
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #349 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -2042,7 +2040,7 @@ Widget: `app/test/features/library/archive_test.dart` (archive hides from main/A
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #350 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |

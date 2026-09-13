@@ -1230,7 +1230,7 @@ Widget: `app/test/features/editor/audio/mic_permission_test.dart` (request only 
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-AUD-001](audio.md#sn-aud-001) |
-| Depends on | [SN-AUD-002](audio.md#sn-aud-002), [SN-AUD-010](audio.md#sn-aud-010), [SN-BILL-001](billing.md#sn-bill-001) |
+| Depends on | [SN-AUD-002](audio.md#sn-aud-002), [SN-AUD-010](audio.md#sn-aud-010) |
 | Security controls | `MASVS-PRIVACY-2`, `CWE-532` |
 | Extra labels | agent-ready |
 
@@ -1255,7 +1255,7 @@ Free-plan audio is capped at **30 minutes per recording**; the behaviour at the 
 
 #### Technical notes
 
-Duration watcher in `packages/sane_audio` reading the entitlement from `sane_billing` (SN-BILL-001) via an `app/` provider; on cap, calls [SN-AUD-002](audio.md#sn-aud-002) stop and shows the prompt through [SN-AUD-010](audio.md#sn-aud-010). Entitlement verified against a pinned key and fail-open to free (checklist §4). Cap constant sourced from the plan config, not hardcoded per-call. PRD-LB-225, screens §7.6/§14.
+Duration watcher in `packages/sane_audio` reading the entitlement from `sane_billing` (SN-BILL-001) via an `app/` provider; on cap, calls [SN-AUD-002](audio.md#sn-aud-002) stop and shows the prompt through [SN-AUD-010](audio.md#sn-aud-010). Entitlement verified against a pinned key and fail-open to free (checklist §4). Cap constant sourced from the plan config, not hardcoded per-call. PRD-LB-225, screens §7.6/§14. Not blocked on SN-BILL-001: the cap reads the entitlement via the `EntitlementProvider` contract ([SN-BILL-012](billing.md#sn-bill-012)) with a fail-open stub until billing lands in M8; tests inject a fake provider.
 
 #### Security & privacy
 
@@ -1270,8 +1270,7 @@ Approaching-cap heads-up + hard-stop prompt with the exact upgrade copy (screens
 Unit/widget: `packages/sane_audio/test/cap/free_cap_test.dart` (hard-stop at 30:00 saves audio + shows prompt; heads-up at ~28:00; Pro uncapped; entitlement-unavailable fails open without data loss). Feeds [SN-AUD-024](audio.md#sn-aud-024).
 
 #### Dependencies
-
-[SN-AUD-002](audio.md#sn-aud-002) (recorder), [SN-AUD-010](audio.md#sn-aud-010) (bar/prompt), SN-BILL-001 (entitlement).
+[SN-AUD-002](audio.md#sn-aud-002) (recorder), [SN-AUD-010](audio.md#sn-aud-010) (bar/prompt). The free/Pro entitlement is read through the `sane_billing` EntitlementProvider contract ([SN-BILL-012](billing.md#sn-bill-012)), fail-open to Free; a permissive stub stands in until billing ships in M8, so SN-BILL-001 is not a scheduling blocker.
 
 #### Definition of done
 
@@ -1434,7 +1433,7 @@ Unit: `packages/sane_audio/test/sync/audio_sync_test.dart` (ciphertext-only egre
 | Size | L |
 | SDLC | implementation |
 | Parent | [SN-AUD-001](audio.md#sn-aud-001) |
-| Depends on | [SN-AUD-003](audio.md#sn-aud-003), [SN-AUD-018](audio.md#sn-aud-018), [SN-AI-001](ai.md#sn-ai-001) |
+| Depends on | [SN-AUD-003](audio.md#sn-aud-003), [SN-AUD-018](audio.md#sn-aud-018), [SN-HWR-002](ocr-hwr.md#sn-hwr-002) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PRIVACY-4`, `MASVS-NETWORK-1`, `CWE-532` |
 | Extra labels | agent-ready |
 
@@ -1459,7 +1458,7 @@ Lecture transcription is **post-hoc from the recorded file** (never the short-ph
 
 #### Technical notes
 
-Hand-off in `packages/sane_audio/lib/src/transcription/` calling the `sane_ml` adapter interface (pure-Dart interface; native engines via `sane_ml_native`, ADR-0016 — `docs/platform/ipad.md` `SpeechAnalyzer` `transcribe(...audioTimeRange)`, `docs/platform/android.md` GenAI/Whisper). Align results through [SN-AUD-004](audio.md#sn-aud-004) `segments`; persist via [SN-AUD-003](audio.md#sn-aud-003). Cloud opt-in reuses the app's data-leaves-device banner. Scheduling on a background isolate with progress + cancel. PRD-LB-221/222, ADR-0015 §Decision.6, ADR-0016.
+Hand-off in `packages/sane_audio/lib/src/transcription/` calling the `sane_ml` adapter interface (pure-Dart interface; native engines via `sane_ml_native`, ADR-0016 — `docs/platform/ipad.md` `SpeechAnalyzer` `transcribe(...audioTimeRange)`, `docs/platform/android.md` GenAI/Whisper). Align results through [SN-AUD-004](audio.md#sn-aud-004) `segments`; persist via [SN-AUD-003](audio.md#sn-aud-003). Cloud opt-in reuses the app's data-leaves-device banner. Scheduling on a background isolate with progress + cancel. PRD-LB-221/222, ADR-0015 §Decision.6, ADR-0016. The transcription engines live in the sane_ml recognition area (M3), not the Sage AI epic; this hands off through the `TranscriptionAdapter` interface/registry from [SN-HWR-002](ocr-hwr.md#sn-hwr-002).
 
 #### Security & privacy
 
@@ -1474,8 +1473,7 @@ Transcription is a background task with progress (screens §12 on-device indicat
 Unit: `packages/sane_audio/test/transcription/handoff_test.dart` with a fake `TranscriptionAdapter` (word-timestamp alignment through segments; background scheduling + cancel; cloud path requires opt-in + banner; on-device default). Integration: tap-a-transcript-word seeks + highlights (with [SN-AUD-021](audio.md#sn-aud-021)). Feeds [SN-AUD-024](audio.md#sn-aud-024).
 
 #### Dependencies
-
-[SN-AUD-003](audio.md#sn-aud-003) (Transcript model), [SN-AUD-018](audio.md#sn-aud-018) (audio blob), SN-AI-001 (transcription adapter/engines).
+[SN-AUD-003](audio.md#sn-aud-003) (Transcript model), [SN-AUD-018](audio.md#sn-aud-018) (audio blob), [SN-HWR-002](ocr-hwr.md#sn-hwr-002) (the sane_ml transcription capability interface + on-device-first registry; the specific child replacing the epic-level dependency on SN-AI-001). Concrete on-device engines land alongside in M3 ([SN-GIPAD-001](audio.md#sn-gipad-001), [SN-GAND-011](audio.md#sn-gand-011), [SN-WEB-027](audio.md#sn-web-027)).
 
 #### Definition of done
 
@@ -1706,7 +1704,7 @@ Unit: `packages/sane_audio/test/export/audio_export_test.dart` (CAF→AAC/Ogg tr
 | Size | L |
 | SDLC | verification |
 | Parent | [SN-AUD-001](audio.md#sn-aud-001) |
-| Depends on | [SN-AUD-011](audio.md#sn-aud-011), [SN-AUD-015](audio.md#sn-aud-015), [SN-AUD-019](audio.md#sn-aud-019), [SN-AUD-020](audio.md#sn-aud-020) |
+| Depends on | [SN-AUD-011](audio.md#sn-aud-011), [SN-AUD-015](audio.md#sn-aud-015), [SN-AUD-020](audio.md#sn-aud-020) |
 | Security controls | `MASVS-PRIVACY-2`, `MASVS-CRYPTO-1`, `CWE-532` |
 | Extra labels | agent-ready |
 
@@ -1732,7 +1730,7 @@ ADR-0015 defines a concrete verification list (sync accuracy, handwriting replay
 
 #### Technical notes
 
-Integration tests in `app/integration_test/audio_sync_test.dart`, `audio_multipage_test.dart`, `audio_replay_test.dart`; security tests in `app/test/security/audio_consent_gate_test.dart` and `app/test/security/audio_ciphertext_egress_test.dart`; goldens in `packages/sane_audio/test/` + `app/test/features/editor/audio/`. Use fakes for `record`/`just_audio`/the transcription adapter; real-device gates for background/interruption. Mirrors ADR-0015 §How-to-verify and CLAUDE.md §10 (security tests first-class). Feeds the M3 exit criteria and CI.
+Integration tests in `app/integration_test/audio_sync_test.dart`, `audio_multipage_test.dart`, `audio_replay_test.dart`; security tests in `app/test/security/audio_consent_gate_test.dart` and `app/test/security/audio_ciphertext_egress_test.dart`; goldens in `packages/sane_audio/test/` + `app/test/features/editor/audio/`. Use fakes for `record`/`just_audio`/the transcription adapter; real-device gates for background/interruption. Mirrors ADR-0015 §How-to-verify and CLAUDE.md §10 (security tests first-class). Feeds the M3 exit criteria and CI. The `audio_ciphertext_egress_test.dart` case is wired when encrypted sync ([SN-AUD-019](audio.md#sn-aud-019), M4) lands; the M3 suite runs against record/replay/consent/transcription.
 
 #### Security & privacy
 
@@ -1747,8 +1745,7 @@ Golden tests lock the recorder bar and transcript panel visuals across all 17 lo
 This issue IS the test plan: integration (sync, multipage, replay), security (consent gate, ciphertext egress, no-PII logs), golden (bar states, transcript panel), and size/codec assertions — all green in CI, with real-device-gated background tests documented for the device lab (SN-PERF-004 area).
 
 #### Dependencies
-
-[SN-AUD-011](audio.md#sn-aud-011) (sync UX), [SN-AUD-015](audio.md#sn-aud-015) (consent gate), [SN-AUD-019](audio.md#sn-aud-019) (encrypted sync), [SN-AUD-020](audio.md#sn-aud-020) (transcription).
+[SN-AUD-011](audio.md#sn-aud-011) (sync UX), [SN-AUD-015](audio.md#sn-aud-015) (consent gate), [SN-AUD-020](audio.md#sn-aud-020) (transcription). The audio-ciphertext-egress test is added when encrypted sync [SN-AUD-019](audio.md#sn-aud-019) lands in M4; the M3 suite covers record/replay/consent/transcription, so SN-AUD-019 is not a scheduling blocker.
 
 #### Definition of done
 
@@ -1775,7 +1772,7 @@ This issue IS the test plan: integration (sync, multipage, replay), security (co
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-AUD-001](audio.md#sn-aud-001) |
-| Depends on | [SN-AUD-020](audio.md#sn-aud-020), [SN-I18N-010](i18n.md#sn-i18n-010), [SN-AI-008](ai.md#sn-ai-008) |
+| Depends on | [SN-AUD-020](audio.md#sn-aud-020), [SN-I18N-010](i18n.md#sn-i18n-010), [SN-HWR-004](ocr-hwr.md#sn-hwr-004) |
 | Security controls | `MASVS-PRIVACY-1`, `ASVS-V5-Validation` |
 | Extra labels | agent-ready |
 
@@ -1800,7 +1797,7 @@ This issue IS the test plan: integration (sync, multipage, replay), security (co
 
 #### Technical notes
 
-Extend the `TranscriptionAdapter` capability descriptor with `languages` so the UI can enumerate support without hard-coding engine knowledge. Language changes must invalidate derived artefacts: captions, FTS rows ([SN-SRCH-002](search.md#sn-srch-002)), and Sage embeddings ([SN-AI-009](ai.md#sn-ai-009)) for that recording.
+Extend the `TranscriptionAdapter` capability descriptor with `languages` so the UI can enumerate support without hard-coding engine knowledge. Language changes must invalidate derived artefacts: captions, FTS rows ([SN-SRCH-002](search.md#sn-srch-002)), and Sage embeddings ([SN-AI-009](ai.md#sn-ai-009)) for that recording. Language-pack download reuses the recognition model-download manager ([SN-HWR-004](ocr-hwr.md#sn-hwr-004), M3), not the Sage AI model manager ([SN-AI-008](ai.md#sn-ai-008), M6).
 
 #### Security & privacy
 
@@ -1815,8 +1812,7 @@ Recorder bar shows the language as a compact chip ('HI'), expanding to a picker;
 `app/test/features/audio/speech_language_test.dart` (default chain, persistence, invalidation on change); adapter fake asserting unsupported-language handling; an integration test downloading a stub pack with Wi-Fi-only on; manual accuracy spot-check logged with fixtures, not real user audio.
 
 #### Dependencies
-
-[SN-AUD-020](audio.md#sn-aud-020), [SN-I18N-010](i18n.md#sn-i18n-010), [SN-AI-008](ai.md#sn-ai-008).
+[SN-AUD-020](audio.md#sn-aud-020) (transcription hand-off), [SN-I18N-010](i18n.md#sn-i18n-010) (recognition language list), [SN-HWR-004](ocr-hwr.md#sn-hwr-004) (on-demand recognition-model download & lifecycle manager the language packs reuse; the specific child replacing the dependency on the Sage AI model manager SN-AI-008).
 
 #### Definition of done
 
@@ -1843,7 +1839,7 @@ Recorder bar shows the language as a compact chip ('HI'), expanding to a picker;
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-AUD-001](audio.md#sn-aud-001) |
-| Depends on | [SN-AUD-020](audio.md#sn-aud-020), [SN-HWR-002](ocr-hwr.md#sn-hwr-002), [SN-AI-006](ai.md#sn-ai-006) |
+| Depends on | [SN-AUD-020](audio.md#sn-aud-020), [SN-HWR-002](ocr-hwr.md#sn-hwr-002) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PRIVACY-3`, `MASVS-STORAGE-1` |
 | Extra labels | — |
 
@@ -1863,7 +1859,7 @@ Recorder bar shows the language as a compact chip ('HI'), expanding to a picker;
 - [ ] The adapter is behind the capability registry ([SN-AI-003](ai.md#sn-ai-003)/[SN-HWR-002](ocr-hwr.md#sn-hwr-002)) so the feature is absent, not broken, on Tier 3 devices.
 
 #### Technical notes
-Kotlin in `plugins/sane_ml_native/android`: platform `SpeechRecognizer.createOnDeviceSpeechRecognizer()` (API 33+) with `RecognizerIntent.EXTRA_PREFER_OFFLINE`, plus the ML Kit GenAI Speech Recognition path where present — the latter is **alpha and device-gated (Pixel 9+/S25+/OnePlus 13+ class)** per `docs/research/sources/android-stylus-capabilities.md` §4, so it must sit behind the same probe. Recognition runs off the platform main thread; results cross to Dart on an `EventChannel` (ADR-0012). Feeding a finished file rather than the live mic may require a decode step — record the approach and its limits **(verify)** in `docs/platform/android.md` §2.
+Kotlin in `plugins/sane_ml_native/android`: platform `SpeechRecognizer.createOnDeviceSpeechRecognizer()` (API 33+) with `RecognizerIntent.EXTRA_PREFER_OFFLINE`, plus the ML Kit GenAI Speech Recognition path where present — the latter is **alpha and device-gated (Pixel 9+/S25+/OnePlus 13+ class)** per `docs/research/sources/android-stylus-capabilities.md` §4, so it must sit behind the same probe. Recognition runs off the platform main thread; results cross to Dart on an `EventChannel` (ADR-0012). Feeding a finished file rather than the live mic may require a decode step — record the approach and its limits **(verify)** in `docs/platform/android.md` §2. Speech recognition only; text generation ([SN-AI-006](ai.md#sn-ai-006), M6) is out of scope and not a dependency — only the ML Kit GenAI availability probe is shared.
 
 #### Security & privacy
 Audio is the most sensitive content the app holds (lectures contain other people's voices). Controls: on-device only, no network by construction (MASVS-PRIVACY-3); the recording-consent flow and visible indicator in [SN-AUD-015](audio.md#sn-aud-015) still govern capture; transcripts are stored encrypted as sidecars ([SN-AUD-018](audio.md#sn-aud-018), [SN-CRY-007](security.md#sn-cry-007)); no audio or transcript text is ever logged ([SN-SEC-021](security.md#sn-sec-021), CWE-532); if a device routes recognition through a system service that may be cloud-backed, the probe must classify it as **not on-device** and the feature must then require the explicit cloud opt-in ([SN-HWR-019](ocr-hwr.md#sn-hwr-019)) — fail closed.
@@ -1875,7 +1871,7 @@ Reuse the transcription states in `docs/design/screens-and-flows.md` audio secti
 Unit tests with a fake engine for streaming/partial/cancel/error mapping. Instrumented test on an API 33 emulator with the on-device engine installed, plus manual runs on the Galaxy Tab and a Pixel-class device. Airplane-mode egress assertion in `integration_test`. Timing-accuracy test against a fixture recording with known utterance boundaries. Files: `plugins/sane_ml_native/android/.../SpeechAdapter.kt`, `packages/sane_ml/test/transcription_android_test.dart`.
 
 #### Dependencies
-[SN-AUD-020](audio.md#sn-aud-020), [SN-HWR-002](ocr-hwr.md#sn-hwr-002), [SN-AI-006](ai.md#sn-ai-006)
+[SN-AUD-020](audio.md#sn-aud-020) (cross-platform transcription orchestration), [SN-HWR-002](ocr-hwr.md#sn-hwr-002) (sane_ml transcription capability interface). This is speech recognition, not text generation: it shares the ML Kit GenAI device-gating probe with [SN-AI-006](ai.md#sn-ai-006) (M6) but does not depend on it.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -1901,7 +1897,7 @@ Unit tests with a fake engine for streaming/partial/cancel/error mapping. Instru
 | Size | L |
 | SDLC | implementation |
 | Parent | [SN-IPAD-001](input-gestures.md#sn-ipad-001) |
-| Depends on | [SN-AUD-020](audio.md#sn-aud-020), [SN-HWR-002](ocr-hwr.md#sn-hwr-002), [SN-IPAD-027](compat.md#sn-ipad-027) |
+| Depends on | [SN-AUD-020](audio.md#sn-aud-020), [SN-HWR-002](ocr-hwr.md#sn-hwr-002) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PLATFORM-1`, `MASVS-STORAGE-1` |
 | Extra labels | agent-ready |
 
@@ -1921,7 +1917,7 @@ Transcription is a locked on-device-first capability (decision 6), and on Apple 
 - [ ] A transcript of a locked notebook is written through the same encrypted sidecar path as its audio ([SN-AUD-018](audio.md#sn-aud-018)) — never to a plaintext temp file.
 
 #### Technical notes
-Live in `plugins/sane_ml_native/ios/`. Feed the analyzer from the existing capture chain rather than re-opening the microphone. Gate every iPadOS 26 symbol behind `if #available` per [SN-IPAD-027](compat.md#sn-ipad-027); keep the Dart interface version-agnostic (`MlAvailability` decides). Model assets are system-managed — never bundle them. `NSSpeechRecognitionUsageDescription` is required for the legacy path only; prefer not shipping it if the legacy path is dropped.
+Live in `plugins/sane_ml_native/ios/`. Feed the analyzer from the existing capture chain rather than re-opening the microphone. Gate every iPadOS 26 symbol behind `if #available` per [SN-IPAD-027](compat.md#sn-ipad-027); keep the Dart interface version-agnostic (`MlAvailability` decides). Model assets are system-managed — never bundle them. `NSSpeechRecognitionUsageDescription` is required for the legacy path only; prefer not shipping it if the legacy path is dropped. The `if #available` gating is applied locally in M3; [SN-IPAD-027](compat.md#sn-ipad-027) (M5) later generalises the shared availability convention — not a scheduling blocker.
 
 #### Security & privacy
 Audio and transcripts are the most sensitive content the app touches (lectures may contain third-party voices). All inference stays on-device; no cloud path is permitted here (decision 6, [SN-HWR-019](ocr-hwr.md#sn-hwr-019)). Transcript text must never be logged (MASVS-PRIVACY-1, CWE-532), must inherit the notebook's encryption ([SN-CRY-007](security.md#sn-cry-007)) and Data Protection class ([SN-GIPAD-003](security.md#sn-gipad-003)), and native→Dart payloads are untrusted input to be shape-validated (MASVS-PLATFORM-1). Asset downloads are OS-managed, so no custom download trust boundary is introduced.
@@ -1933,7 +1929,7 @@ Live transcription appears in the recorder bar per docs/design/screens-and-flows
 Unit: `plugins/sane_ml_native/test/transcribe_availability_test.dart` (availability matrix, locale resolution, fallback selection). Integration: `plugins/sane_ml_native/example/integration_test/speech_analyzer_test.dart` on a Tier 1 iPad with a fixed 5-minute audio fixture, asserting word-error-rate against a stored baseline and time-range alignment. Manual: interruption matrix (call, Siri, route change, Split View) per docs/platform/ipad.md §11.
 
 #### Dependencies
-[SN-AUD-020](audio.md#sn-aud-020), [SN-HWR-002](ocr-hwr.md#sn-hwr-002), [SN-IPAD-027](compat.md#sn-ipad-027).
+[SN-AUD-020](audio.md#sn-aud-020) (transcription hand-off/alignment), [SN-HWR-002](ocr-hwr.md#sn-hwr-002) (sane_ml capability interface). iPadOS 26 symbols are gated with `if #available` locally; the shared availability convention [SN-IPAD-027](compat.md#sn-ipad-027) (M5) generalises this and is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)

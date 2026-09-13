@@ -351,7 +351,7 @@ SN-AND-004 (MotionEvent capture provides the pointer stream this filters).
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-AND-001](compat.md#sn-and-001) |
-| Depends on | [SN-AND-006](ink.md#sn-and-006), [SN-AND-015](compat.md#sn-and-015) |
+| Depends on | [SN-AND-006](ink.md#sn-and-006) |
 | Security controls | `MASVS-PLATFORM-1` |
 | Extra labels | — |
 
@@ -371,7 +371,7 @@ SN-AND-004 (MotionEvent capture provides the pointer stream this filters).
 - [ ] On button/3-button navigation devices the code path is a no-op and nothing regresses.
 
 #### Technical notes
-Kotlin in `plugins/sane_ink_surface/android`: `View.setSystemGestureExclusionRects(List<Rect>)` on the drawing view, driven from the same `ACTION_DOWN`/`ACTION_UP` handling as [SN-AND-004](ink.md#sn-and-004); `WindowInsetsControllerCompat.systemBarsBehavior = BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` for immersive surfaces. Expose a small `setGestureExclusion(List<Rect>)` method on the `sane_ink_surface` platform interface ([SN-INK-029](ink.md#sn-ink-029)) so the Dart editor can also exclude the docked palette region. Allocate the rect list once and mutate in place — no per-sample allocation ([SN-PERF-021](perf.md#sn-perf-021)).
+Kotlin in `plugins/sane_ink_surface/android`: `View.setSystemGestureExclusionRects(List<Rect>)` on the drawing view, driven from the same `ACTION_DOWN`/`ACTION_UP` handling as [SN-AND-004](ink.md#sn-and-004); `WindowInsetsControllerCompat.systemBarsBehavior = BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` for immersive surfaces. Expose a small `setGestureExclusion(List<Rect>)` method on the `sane_ink_surface` platform interface ([SN-INK-029](ink.md#sn-ink-029)) so the Dart editor can also exclude the docked palette region. Allocate the rect list once and mutate in place — no per-sample allocation ([SN-PERF-021](perf.md#sn-perf-021)). Uses default insets in M1; [SN-AND-015](compat.md#sn-and-015) (edge-to-edge insets, M5) refines the exact edge geometry later — not a scheduling blocker.
 
 #### Security & privacy
 None beyond baseline (MASVS-PLATFORM-1: the app must not degrade system navigation). The exclusion is scoped and transient, so it cannot be used to trap the user in the app; it never suppresses the power/assistant gestures. No data, no logging.
@@ -383,7 +383,7 @@ Invisible when correct. Follow `docs/design/gestures-and-shortcuts.md` §4: the 
 Widget/unit test over the rect calculator (canvas geometry + palette dock position → rects, clamped to budget). `integration_test` on a gesture-navigation emulator asserting a stroke that starts 4 dp from the edge produces a stroke and no route pop. Manual on a Galaxy Tab (S Pen) and a Pixel Tablet — emulators do not reproduce every OEM edge behaviour. Files: `plugins/sane_ink_surface/android/.../GestureExclusion.kt`, `test/ink/gesture_exclusion_rects_test.dart`.
 
 #### Dependencies
-[SN-AND-006](ink.md#sn-and-006), [SN-AND-015](compat.md#sn-and-015)
+[SN-AND-006](ink.md#sn-and-006) (palm-rejection ACTION_DOWN/UP handling this drives from). Exact edge geometry coordinates with [SN-AND-015](compat.md#sn-and-015) (edge-to-edge insets, M5); default insets are used until then, so SN-AND-015 is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -546,7 +546,7 @@ SN-FND-002 (monorepo scaffold). Coordinates with SN-CORE-001 (document model), S
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #287 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -603,7 +603,7 @@ SN-FND-002 (monorepo scaffold + sane_ink skeleton).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #288 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -660,7 +660,7 @@ packages/sane_ink/test/filter/one_euro_test.dart (convergence, no-overshoot, lag
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #289 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -717,7 +717,7 @@ packages/sane_ink/test/geometry/stroke_geometry_test.dart (closed outline, caps,
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #290 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -774,7 +774,7 @@ packages/sane_render/test/wet/wet_layer_test.dart (repaint scoping, no rebuild, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #291 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -832,7 +832,7 @@ Camera-rig latency in tools/device_lab/results (per docs/architecture/rendering-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #292 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -890,7 +890,7 @@ Camera-rig latency in tools/device_lab/results, golden on Vulkan and GL paths ([
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #293 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -947,7 +947,7 @@ integration_test for web (Chrome) asserting the desynchronized path and the Canv
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #294 |
 | Type | spike |
 | Priority | p0 |
 | Milestone | M0 Foundations |
@@ -1175,7 +1175,7 @@ packages/sane_ink/test/capture/predict_test.dart (predicted excluded from commit
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #295 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1288,7 +1288,7 @@ app/test/editor/wrist_guard_test.dart (off by default, stylus passes, touch UI s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #296 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1345,7 +1345,7 @@ app/test/editor/finger_draw_test.dart (off/on behaviour, finger-only always-on, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #297 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1796,7 +1796,7 @@ app/integration_test/refresh_rate_test.dart (120 fps on high-refresh, 60 fps flo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #298 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1966,7 +1966,7 @@ SN-FND-002 (sane_ink package skeleton).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #299 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2080,7 +2080,7 @@ packages/sane_ink/test/serialise/schema_test.dart (unknown-major refusal, byte-i
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #300 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2194,7 +2194,7 @@ packages/sane_render/test/theme/ink_inversion_test.dart plus golden tests per lo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #301 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2251,7 +2251,7 @@ packages/sane_ink/test/instrument/latency_probe_test.dart (stage markers, percen
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #302 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2365,7 +2365,7 @@ packages/sane_ink/test/corpus/replay_test.dart (determinism across runs, recorde
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #323 |
 | Type | spike |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |

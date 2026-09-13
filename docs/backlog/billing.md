@@ -18,7 +18,7 @@
     - [SN-BILL-017](billing.md#sn-bill-017) **Implement anti-dark-pattern disclosures, cancellation and refunds** · p1 · feature · M · M8 Launch & Growth
   - [SN-BILL-012](billing.md#sn-bill-012) **Implement the Pro feature-gate API and Upgrade-overlay routing** · p1 · feature · M · M8 Launch & Growth
     - [SN-BILL-013](billing.md#sn-bill-013) **Enforce the free-plan PDF import monthly quota (5/month) with Upgrade gate** · p1 · feature · S · M8 Launch & Growth
-  - [SN-BILL-014](billing.md#sn-bill-014) **Build the Account & plan settings tab with restore and manage subscription** · p1 · feature · M · M8 Launch & Growth
+  - [SN-BILL-014](billing.md#sn-bill-014) **Add restore and manage subscription to the Account & plan tab** · p1 · feature · M · M8 Launch & Growth
   - [SN-BILL-015](billing.md#sn-bill-015) **Implement tiered student verification with annual re-verification** · p1 · feature · L · M8 Launch & Growth
   - [SN-BILL-016](billing.md#sn-bill-016) **Implement the family/household plan grant in the entitlement layer** · p2 · feature · M · M8 Launch & Growth
   - [SN-BILL-018](billing.md#sn-bill-018) **Harden receipt/entitlement-token security and anti-piracy posture** · p1 · security · M · M8 Launch & Growth
@@ -793,7 +793,7 @@ Meter + gate per docs/design/screens-and-flows.md §9: "Free-plan meter (free on
 
 <a id="sn-bill-014"></a>
 
-**Build the Account & plan settings tab with restore and manage subscription**
+**Add restore and manage subscription to the Account & plan tab**
 
 | Field | Value |
 |---|---|
@@ -806,19 +806,19 @@ Meter + gate per docs/design/screens-and-flows.md §9: "Free-plan meter (free on
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-BILL-001](billing.md#sn-bill-001) |
-| Depends on | — |
+| Depends on | [SN-SET-005](settings.md#sn-set-005) |
 | Security controls | `MASVS-AUTH-1`, `MASVS-PRIVACY-1`, `OWASP-A01`, `CWE-359` |
 | Extra labels | agent-ready |
 
 #### Context
-The Account & plan tab is where a user sees their plan, restores purchases, manages their subscription, and reads their student status — the design specifies a current-plan card (Free/Pro descriptions verbatim), an Upgrade/Manage CTA, Details rows (Name, Email, Student status "Verified · until <date>"), Replay-the-welcome-tour, Profiles-on-this-account, and Sign out (docs/design/screens-and-flows.md §12; PRD-SET-020). Two billing actions live here: **Restore purchases** (re-read entitlements and re-grant without re-charging) and **Manage subscription** (deep-link the store's manage screen), both required by PRD-BILL-012. This issue builds the tab's billing surface within the settings host ([SN-SET-001](settings.md#sn-set-001)), reading the entitlement/plan and rendering the honest, accessible plan state. It is the calm counterpart to the Upgrade overlay: no selling, just facts and controls.
+The Account & plan tab is where a user sees their plan, restores purchases, manages their subscription, and reads their student status — the design specifies a current-plan card (Free/Pro descriptions verbatim), an Upgrade/Manage CTA, Details rows (Name, Email, Student status "Verified · until <date>"), Replay-the-welcome-tour, Profiles-on-this-account, and Sign out (docs/design/screens-and-flows.md §12; PRD-SET-020). Two billing actions live here: **Restore purchases** (re-read entitlements and re-grant without re-charging) and **Manage subscription** (deep-link the store's manage screen), both required by PRD-BILL-012. The Account & plan tab shell (layout, Details rows, Replay tour, Profiles, Sign out, guest variant, plan card display + Upgrade CTA) is owned by [SN-SET-005](settings.md#sn-set-005); this issue adds the tab's billing actions - Restore purchases and Manage subscription - plus the entitlement-driven and lapsed-plan states and the student re-verify prompt, rendered into that tab within the settings host ([SN-SET-001](settings.md#sn-set-001)). It is the calm counterpart to the Upgrade overlay: no selling, just facts and controls.
 
 #### Scope
-**In:** the current-plan card (Free desc "5 PDF imports a month · 30-min recordings · 3 people per notebook"; Pro desc "Unlimited imports & audio · handwriting to text · 50 GB backup"), the Free→"Upgrade to Pro · from ₹83/mo" and Pro→"Manage subscription" CTAs, **Restore purchases** action, the Student status row, and the lapsed-plan messaging; wiring restore/manage into the provider/store.
-**Out:** the Upgrade overlay itself ([SN-BILL-011](billing.md#sn-bill-011)); the purchase SDKs ([SN-BILL-006](billing.md#sn-bill-006)/[SN-BILL-007](billing.md#sn-bill-007)/[SN-BILL-009](billing.md#sn-bill-009)); student verification flow ([SN-BILL-015](billing.md#sn-bill-015)); profiles/sign-out (owned by [SN-AUTH-001](auth.md#sn-auth-001)/[SN-SET-001](settings.md#sn-set-001)); refund copy ([SN-BILL-017](billing.md#sn-bill-017)).
+**In:** the tab's billing actions rendered into the [SN-SET-005](settings.md#sn-set-005) tab - **Restore purchases** (re-read entitlements and re-grant without re-charging), **Manage subscription** (store deep-link / web portal), the entitlement-stream-driven plan state and lapsed-plan messaging ("moved to Free"), the Pro→"Manage subscription" CTA, and the Student status re-verify prompt; wiring restore/manage into the provider/store.
+**Out:** the Account & plan tab shell, layout, Details rows, Replay-the-welcome-tour, Profiles block, Sign out, guest variant, the plan-card display and the Free→Upgrade CTA - all owned by [SN-SET-005](settings.md#sn-set-005); the Upgrade overlay itself ([SN-BILL-011](billing.md#sn-bill-011)); the purchase SDKs ([SN-BILL-006](billing.md#sn-bill-006)/[SN-BILL-007](billing.md#sn-bill-007)/[SN-BILL-009](billing.md#sn-bill-009)); the student verification flow ([SN-BILL-015](billing.md#sn-bill-015)); profiles/sign-out ([SN-AUTH-001](auth.md#sn-auth-001)/[SN-SET-001](settings.md#sn-set-001)); refund copy ([SN-BILL-017](billing.md#sn-bill-017)).
 
 #### Acceptance criteria
-- [ ] The current-plan card shows the exact Free/Pro descriptions from design §12; Free shows "Upgrade to Pro · from ₹83/mo", Pro shows "Manage subscription" with toast "Opens your app-store subscription".
+- [ ] Within the [SN-SET-005](settings.md#sn-set-005) plan card, the Pro state shows "Manage subscription" with toast "Opens your app-store subscription" (the card layout and the Free→Upgrade CTA are owned by [SN-SET-005](settings.md#sn-set-005)).
 - [ ] **Restore purchases** is a visible action that re-reads entitlements from the provider/StoreKit and re-grants Pro without re-charging; it shows a result (restored / nothing to restore) and never errors the user out (PRD-BILL-012).
 - [ ] **Manage subscription** deep-links the correct store screen on iOS/Android and the self-serve web portal on web.
 - [ ] The Student status row shows "Verified · until <date>" when verified and a re-verify prompt when expired (feeds [SN-BILL-015](billing.md#sn-bill-015)); email is shown but never logged.
@@ -837,7 +837,7 @@ Source: docs/design/screens-and-flows.md §12 (Account & plan). States: Free (Up
 `app/test/billing/account_plan_tab_test.dart` (Free vs Pro rendering, restore re-grants without charge via fake provider, manage deep-links, lapsed messaging); golden per look + dark; a11y labels/targets test.
 
 #### Dependencies
-[SN-BILL-004](billing.md#sn-bill-004), [SN-BILL-005](billing.md#sn-bill-005), [SN-SET-001](settings.md#sn-set-001), [SN-DS-003](design-system.md#sn-ds-003).
+[SN-SET-005](settings.md#sn-set-005) (Account & plan tab shell), [SN-BILL-004](billing.md#sn-bill-004), [SN-BILL-005](billing.md#sn-bill-005), [SN-SET-001](settings.md#sn-set-001), [SN-DS-003](design-system.md#sn-ds-003).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -1148,7 +1148,7 @@ This issue *is* the test plan: `app/integration_test/billing_sandbox_test.dart` 
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-BILL-001](billing.md#sn-bill-001) |
-| Depends on | [SN-DS-018](design-system.md#sn-ds-018), [SN-PDF-007](pdf.md#sn-pdf-007), [SN-BILL-012](billing.md#sn-bill-012) |
+| Depends on | [SN-DS-018](design-system.md#sn-ds-018), [SN-PDF-007](pdf.md#sn-pdf-007) |
 | Security controls | `OWASP-A01`, `MASVS-RESILIENCE-1` |
 | Extra labels | agent-ready |
 
@@ -1174,7 +1174,7 @@ The same free-plan limit is stated on at least four surfaces in the design, in f
 
 #### Technical notes
 
-Components in `sane_ui` (they are pure presentation) with the `PlanLimit` view-model in `app/` reading the entitlement provider from [SN-BILL-004](billing.md#sn-bill-004) — never the store SDK directly. `SaneMeter` wraps `SaneProgress` from [SN-DS-018](design-system.md#sn-ds-018); do not introduce a second progress primitive. Reset dates must come from the entitlement layer, not be computed locally from a device clock, so a changed clock cannot grant extra imports.
+Components in `sane_ui` (they are pure presentation) with the `PlanLimit` view-model in `app/` reading the entitlement provider from [SN-BILL-004](billing.md#sn-bill-004) — never the store SDK directly. `SaneMeter` wraps `SaneProgress` from [SN-DS-018](design-system.md#sn-ds-018); do not introduce a second progress primitive. Reset dates must come from the entitlement layer, not be computed locally from a device clock, so a changed clock cannot grant extra imports. These are pure presentation; the `PlanLimit` view-model reads the `EntitlementProvider` contract ([SN-BILL-004](billing.md#sn-bill-004)) behind a narrow interface, with a stub until billing lands in M8 — not blocked on SN-BILL-012.
 
 #### Security & privacy
 
@@ -1189,8 +1189,7 @@ References: `screens-and-flows.md` §2/§9/§10/§12/§14, `ux-principles.md` §
 `packages/sane_ui/test/components/meter_test.dart` (a11y value, no colour-only state, 17 looks), `app/test/features/billing/plan_limit_consistency_test.dart` (three surfaces, one number), `app/test/features/billing/limit_gate_test.dart` (at cap → Upgrade + toast, control still visible), pseudo-locale layout test. Golden: sidebar card and import meter per look family × light/dark.
 
 #### Dependencies
-
-[SN-DS-018](design-system.md#sn-ds-018), [SN-PDF-007](pdf.md#sn-pdf-007), [SN-BILL-012](billing.md#sn-bill-012)
+[SN-DS-018](design-system.md#sn-ds-018), [SN-PDF-007](pdf.md#sn-pdf-007). The `PlanLimit` view-model reads the verified entitlement object via the `sane_billing` EntitlementProvider contract ([SN-BILL-004](billing.md#sn-bill-004)); a permissive stub stands in until billing ships in M8, so SN-BILL-012 is not a scheduling blocker.
 
 #### Definition of done
 

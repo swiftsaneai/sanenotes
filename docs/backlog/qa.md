@@ -16,7 +16,7 @@
   - [SN-QA-010](qa.md#sn-qa-010) **Define the bug-triage process, severity taxonomy and report templates** · p2 · docs · M · M1 Ink Editor Alpha
   - [SN-QA-011](qa.md#sn-qa-011) **Build test-data factories and deterministic synthetic fixtures** · p1 · test · M · M1 Ink Editor Alpha
   - [SN-QA-012](qa.md#sn-qa-012) **Implement multi-device convergence and fault-injection tests for sync** · p0 · test · L · M4 Identity, Sync & Privacy
-  - [SN-QA-013](qa.md#sn-qa-013) **Curate the fuzz corpus and the crash-to-regression-test pipeline** · p1 · test · M · M2 Library & Documents
+  - [SN-QA-013](qa.md#sn-qa-013) **Curate the fuzz corpus and the crash-to-regression-test pipeline** · p1 · test · M · M3 Audio & Recognition
   - [SN-QA-014](qa.md#sn-qa-014) **Author per-milestone manual test plans and exploratory charters** · p2 · docs · L · M1 Ink Editor Alpha
   - [SN-QA-015](qa.md#sn-qa-015) **Define the beta rings, tester cohorts and privacy-safe feedback intake** · p2 · task · M · M7 Beta Hardening & Security Audit
   - [SN-QA-016](qa.md#sn-qa-016) **Define the release QA checklist and the go/no-go release gate** · p1 · docs · M · M7 Beta Hardening & Security Audit
@@ -1190,7 +1190,7 @@ Add `packages/sane_sync/test/convergence/multi_replica_harness.dart` plus `conve
 | GitHub | not published yet |
 | Type | test |
 | Priority | p1 |
-| Milestone | M2 Library & Documents |
+| Milestone | M3 Audio & Recognition |
 | Platforms | core |
 | Areas | qa, security |
 | Size | M |
@@ -1217,7 +1217,7 @@ Add `packages/sane_sync/test/convergence/multi_replica_harness.dart` plus `conve
 - [ ] A seeded, deliberately-crashing stub parser exercises the whole loop end to end in CI (crash → triage → minimised fixture → generated regression test) so the pipeline itself is tested.
 
 #### Technical notes
-Corpus and tooling live under `tools/fuzz/` next to the runner from [SN-SEC-010](security.md#sn-sec-010); triage/minimisation scripts as Node ESM in `tools/scripts/` alongside the other repo scripts, consistent with `scripts/validate-issues.mjs` conventions. Signature normalisation strips addresses/offsets and keeps the top frames of the Dart or ASAN stack. Generated tests target the parser entry points behind `Result<T, Failure>` (`overview.md` §8.1) — the assertion is always "typed failure, no throw across the package boundary, no partial object graph". Issue automation reuses the labels and severity mapping from [SN-QA-010](qa.md#sn-qa-010); a parser crash on untrusted input is at least S2 and, if it is reachable from an import or a deep link, it goes down the private-advisory path in `SECURITY.md` instead of a public issue. Relevant docs: `ssdlc-process.md` §2.4/§3, `secure-coding-checklist.md` §1 (input validation), `docs/architecture/file-format.md`, ADR-0014 (PDF engine), ADR-0015 (audio pipeline). Verifies the hostile-import exit criteria for M2 in `docs/roadmap.md`.
+Corpus and tooling live under `tools/fuzz/` next to the runner from [SN-SEC-010](security.md#sn-sec-010); triage/minimisation scripts as Node ESM in `tools/scripts/` alongside the other repo scripts, consistent with `scripts/validate-issues.mjs` conventions. Signature normalisation strips addresses/offsets and keeps the top frames of the Dart or ASAN stack. Generated tests target the parser entry points behind `Result<T, Failure>` (`overview.md` §8.1) — the assertion is always "typed failure, no throw across the package boundary, no partial object graph". Issue automation reuses the labels and severity mapping from [SN-QA-010](qa.md#sn-qa-010); a parser crash on untrusted input is at least S2 and, if it is reachable from an import or a deep link, it goes down the private-advisory path in `SECURITY.md` instead of a public issue. Relevant docs: `ssdlc-process.md` §2.4/§3, `secure-coding-checklist.md` §1 (input validation), `docs/architecture/file-format.md`, ADR-0014 (PDF engine), ADR-0015 (audio pipeline). Verifies the hostile-import exit criteria for M2 in `docs/roadmap.md`. Scheduled in M3 because it plugs into the fuzzing runner ([SN-SEC-010](security.md#sn-sec-010), M3, which also covers the M3 audio decode path); it still validates the M2 hostile-import exit criteria.
 
 #### Security & privacy
 Threats: memory corruption or unbounded resource use in a native/C decoder reached from an imported PDF, image, audio file or `.sanenote` bundle (CWE-787, CWE-400, CWE-20, TM-E-04); unsafe deserialisation of a crafted bundle (CWE-502); a fixed crash silently regressing (SSDF RV.3 root-cause + prevention). Controls: the corpus + regression loop is itself the control (MASVS-CODE-4, ASVS V5, SSDF PW.8); every regression test asserts fail-closed behaviour, resource caps before decode, path confinement and off-UI-isolate parsing per `secure-coding-checklist.md` §1 and `CLAUDE.md` §7 rule 8 (MASVS-PLATFORM-3 for untrusted external input). Privacy: corpus inputs are synthetic or explicitly licensed — never a real user document; crash artifacts are scanned before attachment so no file content leaks into a public issue; a crash reachable pre-authentication or via a link is disclosed privately, not in the tracker.

@@ -469,7 +469,7 @@ Per `docs/design/screens-and-flows.md` share/reader section: a calm read-only ch
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #320 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -534,7 +534,7 @@ Unit/abuse: `packages/sane_core/test/sanenote_import_fuzz_test.dart` (malformed/
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-IPAD-001](input-gestures.md#sn-ipad-001) |
-| Depends on | [SN-IPAD-010](compat.md#sn-ipad-010), [SN-MED-001](images-media.md#sn-med-001), [SN-SHR-001](sharing-export.md#sn-shr-001) |
+| Depends on | [SN-IPAD-010](compat.md#sn-ipad-010), [SN-MED-001](images-media.md#sn-med-001), [SN-SHR-003](sharing-export.md#sn-shr-003), [SN-SHR-004](sharing-export.md#sn-shr-004) |
 | Security controls | `MASVS-PLATFORM-1`, `MASVS-STORAGE-2`, `MASVS-PRIVACY-2`, `CWE-20`, `CWE-400` |
 | Extra labels | agent-ready |
 
@@ -555,7 +555,7 @@ Split View and Stage Manager only pay off if content moves between the two apps 
 - [ ] Drop-target highlight is visible in all 17 looks plus light/dark, and the whole interaction has a non-drag alternative (Insert menu / Export sheet) per WCAG 2.5.7.
 
 #### Technical notes
-Native `UIDragInteraction`/`UIDropInteraction` on the Flutter view hosted in `app/` (Flutter's own drag APIs do not cover cross-app item providers on iPadOS); bridge item providers with Pigeon per [ADR-0012](docs/adr/0012-native-plugin-strategy.md). Render drag previews through the existing export path ([SN-SHR-001](sharing-export.md#sn-shr-001)) rather than a second renderer; image/PDF decode reuses the media/PDF pipelines ([SN-MED-001](images-media.md#sn-med-001), [ADR-0014](docs/adr/0014-pdf-engine.md)) on a one-shot `Isolate.run` so the draw loop never blocks (CLAUDE.md §8). Insertions go through the normal CRDT edit path in `sane_core` so they are undoable and sync cleanly ([ADR-0005](docs/adr/0005-document-model-and-crdt.md)). Coordinate mapping must account for the current zoom/pan transform.
+Native `UIDragInteraction`/`UIDropInteraction` on the Flutter view hosted in `app/` (Flutter's own drag APIs do not cover cross-app item providers on iPadOS); bridge item providers with Pigeon per [ADR-0012](docs/adr/0012-native-plugin-strategy.md). Render drag previews through the specific M2 export renderers ([SN-SHR-003](sharing-export.md#sn-shr-003) PDF, [SN-SHR-004](sharing-export.md#sn-shr-004) PNG) rather than a second renderer or the SN-SHR-001 epic; image/PDF decode reuses the media/PDF pipelines ([SN-MED-001](images-media.md#sn-med-001), [ADR-0014](docs/adr/0014-pdf-engine.md)) on a one-shot `Isolate.run` so the draw loop never blocks (CLAUDE.md §8). Insertions go through the normal CRDT edit path in `sane_core` so they are undoable and sync cleanly ([ADR-0005](docs/adr/0005-document-model-and-crdt.md)). Coordinate mapping must account for the current zoom/pan transform.
 
 #### Security & privacy
 A drop payload is attacker-controlled data from another app — the full untrusted-input rule applies: validate UTI/type, cap size **before** decode to stop decompression bombs (CWE-400), parse off the UI isolate, confine and canonicalise any path or filename from the payload (CWE-22 family, MASVS-STORAGE-2), and fail closed (CLAUDE.md §7.8, MASVS-PLATFORM-1, CWE-20). Strip EXIF/GPS from dropped images before storage as the media pipeline already does (MASVS-PRIVACY-2, PRD-LB-180). Dragging **out** is an intentional egress of note content: it is user-initiated and local (no network), must be blocked for locked content, and must never include hidden metadata such as file paths, profile ids or tokens in the vended item. Nothing about the payload is logged.
@@ -567,7 +567,7 @@ Follow the editor and page-rail surfaces in design/Sane Notes.dc.html and docs/d
 Unit/abuse: `app/test/platform/drop_payload_validation_test.dart` (oversized, wrong UTI, decompression bomb, traversal-y filename ⇒ fail closed, off-isolate decode). Widget: `app/test/editor/drop_insert_position_test.dart` (insert at drop point under zoom/pan; single undoable edit). Golden: `app/test/golden/drop_target_looks_test.dart` (17 looks x light/dark). Integration: `app/integration_test/split_view_drag_drop_test.dart` via `patrol` on an iPad (drag out to Files, drop an image from Photos in Split View, locked notebook refuses to drag).
 
 #### Dependencies
-[SN-IPAD-010](compat.md#sn-ipad-010) multitasking layout adaptation; [SN-MED-001](images-media.md#sn-med-001) images & media pipeline; [SN-SHR-001](sharing-export.md#sn-shr-001) export renderers.
+[SN-IPAD-010](compat.md#sn-ipad-010) multitasking layout adaptation; [SN-MED-001](images-media.md#sn-med-001) images & media pipeline; [SN-SHR-003](sharing-export.md#sn-shr-003) (PDF export renderer) and [SN-SHR-004](sharing-export.md#sn-shr-004) (PNG export renderer) for the drag previews' PDF/PNG representations (both M2) — the specific children replacing the epic-level dependency on SN-SHR-001.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)
@@ -1479,7 +1479,7 @@ Role labels + capabilities exactly per design §10 (Owner / Can edit / Can comme
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-SHR-001](sharing-export.md#sn-shr-001) |
-| Depends on | [SN-SHR-014](sharing-export.md#sn-shr-014), [SN-SHR-015](sharing-export.md#sn-shr-015), [SN-BILL-001](billing.md#sn-bill-001) |
+| Depends on | [SN-SHR-014](sharing-export.md#sn-shr-014), [SN-SHR-015](sharing-export.md#sn-shr-015) |
 | Security controls | `MASVS-PRIVACY-2`, `ASVS-V4`, `OWASP-A01`, `CWE-200` |
 | Extra labels | agent-ready |
 
@@ -1498,7 +1498,7 @@ The Share overlay lets the Owner **Invite by email** at the current permission, 
 - [ ] An invalid email is rejected inline with a user-safe message (no crash, no silent failure).
 
 #### Technical notes
-Add `app/lib/sharing/membership.dart` + `invite.dart`; membership is a CRDT object set (add-wins) in [SN-SYNC-002](sync.md#sn-sync-002), each member carrying a wrapped key from [SN-SHR-015](sharing-export.md#sn-shr-015). The plan/entitlement check reads [SN-BILL-001](billing.md#sn-bill-001) (fail-open to Free). Implements PRD-CO-033/034; design §10/§14.
+Add `app/lib/sharing/membership.dart` + `invite.dart`; membership is a CRDT object set (add-wins) in [SN-SYNC-002](sync.md#sn-sync-002), each member carrying a wrapped key from [SN-SHR-015](sharing-export.md#sn-shr-015). The plan/entitlement check reads [SN-BILL-001](billing.md#sn-bill-001) (fail-open to Free). Implements PRD-CO-033/034; design §10/§14. The 3-person gate reads the `EntitlementProvider` contract ([SN-BILL-012](billing.md#sn-bill-012)), fail-open to Free, with a permissive stub until billing lands in M8.
 
 #### Security & privacy
 Member emails are PII: never log them (checklist §7), display only derived initials/name where possible, and resolve mentions/invites against notebook membership only (no directory leakage; CWE-200). Authorization for role changes/removal is Owner-only (ASVS-V4, OWASP-A01). IDs: MASVS-PRIVACY-2, ASVS-V4, OWASP-A01, CWE-200.
@@ -1510,7 +1510,7 @@ Invite input + Invite button and the People list per design §10, including the 
 `app/test/sharing/membership_test.dart` (invite adds member + wrapped key, name derivation, Free gate at 3, Pro unlimited, promote/demote/remove, owner-only gating, invalid email rejected), widget test for the gate routing to Upgrade.
 
 #### Dependencies
-[SN-SHR-014](sharing-export.md#sn-shr-014) (overlay), [SN-SHR-015](sharing-export.md#sn-shr-015) (per-member keys/roles), [SN-BILL-001](billing.md#sn-bill-001) (entitlement). Coordinates with [SN-SHR-017](sharing-export.md#sn-shr-017) (removal) and [SN-SYNC-002](sync.md#sn-sync-002) (membership set).
+[SN-SHR-014](sharing-export.md#sn-shr-014) (overlay), [SN-SHR-015](sharing-export.md#sn-shr-015) (per-member keys/roles). The Free 3-person gate reads the `sane_billing` EntitlementProvider contract ([SN-BILL-012](billing.md#sn-bill-012)), fail-open to Free; a permissive stub stands in until billing ships in M8, so SN-BILL-001 is not a scheduling blocker. Coordinates with [SN-SHR-017](sharing-export.md#sn-shr-017) (removal) and [SN-SYNC-002](sync.md#sn-sync-002) (membership set).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)

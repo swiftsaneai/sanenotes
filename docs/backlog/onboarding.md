@@ -161,7 +161,7 @@ Each child names its own tests; the epic tracks `app/integration_test/onboarding
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #365 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -281,7 +281,7 @@ Design: `docs/design/screens-and-flows.md` §3. Render across all **17 looks + l
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #366 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -341,7 +341,7 @@ Design: extends `docs/design/screens-and-flows.md` §3 (resolving the open gap) 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #367 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -579,7 +579,7 @@ Design: `docs/design/screens-and-flows.md` §5 step 2 + `design/Sane Notes.dc.ht
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #368 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -639,7 +639,7 @@ Design: `docs/design/screens-and-flows.md` §4 + `design/Sane Notes.dc.html` 'Pr
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #369 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -648,7 +648,7 @@ Design: `docs/design/screens-and-flows.md` §4 + `design/Sane Notes.dc.html` 'Pr
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-ONB-001](onboarding.md#sn-onb-001) |
-| Depends on | [SN-DS-003](design-system.md#sn-ds-003), [SN-LIB-002](library.md#sn-lib-002), [SN-BRD-001](brand.md#sn-brd-001) |
+| Depends on | [SN-DS-003](design-system.md#sn-ds-003), [SN-LIB-002](library.md#sn-lib-002), [SN-BRD-003](brand.md#sn-brd-003) |
 | Security controls | `MASVS-PRIVACY-1` |
 | Extra labels | agent-ready |
 
@@ -668,7 +668,7 @@ The design defines empty/loading/error/offline states only minimally (an open qu
 - [ ] a11y: each empty state is a labelled region; the primary action is a focusable, 44pt/48dp target with contrast ≥ 4.5:1.
 
 #### Technical notes
-Build a reusable `EmptyState` in `sane_ui` ([SN-DS-003](design-system.md#sn-ds-003)) and wire instances from the Library ([SN-LIB-002](library.md#sn-lib-002)) and Search ([SN-SRCH-001](search.md#sn-srch-001)) screens via their view-models. The mascot slot uses `SaneSageMark` ([SN-BRD-001](brand.md#sn-brd-001)). Keep copy in the localisation ARB. Cite `ux-principles.md` §4, `docs/design/screens-and-flows.md` §6, §16.
+Build a reusable `EmptyState` in `sane_ui` ([SN-DS-003](design-system.md#sn-ds-003)) and wire instances from the Library ([SN-LIB-002](library.md#sn-lib-002)) and Search ([SN-SRCH-001](search.md#sn-srch-001)) screens via their view-models. The mascot slot uses `SaneSageMark` ([SN-BRD-003](brand.md#sn-brd-003)), the M0 component; the final master art ([SN-BRD-002](brand.md#sn-brd-002)) is a later drop-in asset swap. Keep copy in the localisation ARB. Cite `ux-principles.md` §4, `docs/design/screens-and-flows.md` §6, §16.
 
 #### Security & privacy
 None beyond baseline: empty states render static copy and navigation only; the search-no-results state echoes the user's query — render it as text, never as markup, and never log it. Framework: MASVS-PRIVACY-1. Baseline: no content/tokens logged; the query string is not persisted by this component.
@@ -682,7 +682,7 @@ Design: `ux-principles.md` §4.1 (the decisive-default table) + `screens-and-flo
 - Negative: assert the query in no-results cannot inject markup and is not logged.
 
 #### Dependencies
-[SN-DS-003](design-system.md#sn-ds-003) (EmptyState + actions), [SN-LIB-002](library.md#sn-lib-002) (Library host + filters), [SN-BRD-001](brand.md#sn-brd-001) (Sage asset). Soft: [SN-SRCH-001](search.md#sn-srch-001) (Search host).
+[SN-DS-003](design-system.md#sn-ds-003) (EmptyState + actions), [SN-LIB-002](library.md#sn-lib-002) (Library host + filters), [SN-BRD-003](brand.md#sn-brd-003) (SaneSageMark component; the specific child replacing the epic-level dependency on SN-BRD-001). Soft: [SN-SRCH-001](search.md#sn-srch-001) (Search host).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit/widget/golden, security scans)
@@ -699,7 +699,7 @@ Design: `ux-principles.md` §4.1 (the decisive-default table) + `screens-and-flo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #370 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -708,7 +708,7 @@ Design: `ux-principles.md` §4.1 (the decisive-default table) + `screens-and-flo
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-ONB-001](onboarding.md#sn-onb-001) |
-| Depends on | [SN-DS-003](design-system.md#sn-ds-003), [SN-PRV-001](privacy.md#sn-prv-001) |
+| Depends on | [SN-DS-003](design-system.md#sn-ds-003) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PLATFORM-1`, `ASVS-V14`, `OWASP-A01` |
 | Extra labels | agent-ready, sec: privacy-by-design |
 
@@ -728,7 +728,7 @@ The app must request every OS permission **only at point of use, with a purpose 
 - [ ] a11y: sheet is a focus-trapped labelled dialog; buttons are 44pt/48dp; contrast ≥ 4.5:1; the purpose text is read in full by screen readers.
 
 #### Technical notes
-Build `PermissionRationaleSheet` in `sane_ui` ([SN-DS-003](design-system.md#sn-ds-003)) and a `PermissionRequester` service in `app/lib/permissions/` delegating to the platform plugins (camera/mic/photos/notifications via the app's permission plugin; biometrics via `sane_secure_store`; cloud drive via `sane_cloud_drive`). Grant state feeds the Privacy panel ([SN-PRV-001](privacy.md#sn-prv-001)). Verify Info.plist usage descriptions + Android `<uses-permission>`/runtime request strings match the rationale copy. Cite `PRD-PRIV-002`, MASVS-PRIVACY-1, ASVS V14, `docs/design/ux-principles.md` §4.
+Build `PermissionRationaleSheet` in `sane_ui` ([SN-DS-003](design-system.md#sn-ds-003)) and a `PermissionRequester` service in `app/lib/permissions/` delegating to the platform plugins (camera/mic/photos/notifications via the app's permission plugin; biometrics via `sane_secure_store`; cloud drive via `sane_cloud_drive`). Grant state feeds the Privacy panel ([SN-PRV-001](privacy.md#sn-prv-001)). Verify Info.plist usage descriptions + Android `<uses-permission>`/runtime request strings match the rationale copy. Cite `PRD-PRIV-002`, MASVS-PRIVACY-1, ASVS V14, `docs/design/ux-principles.md` §4. The Permissions panel ([SN-PRV-004](privacy.md#sn-prv-004), M4) consumes this component's grant state; this issue does not depend on the SN-PRV-001 epic.
 
 #### Security & privacy
 Threats: over-broad or premature permission grabs (privacy, MASVS-PRIVACY-1), permission escalation without context (OWASP-A01), platform-config drift. Controls: strictly point-of-use requests with purpose strings (ASVS V14, MASVS-PLATFORM-1); denials fail closed to the non-permissioned path; no dark-pattern re-prompting. Baseline: no content/tokens logged; grant state is a boolean cache, not PII.
@@ -742,7 +742,7 @@ Design: derived from `ux-principles.md` §4 + `PRD-PRIV-002` (no dedicated mock 
 - Config: a test asserts each rationale has a matching platform purpose string.
 
 #### Dependencies
-[SN-DS-003](design-system.md#sn-ds-003) (sheet component), [SN-PRV-001](privacy.md#sn-prv-001) (permission panel + grant-state consumer).
+[SN-DS-003](design-system.md#sn-ds-003) (sheet component). Grant state is consumed by — not blocked on — the Privacy permissions panel [SN-PRV-004](privacy.md#sn-prv-004) (M4); the rationale sheet + requester ship independently in M2.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit/widget/golden, security scans)
@@ -759,7 +759,7 @@ Design: derived from `ux-principles.md` §4 + `PRD-PRIV-002` (no dedicated mock 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #371 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -819,7 +819,7 @@ Design: no dedicated mock — follow the calm, honest voice of `ux-principles.md
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #372 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M4 Identity, Sync & Privacy |

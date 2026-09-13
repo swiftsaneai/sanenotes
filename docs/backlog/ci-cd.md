@@ -705,7 +705,7 @@ Pairs with [SN-CI-005](ci-cd.md#sn-ci-005) (pin the same actions) and feeds [SN-
 
 #### Scope
 **In:** extend `.github/dependabot.yml` to cover every ecosystem directory in the monorepo (the 12 `packages/`, `plugins/`, `services/`, `website/`, `tools/`), group patch/minor updates, keep security updates ungrouped and prioritised, ensure github-actions updates bump the SHA pins from [SN-CI-005](ci-cd.md#sn-ci-005), and add labels + the CODEOWNERS reviewer. Document the policy (cadence, grouping, auto-merge = off by default, SLA alignment) in `devsecops-pipeline.md` §5/§Maintenance. Record a decision note on Dependabot-only vs adding Renovate.
-**Out:** actually merging update PRs; the OSV/dependency-review gates ([SN-CI-010](ci-cd.md#sn-ci-010)).
+**Out:** actually merging update PRs; the OSV/dependency-review gates ([SN-CI-010](ci-cd.md#sn-ci-010)); and the pubspec exact-version pins and internal sane_* workspace resolution conventions, which are owned by [SN-FND-020](devx.md#sn-fnd-020) and which this bot policy automates.
 
 #### Acceptance criteria
 - [ ] Every dependency ecosystem/directory in the monorepo is covered by a Dependabot entry.
@@ -1200,7 +1200,7 @@ Dry-run to TestFlight with a sandbox app record: confirm signing succeeds, notar
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #257 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -1428,7 +1428,7 @@ SN-FND-003.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #262 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -1604,7 +1604,7 @@ Integration: kill the relay in staging and assert the probe alerts within the st
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #325 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |

@@ -61,15 +61,15 @@
 
 | Milestone | Count |
 |---|---|
-| M2 Library & Documents | 207 |
-| M1 Ink Editor Alpha | 182 |
-| M4 Identity, Sync & Privacy | 165 |
-| M5 Phones & Platform Parity | 128 |
+| M2 Library & Documents | 205 |
+| M1 Ink Editor Alpha | 183 |
+| M4 Identity, Sync & Privacy | 163 |
+| M5 Phones & Platform Parity | 129 |
 | M6 Collaboration, Sharing & Sage AI | 104 |
-| M8 Launch & Growth | 95 |
-| M3 Audio & Recognition | 93 |
+| M8 Launch & Growth | 96 |
+| M3 Audio & Recognition | 95 |
 | M0 Foundations | 85 |
-| M7 Beta Hardening & Security Audit | 44 |
+| M7 Beta Hardening & Security Audit | 43 |
 | Backlog | 9 |
 
 ### Platform
@@ -129,7 +129,7 @@
 - [SN-CI-001](ci-cd.md#sn-ci-001) Establish the DevSecOps and supply-chain security pipeline (M0 Foundations)
 - [SN-SEC-007](security.md#sn-sec-007) Harden .sanenote bundle unpack against path traversal and zip bombs (M2 Library & Documents)
 - [SN-SEC-016](security.md#sn-sec-016) Enforce a strict nonce CSP with Trusted Types and DOMPurify on the web (M2 Library & Documents)
-- [SN-PRV-006](privacy.md#sn-prv-006) Implement self-service account and data deletion flows (M4 Identity, Sync & Privacy)
+- [SN-PRV-006](privacy.md#sn-prv-006) Implement the per-scope local data-erasure engine and compliance (M4 Identity, Sync & Privacy)
 - [SN-PRV-007](privacy.md#sn-prv-007) Implement a neutral age gate with minor-safe defaults (COPPA/DPDP) (M4 Identity, Sync & Privacy)
 - [SN-DS-002](design-system.md#sn-ds-002) Encode tokens.json as Dart ThemeExtension for all 17 looks (M0 Foundations)
 - [SN-BRD-002](brand.md#sn-brd-002) Produce original Sane Sage master art to replace watermarked placeholders (M8 Launch & Growth)

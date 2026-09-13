@@ -226,7 +226,7 @@ Source: docs/design/screens-and-flows.md §11. The phone layout keeps the calm, 
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-SRCH-001](search.md#sn-srch-001) |
-| Depends on | [SN-SRCH-006](search.md#sn-srch-006), [SN-SRCH-015](search.md#sn-srch-015) |
+| Depends on | [SN-SRCH-006](search.md#sn-srch-006) |
 | Security controls | `MASVS-STORAGE-1`, `MASVS-PRIVACY-1`, `CWE-532` |
 | Extra labels | agent-ready |
 
@@ -253,7 +253,7 @@ Source: docs/design/screens-and-flows.md §11. The phone layout keeps the calm, 
 
 #### Technical notes
 
-Store in the existing per-profile encrypted database rather than a new file, so key management and profile isolation come for free ([SN-CORE-004](storage.md#sn-core-004), [SN-SRCH-015](search.md#sn-srch-015)). Cap entry length before persisting to avoid storing a pasted document as a "query". Reuse `SaneChip`/`SaneEmptyState` from `sane_ui`; the panel is a state of the existing screen, not a new route.
+Store in the existing per-profile encrypted database rather than a new file, so key management and profile isolation come for free ([SN-CORE-004](storage.md#sn-core-004), [SN-SRCH-015](search.md#sn-srch-015)). Cap entry length before persisting to avoid storing a pasted document as a "query". Reuse `SaneChip`/`SaneEmptyState` from `sane_ui`; the panel is a state of the existing screen, not a new route. Recent queries persist via the per-profile store ([SN-CORE-004](storage.md#sn-core-004)); the at-rest encryption posture [SN-SRCH-015](search.md#sn-srch-015) (M4) is adopted when it lands — not a scheduling blocker.
 
 #### Security & privacy
 
@@ -268,8 +268,7 @@ References: `ux-principles.md` §4.1, `screens-and-flows.md` §11, `component-in
 `app/test/features/search/recent_searches_test.dart` (cap, dedupe, order, filter restore, remove/clear, toggle off purges), `app/test/features/search/recent_searches_privacy_test.dart` (no plaintext on disk, no logs, guest and locked behaviour, per-profile isolation). Golden: the no-query panel with and without history across a representative look per family.
 
 #### Dependencies
-
-[SN-SRCH-006](search.md#sn-srch-006), [SN-SRCH-015](search.md#sn-srch-015)
+[SN-SRCH-006](search.md#sn-srch-006) (search screen scaffold). Recent queries persist in the per-profile store ([SN-CORE-004](storage.md#sn-core-004)); at-rest encryption follows the search-index posture [SN-SRCH-015](search.md#sn-srch-015) (M4) when it lands, so SN-SRCH-015 is not a scheduling blocker.
 
 #### Definition of done
 
@@ -1121,31 +1120,31 @@ Golden: `app/test/search/goldens/scribble_preview_<look>_<mode>.png` across all 
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-SRCH-001](search.md#sn-srch-001) |
-| Depends on | [SN-SRCH-002](search.md#sn-srch-002), [SN-SRCH-006](search.md#sn-srch-006), [SN-LIB-001](library.md#sn-lib-001) |
+| Depends on | [SN-SRCH-002](search.md#sn-srch-002), [SN-SRCH-006](search.md#sn-srch-006), [SN-LIB-001](library.md#sn-lib-001), [SN-LIB-026](library.md#sn-lib-026) |
 | Security controls | `MASVS-STORAGE-1`, `MASVS-PRIVACY-2`, `OWASP-A01`, `CWE-532` |
 | Extra labels | agent-ready |
 
 #### Context
 
-Power users want to save a search as a living view. PRD-LB-038 requires users to **save a filter as a smart collection** (subject + tags + type filters + date range) that appears as a pinnable sidebar entry and re-evaluates live (`research/notability.md` saved smart searches). This turns search from a one-shot into an organising tool. This issue defines the `SmartCollection` entity, the "save current search as collection" action, its sidebar entry, and live re-evaluation against the index/library.
+Power users want to save a search as a living view. PRD-LB-038 requires users to **save a filter as a smart collection** (subject + tags + type filters + date range) that appears as a pinnable sidebar entry and re-evaluates live (`research/notability.md` saved smart searches). This turns search from a one-shot into an organising tool. The SmartCollection entity, its persistence and the sidebar entry are owned by [SN-LIB-026](library.md#sn-lib-026) (library); this issue adds the search-area pieces: the "save current search as collection" action on the search screen and live re-evaluation of a query-backed collection against the FTS index.
 
 Smart collections are per-profile CRDT metadata (like other library entities, PRD-LB-002) so they sync without a server. They land in M4 alongside the tag/filter maturity and sync foundation.
 
 #### Scope
-**In:** the `SmartCollection{id,name,query?,subjectIds,tagIds,sourceFilters,dateRange,pinned}` entity + repository, a "Save as smart collection" action from the search screen, a pinnable sidebar entry that opens a live-re-evaluated result list, and edit/rename/delete/reorder.
+**In:** the search-side of smart collections that reuses the SmartCollection entity + sidebar owned by [SN-LIB-026](library.md#sn-lib-026): a "Save current search as a smart collection" action from the search screen that captures the active FTS query + search filters into a SmartCollection; and extending live re-evaluation so a collection carrying a full-text query re-runs it through the search engine ([SN-SRCH-002](search.md#sn-srch-002)) rather than only filtering library metadata.
 
-**Out:** the FTS query engine ([SN-SRCH-002](search.md#sn-srch-002)), the base search screen ([SN-SRCH-006](search.md#sn-srch-006)), and generic library folders/tags (SN-LIB-001).
+**Out:** the SmartCollection entity, its per-profile persistence, the sidebar entry UI and pin/rename/delete/reorder + metadata-only live re-evaluation - all owned by [SN-LIB-026](library.md#sn-lib-026), which this issue extends with the search-screen entry point and query-backed evaluation; the FTS query engine ([SN-SRCH-002](search.md#sn-srch-002)); the base search screen ([SN-SRCH-006](search.md#sn-srch-006)); and generic library folders/tags (SN-LIB-001).
 
 #### Acceptance criteria
 - [ ] From a search with active filters, "Save as smart collection" creates a named collection capturing the query + subject/tag/source/date filters.
 - [ ] The collection appears as a sidebar entry; opening it re-runs the query live so newly-matching notebooks/pages appear without manual refresh.
 - [ ] Collections can be pinned/unpinned, renamed, reordered, and deleted; state is per-profile and switches with the active profile (PRD-LB-350).
-- [ ] A collection is a CRDT object (LWW scalars, add-wins sets for id lists) so it merges across devices (PRD-LB-002/002).
+- [ ] A query-backed collection persists its captured FTS query on the shared SmartCollection entity ([SN-LIB-026](library.md#sn-lib-026)) and merges across devices via that entity's CRDT semantics (PRD-LB-002).
 - [ ] Empty collection shows a helpful empty state; a collection whose tags/subjects were deleted degrades gracefully (ignores dangling ids).
 - [ ] Sidebar entry + editor render in all 17 looks + dark, with Semantics labels and 44pt/48dp targets.
 
 #### Technical notes
-Entity + repo in `sane_core`/library model (per `docs/product/prd-02-library-documents-audio-search.md` §2 pattern); re-evaluation calls `sane_search` ([SN-SRCH-002](search.md#sn-srch-002)) plus a library metadata query for subject/tag/date. Sidebar entry via the library shell (SN-LIB-001/002) and go_router. Coordinate in `app/` via Riverpod. Reference PRD-LB-038 and CRDT semantics in `docs/architecture/document-model.md`.
+The entity + repo live with the library model ([SN-LIB-026](library.md#sn-lib-026)); this issue adds the search-screen save action and wires re-evaluation to call `sane_search` ([SN-SRCH-002](search.md#sn-srch-002)) for query-backed collections, alongside the library metadata query for subject/tag/date. Sidebar entry via the library shell (SN-LIB-001/002) and go_router. Coordinate in `app/` via Riverpod. Reference PRD-LB-038 and CRDT semantics in `docs/architecture/document-model.md`.
 
 #### Security & privacy
 Collection definitions and their evaluated content are per-profile; scoping prevents cross-profile leakage (OWASP-A01, MASVS-PRIVACY-2). Definitions are metadata stored in the encrypted local store; no query text or results logged (MASVS-STORAGE-1, CWE-532). Riding the op-log, they are E2E-encrypted when synced (inherits SN-CRY/SN-SYNC). No new network call of its own.
@@ -1157,7 +1156,7 @@ Sidebar smart-collection entries sit with Library nav (`docs/design/screens-and-
 Unit: `packages/sane_core/test/smart_collection_test.dart` (CRDT merge, dangling-id tolerance). Widget: `app/test/search/smart_collection_test.dart` (save, live re-eval, pin/rename/delete, per-profile switch). Golden: sidebar entry + editor across a look subset.
 
 #### Dependencies
-[SN-SRCH-002](search.md#sn-srch-002) (query), [SN-SRCH-006](search.md#sn-srch-006) (save action), SN-LIB-001 (subjects/tags/library shell).
+[SN-LIB-026](library.md#sn-lib-026) (SmartCollection entity + sidebar), [SN-SRCH-002](search.md#sn-srch-002) (query), [SN-SRCH-006](search.md#sn-srch-006) (search screen), SN-LIB-001 (subjects/tags/library shell).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner).

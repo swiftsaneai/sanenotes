@@ -810,7 +810,7 @@ Per child issue. Golden tests for every painted surface across looks; `integrati
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #303 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -866,7 +866,7 @@ Unit: `plugins/sane_stylus/test/capabilities_test.dart` (matrix per Pencil, mock
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #304 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -923,7 +923,7 @@ Widget: `app/test/editor/squeeze_palette_test.dart` (open/anchor/dismiss, capabi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #305 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -979,7 +979,7 @@ Unit: `packages/sane_ink/test/estimated_reconciliation_test.dart` (roll/force pa
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #306 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1035,7 +1035,7 @@ Widget: `app/test/editor/hover_cursor_test.dart` (tracks pose, hides on contact/
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #307 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1091,7 +1091,7 @@ Widget: `app/test/editor/haptic_feedback_test.dart` (fires on snap/close, respec
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #308 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1148,7 +1148,7 @@ Widget: `app/test/editor/double_tap_binding_test.dart` (each mapping, capability
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #313 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1205,7 +1205,7 @@ Widget: `app/test/input/keyboard_shortcuts_test.dart` (tool keys gated by focus,
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #314 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |

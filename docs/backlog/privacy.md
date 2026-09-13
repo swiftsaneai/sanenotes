@@ -9,7 +9,7 @@
   - [SN-PRV-003](privacy.md#sn-prv-003) **Implement consent management framework and 'data leaves device' indicator** · p1 · feature · M · M4 Identity, Sync & Privacy
   - [SN-PRV-004](privacy.md#sn-prv-004) **Implement in-context OS permission requests and a permissions panel** · p1 · feature · M · M4 Identity, Sync & Privacy
   - [SN-PRV-005](privacy.md#sn-prv-005) **Build the GDPR/DPDP data-subject-rights surface** · p1 · feature · M · M4 Identity, Sync & Privacy
-  - [SN-PRV-006](privacy.md#sn-prv-006) **Implement self-service account and data deletion flows** · p0 · feature · L · M4 Identity, Sync & Privacy
+  - [SN-PRV-006](privacy.md#sn-prv-006) **Implement the per-scope local data-erasure engine and compliance** · p0 · feature · L · M4 Identity, Sync & Privacy
   - [SN-PRV-007](privacy.md#sn-prv-007) **Implement a neutral age gate with minor-safe defaults (COPPA/DPDP)** · p0 · feature · M · M4 Identity, Sync & Privacy
     - [SN-PRV-008](privacy.md#sn-prv-008) **Decide and integrate a verifiable parental-consent mechanism for minors** · p1 · task · M · M4 Identity, Sync & Privacy
   - [SN-PRV-009](privacy.md#sn-prv-009) **Build the telemetry consent surface, 'what we collect' screen and kill switch** · p1 · feature · M · M4 Identity, Sync & Privacy
@@ -106,7 +106,7 @@ Instrumented/manual matrix on a tablet with a second device user created (`adb s
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-SEC-001](security.md#sn-sec-001) |
-| Depends on | [SN-MED-005](images-media.md#sn-med-005), [SN-PRV-004](privacy.md#sn-prv-004) |
+| Depends on | [SN-MED-005](images-media.md#sn-med-005) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PRIVACY-2`, `MASVS-PLATFORM-1` |
 | Extra labels | agent-ready, good first issue |
 
@@ -126,7 +126,7 @@ Instrumented/manual matrix on a tablet with a second device user created (`adb s
 - [ ] HEIC, Live Photos, screenshots, panoramas and iCloud-not-downloaded assets each import or fail with a clear message (no silent no-op).
 
 #### Technical notes
-If the chosen Flutter plugin cannot guarantee the out-of-process path, implement a small Swift platform view/channel in `plugins/sane_media_picker` rather than accepting the legacy API. Beware transitive plugins that ship their own Info.plist entries via CocoaPods — the gate must inspect the built app, not just the source plist. Cross-check with the required-reason API audit in [SN-IPAD-021](privacy.md#sn-ipad-021).
+If the chosen Flutter plugin cannot guarantee the out-of-process path, implement a small Swift platform view/channel in `plugins/sane_media_picker` rather than accepting the legacy API. Beware transitive plugins that ship their own Info.plist entries via CocoaPods — the gate must inspect the built app, not just the source plist. Cross-check with the required-reason API audit in [SN-IPAD-021](privacy.md#sn-ipad-021). By design this needs no Photos permission, so it does not depend on [SN-PRV-004](privacy.md#sn-prv-004) — the out-of-process picker requires no runtime grant.
 
 #### Security & privacy
 Straight data minimisation (MASVS-PRIVACY-1/2): the app never holds library-wide access, so a compromise of the app cannot enumerate photos. Picker results arrive as file URLs from another process and are untrusted input — validate type and size before decode (MASVS-PLATFORM-1) and never trust the supplied filename when writing to the blob store ([SN-SEC-007](security.md#sn-sec-007)).
@@ -138,7 +138,7 @@ No rationale sheet is needed for Photos on Apple platforms — one fewer interru
 Unit: `plugins/sane_media_picker/test/picker_result_test.dart` (type/size validation, filename sanitisation). Integration: `integration_test/photo_picker_test.dart` with `patrol` asserting no permission dialog appears. CI: the plist gate, exercised by a fixture app that deliberately reintroduces the string.
 
 #### Dependencies
-[SN-MED-005](images-media.md#sn-med-005), [SN-PRV-004](privacy.md#sn-prv-004).
+[SN-MED-005](images-media.md#sn-med-005) (Insert-media entry point). This ships **no** Photos permission (out-of-process `PHPickerViewController`), so it does not depend on the permissions panel [SN-PRV-004](privacy.md#sn-prv-004) (M4); cross-checked with the required-reason API audit [SN-IPAD-021](privacy.md#sn-ipad-021).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)
@@ -444,7 +444,7 @@ Unit: MinorPolicy resolution across thresholds/jurisdictions. Widget: disabled/c
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #322 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -568,7 +568,7 @@ Each child names its own tests; the epic tracks: `app/test/privacy/` widget/unit
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #415 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -628,7 +628,7 @@ Design: Settings → **Privacy & export** tab (`docs/design/screens-and-flows.md
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #416 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -688,7 +688,7 @@ The `DataLeavesDeviceBanner` follows `docs/design/design-system.md` tokens, is u
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #417 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -748,7 +748,7 @@ Design: Privacy & export tab, Permissions subsection (`docs/design/screens-and-f
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #418 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -804,11 +804,11 @@ Design: Privacy & export tab (`docs/design/screens-and-flows.md` §12). List-of-
 
 <a id="sn-prv-006"></a>
 
-**Implement self-service account and data deletion flows**
+**Implement the per-scope local data-erasure engine and compliance**
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #419 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -822,41 +822,38 @@ Design: Privacy & export tab (`docs/design/screens-and-flows.md` §12). List-of-
 | Extra labels | agent-ready, sec: privacy-by-design |
 
 #### Context
-Apple requires an in-app account-deletion path whenever accounts exist, and GDPR/DPDP/CCPA require self-service erasure. `PRD-DEL-001..004` and `PRD-PRIV-003` define three distinct, user-chosen scopes: (a) **sign out** (keep local notes, drop tokens), (b) **delete cloud data** (wipe the encrypted store in the user's own cloud + disconnect provider), and (c) **delete account** (revoke identity + entitlement association at the provider). Deletion MUST offer to export first, require explicit confirmation, state plainly what is and isn't recoverable (zero-knowledge: once cloud store + keys are gone, data is unrecoverable), securely remove local files/thumbnails/caches/search index/keys, and confirm completion or report partial completion with retry. This is a p0 data-lifecycle control — getting it wrong is either a compliance failure (incomplete erasure, CWE-212) or a data-loss disaster.
+GDPR/DPDP/CCPA require self-service erasure, and once note content is E2EE in the user's own cloud, "deletion" means securely removing local material and the user's own cloud store + keys. The user-facing deletion *flow* - the three scopes (sign out / delete cloud data / delete account), export-first, typed consent, identity + entitlement revocation and cloud disconnect - is owned by [SN-AUTH-018](auth.md#sn-auth-018). This issue owns the piece that flow depends on: the reusable per-scope local data-erasure engine plus the regulatory erasure mapping. Getting erasure wrong is a compliance failure (incomplete erasure, CWE-212) or a data-loss disaster, so the engine is a p0 data-lifecycle control (PRD-DEL-004, PRD-PRIV-003).
 
 #### Scope
-**In:** the three-scope deletion UI + confirmation; the erasure engine that wipes local DB rows, content-addressed blobs, thumbnails, caches, FTS index, and Keychain/Keystore key material for the chosen scope; cloud-store wipe + provider disconnect via `sane_cloud_drive`; identity/entitlement revocation calls; completion/partial-completion reporting with retry.
-**Out:** notebook-level soft delete → Trash (that is `PRD-STOR-006`, retention engine [SN-PRV-011](privacy.md#sn-prv-011)); the auth provider integration itself ([SN-AUTH-001](auth.md#sn-auth-001)); the entitlement provider integration ([SN-BILL-001](billing.md#sn-bill-001)).
+**In:** a reusable per-scope local erasure engine that, given a scope + profile, securely removes local DB content rows, content-addressed blobs, thumbnails, caches and the FTS search index, and removes the relevant Keychain/Keystore key material (incl. backup-eligible copies); it is idempotent and resumable (records scope + progress; safe to re-run) and returns a Result<DeletionReport, Failure>; a residue-scan verifier that proves no plaintext remains for the deleted scope; and the GDPR/DPDP/CCPA erasure mapping in controls-matrix section 7.
+**Out:** the three-scope deletion UI, export-first offer, typed-consent gate, identity/entitlement revocation and cloud-store disconnect/delete - owned by [SN-AUTH-018](auth.md#sn-auth-018), which invokes this engine and surfaces its report; notebook-level soft delete to Trash and the retention engine ([SN-PRV-011](privacy.md#sn-prv-011)).
 
 #### Acceptance criteria
-- [ ] The user is offered exactly three scopes (sign out / delete cloud data / delete account) with distinct, accurate copy; the chosen scope's blast radius is stated before confirmation.
-- [ ] Deletion **offers Export-everything first** and requires an explicit typed/confirmed consent before proceeding.
-- [ ] 'Delete account' revokes identity + entitlement association and, on success, leaves no orphaned entitlement that could block re-signup on the same email.
-- [ ] Local wipe removes DB content rows, blobs, thumbnails, caches, and the search index for the scope, and removes keys from Keychain/Keystore; a follow-up scan finds no residual plaintext for the deleted scope.
-- [ ] The app confirms completion, or reports partial completion (e.g. cloud unreachable) with a retry that is idempotent.
-- [ ] Copy states that E2EE means Sane holds no note content to delete — deletion is the user removing their own cloud store + keys.
-- [ ] Sign-out (scope a) drops tokens only and never deletes local notes by default (`PRD-PROF-003`).
+- [ ] The engine, given a scope, removes DB content rows, blobs, thumbnails, caches and the FTS index for that scope, and removes the matching keys from Keychain/Keystore (including backup-eligible copies).
+- [ ] A follow-up residue scan finds no residual plaintext or key material for the deleted scope (negative test).
+- [ ] The engine is idempotent and resumable: a re-run after an interruption completes without double-deleting or erroring, and reports partial vs full completion.
+- [ ] The engine returns Result<DeletionReport, Failure> and never silently claims completion on a partial wipe (fail closed).
+- [ ] controls-matrix section 7 maps the erasure engine to GDPR/DPDP/CCPA erasure and to TM-P-07/TM-I-10.
 
 #### Technical notes
-`app/lib/privacy/deletion/` orchestrator returning `Result<DeletionReport, Failure>`; run wipes off the UI isolate. Local erasure spans `sane_core` (drift rows), the content-addressed blob store, `sane_search` FTS index, and `sane_secure_store` key removal. Cloud wipe + disconnect via the `sane_cloud_drive` plugin (delete the app folder / ubiquitous container). Identity revocation via [SN-AUTH-001](auth.md#sn-auth-001); entitlement dissociation via [SN-BILL-001](billing.md#sn-bill-001). Deletion must be resumable/idempotent (record scope + progress; safe to re-run). Cite `PRD-DEL-001..004`, `PRD-PRIV-003`, controls-matrix §7, threat-model TM-P-07, TM-I-10.
+`app/lib/privacy/deletion/erasure_engine.dart` returning Result<DeletionReport, Failure>; run wipes off the UI isolate. Local erasure spans sane_core (drift rows), the content-addressed blob store, sane_search FTS index, thumbnail/cache dirs, and sane_secure_store key removal ([SN-SEC-001](security.md#sn-sec-001)). Must be resumable/idempotent (record scope + progress). The deletion flow that calls this engine - scope choice, consent, identity/entitlement revocation, cloud disconnect - lives in [SN-AUTH-018](auth.md#sn-auth-018). Cite PRD-DEL-004, PRD-PRIV-003, controls-matrix section 7, threat-model TM-P-07/TM-I-10.
 
 #### Security & privacy
-Threats: TM-P-07 (Non-compliance/erasure), TM-I-10 (backups retaining deleted keys/notes) — the wipe MUST also clear backup-eligible copies of keys; CWE-212 (incomplete removal); OWASP-A01 (only the owner can trigger deletion of their data). Controls: MASVS-PRIVACY-3, MASVS-STORAGE-1, ASVS V14. Fail closed: a partial wipe is reported, never silently claimed complete.
+Threats: TM-P-07 (non-compliant erasure), TM-I-10 (backups retaining deleted keys/notes) - the wipe MUST also clear backup-eligible copies of keys; CWE-212 (incomplete removal); OWASP-A01 (only the owner's flow can trigger it). Controls: MASVS-PRIVACY-3, MASVS-STORAGE-1, ASVS V14. Fail closed: a partial wipe is reported, never silently claimed complete. No note text is ever logged.
 
 #### UX notes
-Design: Settings/Privacy → Delete (`docs/design/screens-and-flows.md` §12); also reachable from Account & plan (Sign out is there today). Destructive styling, `sane_ui` tokens, all **17 looks + light/dark**. a11y: confirmation dialog is focus-trapped, `Semantics`-labelled, 44pt/48dp, contrast ≥ 4.5:1, keyboard-reachable on web. States: in-progress (with spinner + 'this can't be undone'), success, partial-failure with retry.
+No standalone UI: the engine is invoked by the deletion flow in [SN-AUTH-018](auth.md#sn-auth-018) (Settings/Privacy -> Delete, design section 12), which owns the in-progress / success / partial-failure-with-retry states. This issue surfaces an accurate DeletionReport for that UI to render. Baseline: no content in logs.
 
 #### Test plan
-- Integration: `app/integration_test/account_deletion_test.dart` — each scope; export-first offered; local residue scan finds nothing for the deleted scope.
-- Unit: `app/test/privacy/deletion_orchestrator_test.dart` — idempotent re-run; partial-completion reporting; key removal.
-- Negative: `app/test/privacy/deletion_residue_test.dart` — DB/blob/index/keystore residue assertions.
+- Unit: `app/test/privacy/erasure_engine_test.dart` - each scope removes exactly its data; idempotent re-run; partial-completion reporting; key removal incl. backup-eligible copies.
+- Negative: `app/test/privacy/deletion_residue_test.dart` - DB/blob/index/keystore residue assertions after a wipe.
 
 #### Dependencies
-[SN-CORE-004](storage.md#sn-core-004) (storage), [SN-SEC-001](security.md#sn-sec-001) (secure store wipe), [SN-SYNC-003](sync.md#sn-sync-003) (cloud disconnect), [SN-AUTH-001](auth.md#sn-auth-001) (identity revoke), [SN-BILL-001](billing.md#sn-bill-001) (entitlement dissociation).
+[SN-CORE-004](storage.md#sn-core-004) (storage), [SN-SEC-001](security.md#sn-sec-001) (secure-store wipe); consumed by [SN-AUTH-018](auth.md#sn-auth-018) (the deletion flow).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit/integration, security scans)
-- [ ] controls-matrix §7 + threat-model TM-P-07/TM-I-10 updated if behaviour changed
+- [ ] controls-matrix section 7 + threat-model TM-P-07/TM-I-10 updated if behaviour changed
 - [ ] Reviewed against docs/security/secure-coding-checklist.md (data-lifecycle, fail-closed)
 
 ---
@@ -869,7 +866,7 @@ Design: Settings/Privacy → Delete (`docs/design/screens-and-flows.md` §12); a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #420 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -987,7 +984,7 @@ Minor-path screens (post age gate) use `sane_ui` tokens across all **17 looks + 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #421 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1047,7 +1044,7 @@ Design: Privacy & export tab (`docs/design/screens-and-flows.md` §12), per `PRD
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #422 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1106,7 +1103,7 @@ No end-user UI. Developer-facing failure message must be actionable (name packag
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #423 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1166,7 +1163,7 @@ No dedicated UI, but the engine's outcomes are visible in Trash ('deleted notebo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #424 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1224,7 +1221,7 @@ None beyond baseline — this is a specification doc with no UI. Baseline: the i
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #425 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1282,7 +1279,7 @@ None beyond baseline — a governance/compliance document with no UI. Baseline: 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #426 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -1341,7 +1338,7 @@ No end-user UI. The manifest is what the App Store privacy card is generated aga
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #427 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -1399,7 +1396,7 @@ No in-app UI; the output is the store listing's privacy section that users read 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #428 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -1459,7 +1456,7 @@ No end-user UI. Developer/reviewer-facing: failures point at the exact field and
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #429 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |

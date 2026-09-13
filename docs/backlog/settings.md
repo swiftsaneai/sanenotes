@@ -326,7 +326,7 @@ Widget: `packages/sane_ui/test/settings/sane_setting_row_test.dart` (variants re
 | Size | L |
 | SDLC | implementation |
 | Parent | [SN-SET-001](settings.md#sn-set-001) |
-| Depends on | [SN-SET-002](settings.md#sn-set-002), [SN-SET-003](settings.md#sn-set-003), [SN-SET-004](settings.md#sn-set-004), [SN-AUTH-001](auth.md#sn-auth-001), [SN-BILL-001](billing.md#sn-bill-001), [SN-ONB-001](onboarding.md#sn-onb-001) |
+| Depends on | [SN-SET-002](settings.md#sn-set-002), [SN-SET-003](settings.md#sn-set-003), [SN-SET-004](settings.md#sn-set-004), [SN-AUTH-001](auth.md#sn-auth-001), [SN-ONB-001](onboarding.md#sn-onb-001) |
 | Security controls | `MASVS-STORAGE-2`, `MASVS-PRIVACY-3`, `OWASP-A01`, `CWE-532` |
 | Extra labels | agent-ready |
 
@@ -336,8 +336,8 @@ The Account & plan tab is where identity, plan and profiles meet Settings (`docs
 
 #### Scope
 
-**In:** the `AccountPlanTab` in `app/lib/settings/tabs/`; the plan summary card (`SanePlanSummary`) with verbatim descriptions — Free: "5 PDF imports a month · 30-min recordings · 3 people per notebook"; Pro: "Unlimited imports & audio · handwriting to text · 50 GB backup"; the CTA routing (Free → Upgrade overlay [SN-BILL-001](billing.md#sn-bill-001); Pro → store manage-subscription deep link, toast "Opens your app-store subscription"); Details rows (`SaneDetailRow`) with Student status badge; 'Replay the welcome tour' → reopens Onboarding ([SN-ONB-001](onboarding.md#sn-onb-001)); 'Profiles on this account' add/switch reusing the profiles flow ([SN-AUTH-007](auth.md#sn-auth-007)); Sign out (destructive, confirm first) → Login; a guest variant showing 'Sign in to <benefit>' instead of account rows (PRD-AUTH-009).
-**Out:** the Upgrade overlay and entitlement logic ([SN-BILL-001](billing.md#sn-bill-001)); sign-in mechanics ([SN-AUTH-001](auth.md#sn-auth-001)); onboarding content ([SN-ONB-001](onboarding.md#sn-onb-001)); profile CRUD internals ([SN-AUTH-007](auth.md#sn-auth-007)).
+**In:** the `AccountPlanTab` shell in `app/lib/settings/tabs/` that composes and lays out the tab; the plan summary card (`SanePlanSummary`) rendering the verbatim Free/Pro descriptions - Free: "5 PDF imports a month · 30-min recordings · 3 people per notebook"; Pro: "Unlimited imports & audio · handwriting to text · 50 GB backup" - with the Free → Upgrade overlay CTA ([SN-BILL-001](billing.md#sn-bill-001)); Details rows (`SaneDetailRow`) displaying Name/Email and the Student status badge; 'Replay the welcome tour' → reopens Onboarding ([SN-ONB-001](onboarding.md#sn-onb-001)); 'Profiles on this account' add/switch reusing the profiles flow ([SN-AUTH-007](auth.md#sn-auth-007)); Sign out (destructive, confirm first) → Login; a guest variant showing 'Sign in to <benefit>' instead of account rows (PRD-AUTH-009). The billing actions embedded in this tab (Restore purchases, Manage subscription, entitlement-driven/lapsed plan states, student re-verify) are owned by [SN-BILL-014](billing.md#sn-bill-014) and rendered into this tab.
+**Out:** the in-tab billing actions - Restore purchases, Manage subscription deep-link, entitlement-stream-driven/lapsed plan messaging and student-status re-verify - owned by [SN-BILL-014](billing.md#sn-bill-014) (which depends on this tab shell); the Upgrade overlay and entitlement logic ([SN-BILL-001](billing.md#sn-bill-001)); sign-in mechanics ([SN-AUTH-001](auth.md#sn-auth-001)); onboarding content ([SN-ONB-001](onboarding.md#sn-onb-001)); profile CRUD internals ([SN-AUTH-007](auth.md#sn-auth-007)).
 
 #### Acceptance criteria
 
@@ -351,7 +351,7 @@ The Account & plan tab is where identity, plan and profiles meet Settings (`docs
 
 #### Technical notes
 
-`app/lib/settings/tabs/account_plan_tab.dart`; `SanePlanSummary`, `SaneDetailRow`, `SaneButton`(destructive) from `sane_ui` (`docs/design/component-inventory.md` §8). Entitlement read comes from a verified entitlement object, never a disk boolean (PRD-BILL-011). Email/name are shown but never logged (CWE-532). No token or entitlement secret rendered.
+`app/lib/settings/tabs/account_plan_tab.dart`; `SanePlanSummary`, `SaneDetailRow`, `SaneButton`(destructive) from `sane_ui` (`docs/design/component-inventory.md` §8). Entitlement read comes from a verified entitlement object, never a disk boolean (PRD-BILL-011). Email/name are shown but never logged (CWE-532). No token or entitlement secret rendered. The plan summary reads the `EntitlementProvider` contract ([SN-BILL-012](billing.md#sn-bill-012)) behind a narrow interface, with a permissive stub until billing lands in M8; SN-BILL-001 is not a scheduling blocker.
 
 #### Security & privacy
 
@@ -366,8 +366,7 @@ Design 'Account & plan' (screens §12). Loading: skeleton rows while the entitle
 Widget: `app/test/settings/account_plan_tab_test.dart` (Free vs Pro card + CTA, guest variant, sign-out confirm). Integration: `app/integration_test/settings_account_test.dart` (replay tour reopens onboarding; add/switch profile). Golden across looks + dark.
 
 #### Dependencies
-
-[SN-SET-002](settings.md#sn-set-002), [SN-SET-003](settings.md#sn-set-003), [SN-SET-004](settings.md#sn-set-004), [SN-AUTH-001](auth.md#sn-auth-001), [SN-BILL-001](billing.md#sn-bill-001), [SN-ONB-001](onboarding.md#sn-onb-001).
+[SN-SET-002](settings.md#sn-set-002), [SN-SET-003](settings.md#sn-set-003), [SN-SET-004](settings.md#sn-set-004), [SN-AUTH-001](auth.md#sn-auth-001), [SN-ONB-001](onboarding.md#sn-onb-001). The plan summary card reads the verified entitlement object via the `sane_billing` EntitlementProvider contract ([SN-BILL-012](billing.md#sn-bill-012)); a permissive stub stands in until billing ships in M8, so SN-BILL-001 is not a scheduling blocker (the in-tab billing actions are added by [SN-BILL-014](billing.md#sn-bill-014) in M8).
 
 #### Definition of done
 
@@ -663,7 +662,7 @@ Widget: `app/test/settings/appearance_tab_test.dart` (17 cards, look/dark persis
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-SET-001](settings.md#sn-set-001) |
-| Depends on | [SN-SET-002](settings.md#sn-set-002), [SN-SET-003](settings.md#sn-set-003), [SN-SET-004](settings.md#sn-set-004), [SN-NOTF-001](notifications.md#sn-notf-001) |
+| Depends on | [SN-SET-002](settings.md#sn-set-002), [SN-SET-003](settings.md#sn-set-003), [SN-SET-004](settings.md#sn-set-004), [SN-NOTF-002](notifications.md#sn-notf-002) |
 | Security controls | `MASVS-PRIVACY-2`, `MASVS-PLATFORM-3`, `CWE-532` |
 | Extra labels | agent-ready |
 
@@ -701,8 +700,7 @@ Design 'Notifications' (screens §12). The disabled `sharedNotif` row uses the m
 Widget: `app/test/settings/notifications_tab_test.dart` (keys/defaults/copy; sharedNotif disabled pre-collab; reminders link present). Golden across looks + dark.
 
 #### Dependencies
-
-[SN-SET-002](settings.md#sn-set-002), [SN-SET-003](settings.md#sn-set-003), [SN-SET-004](settings.md#sn-set-004), [SN-NOTF-001](notifications.md#sn-notf-001).
+[SN-SET-002](settings.md#sn-set-002), [SN-SET-003](settings.md#sn-set-003), [SN-SET-004](settings.md#sn-set-004), [SN-NOTF-002](notifications.md#sn-notf-002) (notification facade + categories the toggles gate; the specific child replacing the epic-level dependency on SN-NOTF-001).
 
 #### Definition of done
 
@@ -729,7 +727,7 @@ Widget: `app/test/settings/notifications_tab_test.dart` (keys/defaults/copy; sha
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-SET-001](settings.md#sn-set-001) |
-| Depends on | [SN-SET-010](settings.md#sn-set-010), [SN-NOTF-001](notifications.md#sn-notf-001) |
+| Depends on | [SN-SET-010](settings.md#sn-set-010), [SN-NOTF-003](notifications.md#sn-notf-003) |
 | Security controls | `MASVS-PRIVACY-1`, `MASVS-PLATFORM-3`, `CWE-532` |
 | Extra labels | agent-ready, needs-decision |
 
@@ -768,8 +766,7 @@ Design gap resolved by PRD-NOTIF-002 (screens §12 'Notifications'; open questio
 Widget: `app/test/settings/timetable_editor_test.dart` (add/edit/delete, deleted-notebook flag, calendar-import gated). Integration: `app/integration_test/settings_reminder_schedule_test.dart` (a scheduled reminder deep-links to the notebook in view mode; no network). Golden across looks + dark.
 
 #### Dependencies
-
-[SN-SET-010](settings.md#sn-set-010), [SN-NOTF-001](notifications.md#sn-notf-001).
+[SN-SET-010](settings.md#sn-set-010), [SN-NOTF-003](notifications.md#sn-notf-003) (reminder scheduler with recurrence + local scheduling; the specific child replacing the epic-level dependency on SN-NOTF-001).
 
 #### Definition of done
 

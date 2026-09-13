@@ -765,7 +765,7 @@ Instrumented: kill-and-recover matrix (`am kill`, `am force-stop`, screen-off + 
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-AND-001](compat.md#sn-and-001) |
-| Depends on | [SN-HWR-003](ocr-hwr.md#sn-hwr-003), [SN-AND-017](auth.md#sn-and-017), [SN-AND-020](security.md#sn-and-020) |
+| Depends on | [SN-HWR-003](ocr-hwr.md#sn-hwr-003), [SN-AND-017](auth.md#sn-and-017) |
 | Security controls | `MASVS-AUTH-1`, `MASVS-CODE-4`, `MASVS-PRIVACY-1` |
 | Extra labels | — |
 
@@ -785,7 +785,7 @@ Four of the Android capabilities the platform doc leans on are **Google Play ser
 - [ ] `docs/platform/compatibility-matrix.md` §3 gains a "no Google Play services" row with the supported tier and the degraded feature list.
 
 #### Technical notes
-Probe via `GoogleApiAvailability.isGooglePlayServicesAvailable` (the check itself is in the base library and safe to call), wrapped in the `sane_*` capability layer so Dart never imports GMS symbols directly. Prefer **bundled** ML Kit model artefacts where the size budget allows ([SN-GAND-007](release.md#sn-gand-007)) so recognition survives without GMS; otherwise unbundled + probe. Credential Manager itself is AOSP; only the Google credential provider needs GMS — degrade the provider list, not the API. Record the final matrix in `docs/platform/android.md` §2 beside the feature→API table.
+Probe via `GoogleApiAvailability.isGooglePlayServicesAvailable` (the check itself is in the base library and safe to call), wrapped in the `sane_*` capability layer so Dart never imports GMS symbols directly. Prefer **bundled** ML Kit model artefacts where the size budget allows ([SN-GAND-007](release.md#sn-gand-007)) so recognition survives without GMS; otherwise unbundled + probe. Credential Manager itself is AOSP; only the Google credential provider needs GMS — degrade the provider list, not the API. Record the final matrix in `docs/platform/android.md` §2 beside the feature→API table. The Play-services probe and the recognition/sign-in degradations ship in M5; the [SN-AND-020](security.md#sn-and-020) (Play Integrity, M8) degradation is wired when that lands — not a scheduling blocker.
 
 #### Security & privacy
 Fail-open on integrity is a deliberate, documented risk acceptance: attestation protects the stateless services, never the user's notes ([SN-AND-020](security.md#sn-and-020)), so its absence must not create a lock-out (MASVS-AUTH-1) nor a downgrade path an attacker can force to bypass a real control. Bundled models are code-adjacent assets and must be integrity-verified ([SN-HWR-004](ocr-hwr.md#sn-hwr-004), MASVS-CODE-4, CWE-494). The probe must not read device identifiers or report device fingerprints (MASVS-PRIVACY-1).
@@ -797,7 +797,7 @@ Degradation is stated once, where the feature is used, using the honest-limits t
 Automated: unit tests for each degradation branch with the probe faked to unavailable; an arch test that fails if a GMS import appears outside the wrapper. Manual: an AOSP/GMS-less emulator image (or a device without Play services) running the core-flow checklist; record results in the compatibility matrix. Files: `plugins/sane_ml_native/android/.../PlayServicesProbe.kt`, `app/test/platform/gms_absent_degradation_test.dart`.
 
 #### Dependencies
-[SN-HWR-003](ocr-hwr.md#sn-hwr-003), [SN-AND-017](auth.md#sn-and-017), [SN-AND-020](security.md#sn-and-020)
+[SN-HWR-003](ocr-hwr.md#sn-hwr-003) (recognition feature it degrades), [SN-AND-017](auth.md#sn-and-017) (sign-in it degrades). The Play-Integrity-absent degradation path integrates with [SN-AND-020](security.md#sn-and-020) (Play Integrity attestation, M8) when it lands; the probe and the recognition/sign-in degradations ship in M5, so SN-AND-020 is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -1354,7 +1354,7 @@ Process verification: the dry-run report is the evidence. Automation: a schedule
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-WEB-001](compat.md#sn-web-001) |
-| Depends on | [SN-WEB-017](ci-cd.md#sn-web-017), [SN-SEC-011](security.md#sn-sec-011) |
+| Depends on | — |
 | Security controls | `CWE-200`, `OWASP-A01`, `MASVS-PLATFORM-1`, `MASVS-PRIVACY-2` |
 | Extra labels | agent-ready |
 
@@ -1380,7 +1380,7 @@ The web is the one surface where the operating system puts a text field around o
 
 #### Technical notes
 
-Set `usePathUrlStrategy()` at bootstrap; keep one `go_router` configuration shared with native ([SN-SEC-011](security.md#sn-sec-011) owns the allow-list) and mark web-only routes explicitly. The hosting rewrite is "serve `/index.html` for any path within `scope` that is not a hashed asset" — hand it to [SN-WEB-017](ci-cd.md#sn-web-017) as part of the checked-in edge config, and mirror it in the local dev server so developers see production behaviour. Viewport restoration should round-trip through the same page-state model used by [SN-GWEB-003](storage.md#sn-gweb-003)'s restore record rather than encoding coordinates in the URL. Reference `docs/adr/0003-state-management-and-app-structure.md` and `docs/platform/web.md` §8.
+Set `usePathUrlStrategy()` at bootstrap; keep one `go_router` configuration shared with native ([SN-SEC-011](security.md#sn-sec-011) owns the allow-list) and mark web-only routes explicitly. The hosting rewrite is "serve `/index.html` for any path within `scope` that is not a hashed asset" — hand it to [SN-WEB-017](ci-cd.md#sn-web-017) as part of the checked-in edge config, and mirror it in the local dev server so developers see production behaviour. Viewport restoration should round-trip through the same page-state model used by [SN-GWEB-003](storage.md#sn-gweb-003)'s restore record rather than encoding coordinates in the URL. Reference `docs/adr/0003-state-management-and-app-structure.md` and `docs/platform/web.md` §8. The edge rewrite and allow-list are defined/mirrored here; [SN-WEB-017](ci-cd.md#sn-web-017) (M8) applies the edge config (dev server stands in) and [SN-SEC-011](security.md#sn-sec-011) (M4) adds the allow-list — neither blocks the M1 URL-strategy work.
 
 #### Security & privacy
 
@@ -1398,8 +1398,7 @@ Matches `docs/design/screens-and-flows.md` navigation model: the browser back bu
 - `tools/scripts/post_deploy_check.mjs` extension — assert the rewrite rule serves the shell for a deep path and a 404 for an unknown asset.
 
 #### Dependencies
-
-[SN-WEB-017](ci-cd.md#sn-web-017) (edge rewrite + logging policy), [SN-SEC-011](security.md#sn-sec-011) (allow-list router). Coordinates with [SN-WEB-010](compat.md#sn-web-010) (manifest scope), [SN-WEB-011](compat.md#sn-web-011) (navigation fallback), [SN-GWEB-003](storage.md#sn-gweb-003) (state restore).
+None hard. The checked-in edge rewrite rule is defined here and applied by [SN-WEB-017](ci-cd.md#sn-web-017) (production hosting, M8; mirrored in the local dev server until then); the shared `go_router` config is hardened by the allow-list router [SN-SEC-011](security.md#sn-sec-011) (M4). Coordinates with [SN-WEB-010](compat.md#sn-web-010) (manifest scope), [SN-WEB-011](compat.md#sn-web-011) (navigation fallback), [SN-GWEB-003](storage.md#sn-gweb-003) (state restore).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -1416,7 +1415,7 @@ Matches `docs/design/screens-and-flows.md` navigation model: the browser back bu
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #310 |
 | Type | spike |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1472,7 +1471,7 @@ Manual: prototype opens two windows on an iPadOS 26 device; screenshots + notes 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #311 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1529,7 +1528,7 @@ Widget: `app/test/layout/size_class_reflow_test.dart` (state preserved across si
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #312 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |

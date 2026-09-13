@@ -5,7 +5,7 @@
 ## Tree
 
 - [SN-TXT-001](text.md#sn-txt-001) **Deliver typed text: rich-text CRDT, text boxes, lists, tables, links** (epic · M2 Library & Documents)
-  - [SN-TXT-002](text.md#sn-txt-002) **Implement the rich-text sequence CRDT (Peritext-style characters)** · p1 · feature · L · M2 Library & Documents
+  - [SN-TXT-002](text.md#sn-txt-002) **Adopt the sane_core rich-text CRDT for TextBlock content** · p1 · feature · L · M2 Library & Documents
     - [SN-TXT-003](text.md#sn-txt-003) **Implement inline mark ops and the mark registry (anchor growth, overlap)** · p1 · task · M · M2 Library & Documents
   - [SN-TXT-004](text.md#sn-txt-004) **Implement the TextBlock object and block movable-list model** · p1 · feature · M · M2 Library & Documents
     - [SN-TXT-015](text.md#sn-txt-015) **Add quote and callout blocks** · p3 · feature · S · M2 Library & Documents
@@ -178,7 +178,7 @@ SN-CORE-002 (document model entities), SN-CORE-003 (CRDT primitives), SN-ED-002 
 
 <a id="sn-txt-002"></a>
 
-**Implement the rich-text sequence CRDT (Peritext-style characters)**
+**Adopt the sane_core rich-text CRDT for TextBlock content**
 
 | Field | Value |
 |---|---|
@@ -191,38 +191,38 @@ SN-CORE-002 (document model entities), SN-CORE-003 (CRDT primitives), SN-ED-002 
 | Size | L |
 | SDLC | implementation |
 | Parent | [SN-TXT-001](text.md#sn-txt-001) |
-| Depends on | [SN-CORE-002](storage.md#sn-core-002), [SN-CORE-003](sync.md#sn-core-003) |
+| Depends on | [SN-CORE-002](storage.md#sn-core-002), [SN-CORE-003](sync.md#sn-core-003), [SN-CORE-009](sync.md#sn-core-009) |
 | Security controls | `MASVS-STORAGE-1`, `MASVS-PRIVACY-1`, `MASVS-CODE-4`, `CWE-20`, `CWE-400` |
 | Extra labels | agent-ready, innovation |
 
 #### Context
-Rich text must merge conflict-free when the same paragraph is edited on two devices offline, so the character layer is a sequence CRDT, not a plain string with LWW (docs/architecture/document-model.md section 4.2). This issue implements the character sequence for TextBlock.content: an RGA/Fugue-style causal-tree list where every character has a stable opId = Hlc, concurrent inserts interleave deterministically (minimising the interleaving anomaly), and delete is a per-character tombstone (textInsert / textDelete ops from the op registry, section 2.3). Marks (bold/link) are a separate commutative layer built on top in [SN-TXT-003](text.md#sn-txt-003); block structure is the movable-list in [SN-TXT-004](text.md#sn-txt-004). This is the load-bearing correctness surface for all typed text and is why the doc mandates Peritext semantics rather than binding Yjs's control-character model (document-model section 4.2 library note).
+Typed rich text must merge conflict-free when the same paragraph is edited on two devices offline. The character-sequence CRDT itself (RGA/Fugue causal tree, opId = Hlc, deterministic interleaving, per-character tombstones, `render()`) is owned by `sane_core` in [SN-CORE-009](sync.md#sn-core-009) (docs/architecture/document-model.md section 4.2, ADR-0005). This issue is the TXT-side adoption of that primitive: it binds sane_core's RichTextCrdt to TextBlock.content, maps the text ops onto the CBOR op frames, and exposes the materialised runs the editor renders. It is the load-bearing integration surface for all typed text; marks are layered on in [SN-TXT-003](text.md#sn-txt-003) and block structure is the movable-list in [SN-TXT-004](text.md#sn-txt-004).
 
 #### Scope
-**In:** the RichTextCrdt character sequence in pure Dart; insert(index, text, Hlc), delete(index, length, Hlc); the causal-tree node representation with opId ordering and deterministic interleaving; render() producing materialised plain runs for the editor; op (de)serialisation to the CBOR op frames; tombstone retention hooks for GC (section 8); property-based convergence tests.
-**Out:** inline marks and the mark registry ([SN-TXT-003](text.md#sn-txt-003)), block/list/table structure ([SN-TXT-004](text.md#sn-txt-004)), the editor input path ([SN-TXT-006](text.md#sn-txt-006)), persistence/segment framing (SN-CORE-004), sync transport (SN-SYNC).
+**In:** the text-stack adapter that adopts the sane_core RichTextCrdt ([SN-CORE-009](sync.md#sn-core-009)) for TextBlock.content - wiring insert/delete against the content field, mapping textInsert/textDelete ops onto the CBOR op frames, exposing render() output as the materialised plain runs the editor consumes, and the tombstone-retention/GC hooks the text layer needs; property-based tests that the integrated content field converges and round-trips through the op frames.
+**Out:** the character-sequence CRDT algorithm, causal-tree representation and convergence proofs themselves - owned by [SN-CORE-009](sync.md#sn-core-009); inline marks and the mark registry ([SN-TXT-003](text.md#sn-txt-003)); block/list/table structure ([SN-TXT-004](text.md#sn-txt-004)); the editor input path ([SN-TXT-006](text.md#sn-txt-006)); persistence/segment framing (SN-CORE-004); sync transport (SN-SYNC).
 
 #### Acceptance criteria
-- [ ] Two replicas that apply the same set of insert/delete ops in any delivery order converge to identical text (100 randomised property runs, exactly-once delivery).
-- [ ] Concurrent inserts at the same index interleave deterministically by opId (Hlc) and do not produce the RGA interleaving anomaly for the documented adversarial case.
-- [ ] Delete is a tombstone: a deleted character can still anchor a mark until GC; re-applying a delete is idempotent.
-- [ ] render() returns runs whose concatenation equals the visible string in O(n) for a 50,000-char block under 4 ms on the reference machine.
-- [ ] Malformed or out-of-range op indices are rejected (Result<Failure>) without throwing across the package boundary (CWE-20).
+- [ ] TextBlock.content is backed by the sane_core RichTextCrdt ([SN-CORE-009](sync.md#sn-core-009)); insert/delete on a text block go through it and round-trip through the CBOR op frames.
+- [ ] Two replicas editing the same block offline converge to identical text once ops are exchanged (100 randomised property runs) - the adapter preserves the primitive's convergence guarantee end to end.
+- [ ] render() output is exposed as materialised runs for the editor in O(n); a 50,000-char block materialises under 4 ms on the reference machine.
+- [ ] Malformed or out-of-range op indices arriving from a remote replica are rejected (Result<Failure>) at the adapter boundary without throwing across the package boundary (CWE-20).
+- [ ] The adapter adds no CRDT algorithm of its own - a block op is delegated to [SN-CORE-009](sync.md#sn-core-009), never reimplemented here.
 
 #### Technical notes
-packages/sane_core/lib/src/text/rich_text_crdt.dart (pure Dart, MUST NOT import package:flutter). Implements the RichTextCrdt abstract API in document-model section 4.2 (insert/delete/render). opId = Hlc from SN-CORE-003; ops are textInsert/textDelete (registry section 2.3). Use Fugue/RGA causal-tree ordering; keep a fractional or tree-index for stable positions. ADR-0005 records the build-it-ourselves decision and the Rust-core (Loro/Automerge) upgrade path. Cap block length and op size before fold to bound memory (CWE-400). Return Result<T, Failure> for all fallible ops (CLAUDE.md section 6).
+sane_core text integration binding TextBlock.content to the RichTextCrdt from [SN-CORE-009](sync.md#sn-core-009) (pure Dart, MUST NOT import package:flutter). opId = Hlc from SN-CORE-003; ops are textInsert/textDelete (registry section 2.3) serialised to the CBOR op frames. Do not reimplement the causal-tree ordering - consume it. Cap block length and op size before fold to bound memory (CWE-400). Return Result<T, Failure> for all fallible ops (CLAUDE.md section 6). ADR-0005 records the build-it-ourselves decision that [SN-CORE-009](sync.md#sn-core-009) implements.
 
 #### Security & privacy
-Text characters are note content: never logged, on-device only, E2E-encrypted before sync (decision 3). Ops arriving from a remote replica are untrusted: validate index/length bounds and cap total sequence size before applying so a crafted segment cannot exhaust memory or corrupt state; fail closed. IDs: MASVS-STORAGE-1, MASVS-PRIVACY-1, MASVS-CODE-4, CWE-20, CWE-400.
+Text characters are note content: never logged, on-device only, E2E-encrypted before sync. Ops arriving from a remote replica are untrusted: the adapter validates index/length bounds and caps total sequence size before applying so a crafted segment cannot exhaust memory or corrupt state; fail closed. IDs: MASVS-STORAGE-1, MASVS-PRIVACY-1, MASVS-CODE-4, CWE-20, CWE-400.
 
 #### UX notes
-None beyond baseline (pure model layer, no chrome). Correct convergence is what makes the visible text a11y tree stable across sync; the editor renders runs from render() (docs/design/screens-and-flows.md section 7.5). No logging of content; no secrets.
+None beyond baseline (pure model/adapter layer, no chrome). Correct convergence is what makes the visible text a11y tree stable across sync; the editor renders runs from render(). No logging of content; no secrets.
 
 #### Test plan
-packages/sane_core/test/text/peritext_crdt_test.dart (insert/delete, idempotent delete, index bounds), packages/sane_core/test/text/peritext_convergence_test.dart (randomised property convergence), packages/sane_core/test/text/peritext_interleave_test.dart (adversarial concurrent insert). Headless, no widget harness.
+packages/sane_core/test/text/rich_text_adapter_test.dart (content-field insert/delete via the CRDT, op-frame round-trip, index bounds), packages/sane_core/test/text/rich_text_adapter_convergence_test.dart (randomised property convergence through the adapter). Headless, no widget harness. The core algorithm's own tests live with [SN-CORE-009](sync.md#sn-core-009).
 
 #### Dependencies
-SN-CORE-002 (document model entities incl. TextBlock), SN-CORE-003 (HLC + CRDT primitives).
+[SN-CORE-009](sync.md#sn-core-009) (rich-text sequence CRDT), SN-CORE-002 (document model entities incl. TextBlock), SN-CORE-003 (HLC + CRDT primitives).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)

@@ -5,7 +5,7 @@
 ## Tree
 
 - [SN-NOTF-001](notifications.md#sn-notf-001) **Deliver notifications, reminders and OS system integration** (epic · M5 Phones & Platform Parity)
-  - [SN-NOTF-002](notifications.md#sn-notf-002) **Implement the local notification facade, categories and permission flow** · p1 · feature · L · M4 Identity, Sync & Privacy
+  - [SN-NOTF-002](notifications.md#sn-notf-002) **Implement the local notification facade, categories and permission flow** · p1 · feature · L · M3 Audio & Recognition
   - [SN-NOTF-003](notifications.md#sn-notf-003) **Build the reminder scheduler with recurrence, reschedule and OS budget limits** · p1 · feature · M · M4 Identity, Sync & Privacy
   - [SN-NOTF-004](notifications.md#sn-notf-004) **Define the deep-link route table to notebooks, pages and anchors** · p1 · feature · M · M4 Identity, Sync & Privacy
   - [SN-NOTF-005](notifications.md#sn-notf-005) **Build the share-target intake queue and confirm-and-place screen** · p1 · feature · L · M5 Phones & Platform Parity
@@ -262,7 +262,7 @@ Unit: `app/test/focus_filter_intent_test.dart` (parameter resolution, unknown-id
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #315 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -319,7 +319,7 @@ Unit: `app/test/integration/quick_note_activity_test.dart` (advertises id, resol
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #316 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -376,7 +376,7 @@ Unit: `app/test/intents/app_intents_test.dart` (each intent against a fake store
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #317 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -433,7 +433,7 @@ Unit: `app/test/widgets/recents_manifest_test.dart` (manifest excludes locked/hi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #318 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -489,7 +489,7 @@ Unit: `app/test/widgets/control_widget_test.dart` (controls map to intents, stat
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #319 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -631,7 +631,7 @@ Children name their own files. Epic-level gates: `app/test/system/` unit and wid
 | GitHub | not published yet |
 | Type | feature |
 | Priority | p1 |
-| Milestone | M4 Identity, Sync & Privacy |
+| Milestone | M3 Audio & Recognition |
 | Platforms | all |
 | Areas | notifications, privacy |
 | Size | L |
@@ -665,7 +665,7 @@ The docs are silent on the specific library. Decision recorded here: use the `fl
 
 #### Technical notes
 
-Files: `app/lib/system/notifications/sane_notifications.dart` (interface + `Result<T, Failure>` returns per CLAUDE.md §6), `.../local_notifications_impl.dart`, `.../notification_category.dart`, `.../notification_content.dart`, `.../fake_sane_notifications.dart`, and a Riverpod provider in `app/lib/system/notifications/providers.dart`. Android: channels via `AndroidNotificationChannel`, `POST_NOTIFICATIONS` declared in the manifest and requested at point of use (docs/platform/android.md §9 "Permissions — minimal"); channel importance must not exceed what the category needs. iOS/iPadOS: `UNUserNotificationCenter`, `UNNotificationCategory` with actions, `interruptionLevel: .active`, and no critical alerts; the notification service does **not** need an extension because payloads carry no fetched content (docs/platform/ipad.md §3). Timezone-correct scheduling uses the `timezone` database initialised once at startup. Tap delivery: the OS callback pushes a `NotificationTap(route, categoryId)` onto a broadcast stream that [SN-NOTF-004](notifications.md#sn-notf-004) consumes; the facade itself never navigates. Payload target is an **opaque id**, never a title-derived slug, so a leaked payload reveals nothing (docs/architecture/sync.md metadata-minimisation rule). Logging follows CLAUDE.md §6: category and result only, ids as short hashes.
+Files: `app/lib/system/notifications/sane_notifications.dart` (interface + `Result<T, Failure>` returns per CLAUDE.md §6), `.../local_notifications_impl.dart`, `.../notification_category.dart`, `.../notification_content.dart`, `.../fake_sane_notifications.dart`, and a Riverpod provider in `app/lib/system/notifications/providers.dart`. Android: channels via `AndroidNotificationChannel`, `POST_NOTIFICATIONS` declared in the manifest and requested at point of use (docs/platform/android.md §9 "Permissions — minimal"); channel importance must not exceed what the category needs. iOS/iPadOS: `UNUserNotificationCenter`, `UNNotificationCategory` with actions, `interruptionLevel: .active`, and no critical alerts; the notification service does **not** need an extension because payloads carry no fetched content (docs/platform/ipad.md §3). Timezone-correct scheduling uses the `timezone` database initialised once at startup. Tap delivery: the OS callback pushes a `NotificationTap(route, categoryId)` onto a broadcast stream that [SN-NOTF-004](notifications.md#sn-notf-004) consumes; the facade itself never navigates. Payload target is an **opaque id**, never a title-derived slug, so a leaked payload reveals nothing (docs/architecture/sync.md metadata-minimisation rule). Logging follows CLAUDE.md §6: category and result only, ids as short hashes. Scheduled in M3: the local notification facade is foundational to the M3 audio active-task controller ([SN-NOTF-009](notifications.md#sn-notf-009)) for recording notifications; its dependencies are M0.
 
 #### Security & privacy
 
@@ -1490,7 +1490,7 @@ Widgets are the only Sane Notes surface that cannot use the 17 looks — they mu
 | Size | L |
 | SDLC | implementation |
 | Parent | [SN-PHN-001](compat.md#sn-phn-001) |
-| Depends on | [SN-PHN-010](library.md#sn-phn-010), [SN-SHR-001](sharing-export.md#sn-shr-001), [SN-AND-001](compat.md#sn-and-001) |
+| Depends on | [SN-PHN-010](library.md#sn-phn-010), [SN-AND-001](compat.md#sn-and-001) |
 | Security controls | `MASVS-PLATFORM-1`, `MASVS-PLATFORM-2`, `MASVS-CODE-4`, `OWASP-A03`, `CWE-20`, `CWE-434`, `CWE-926` |
 | Extra labels | needs-credentials |
 
@@ -1517,7 +1517,7 @@ Everything arriving through these doors is **untrusted input from another app**,
 - [ ] Confirm/error surfaces render correctly in all 17 looks and dark mode with >= 44×44 pt / 48×48 dp targets and `Semantics` labels.
 
 #### Technical notes
-Android: intent filters in `app/android/app/src/main/AndroidManifest.xml` for `ACTION_SEND`/`ACTION_SEND_MULTIPLE` with explicit mime types plus `ACTION_VIEW` for `application/pdf` and the `.sanenote` extension; Direct Share via `ShortcutManager` dynamic shortcuts; App Shortcuts in `res/xml/shortcuts.xml`. iOS: a Share Extension target writing into the App Group container, plus `LSItemContentTypes`/exported UTI for `.sanenote`, plus `AppIntent`/`AppShortcut` definitions. Dart side: `app/lib/integrations/inbound/` holds the receive router, the validation gate and the confirm screen; validated items are handed to the import pipeline in the sharing/export area. Validation runs in a one-shot `Isolate.run` with caps applied **before** decode; path names from archive entries are canonicalised and confined (no `..`, no absolute paths) per CLAUDE.md §7.8. Reuse the existing verified App Links / Universal Links configuration for URL receipt (PRD-CO-276). Treat every API shape here as **verify** against current SDK docs (PRD-04 §7 note).
+Android: intent filters in `app/android/app/src/main/AndroidManifest.xml` for `ACTION_SEND`/`ACTION_SEND_MULTIPLE` with explicit mime types plus `ACTION_VIEW` for `application/pdf` and the `.sanenote` extension; Direct Share via `ShortcutManager` dynamic shortcuts; App Shortcuts in `res/xml/shortcuts.xml`. iOS: a Share Extension target writing into the App Group container, plus `LSItemContentTypes`/exported UTI for `.sanenote`, plus `AppIntent`/`AppShortcut` definitions. Dart side: `app/lib/integrations/inbound/` holds the receive router, the validation gate and the confirm screen; validated items are handed to the import pipeline in the sharing/export area. Validation runs in a one-shot `Isolate.run` with caps applied **before** decode; path names from archive entries are canonicalised and confined (no `..`, no absolute paths) per CLAUDE.md §7.8. Reuse the existing verified App Links / Universal Links configuration for URL receipt (PRD-CO-276). Treat every API shape here as **verify** against current SDK docs (PRD-04 §7 note). The importers themselves are SN-SHR-001's (M6); this registers OS entry points and hands validated content to the import-pipeline interface ([SN-SHR-021](sharing-export.md#sn-shr-021)) via a stub queue until M6.
 
 #### Security & privacy
 This is the largest untrusted-input surface on the phone. Threats and controls: **T-HOSTILE-FILE** — crafted PDF/image/`.sanenote` triggering decoder bugs, decompression bombs or OOM. Controls: content-derived type checks, size/page/dimension caps before decode, parsing off the UI isolate, fail-closed error, and inclusion of these inputs in the fuzz corpus (MASVS-CODE-4, MASVS-PLATFORM-2, OWASP-A03, CWE-20, CWE-400, CWE-409). **T-PATH-TRAVERSAL** — a `.sanenote` (zip) entry escaping the extraction root. Control: canonicalise and confine every path derived from file content; reject absolute or parent-relative entries (CWE-22, CWE-434). **T-INTENT-REDIRECTION** — a malicious app sending a crafted intent/extra to drive Sane Notes into opening or exfiltrating a file it should not touch. Controls: never re-broadcast a received intent, never dereference a `content://`/file URI the caller does not own without a permission check, import into a new isolated notebook only, and land in confirm before any mutation (MASVS-PLATFORM-1, CWE-926, CWE-441). **T-EXPORTED-COMPONENT** — over-broad exported components. Control: export only the components that must be exported, with the narrowest intent filters, and add an exported-component review item to the threat model (MASVS-PLATFORM-1). **T-CLOUD-CONVERT** — an importer calling a cloud conversion service. Control: imports run on-device; any cloud path requires an ADR + threat-model row and per-request opt-in (PRD-CO-079; MASVS-NETWORK-1). Baseline: no content, filenames or paths in logs (CWE-532).
@@ -1534,7 +1534,7 @@ Surfaces: the Import overlay 'Import a PDF' sources and its free-plan meter (doc
 - Native: `app/android/app/src/androidTest/.../ShareIntentFilterTest.kt` asserting only the intended components are exported.
 
 #### Dependencies
-[SN-PHN-010](library.md#sn-phn-010), [SN-SHR-001](sharing-export.md#sn-shr-001), [SN-AND-001](compat.md#sn-and-001)
+[SN-PHN-010](library.md#sn-phn-010), [SN-AND-001](compat.md#sn-and-001). Registration, validation and the receive-confirm UI ship here; validated inbound content is handed to the import pipeline ([SN-SHR-021](sharing-export.md#sn-shr-021), M6) through its interface — a stub intake queue stands in until it lands, so the SN-SHR-001 epic is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)

@@ -245,7 +245,7 @@ SN-FND-002 (scaffold), SN-CORE-004 (SQLite + blob store), SN-INK-001 (ink engine
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #373 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -302,7 +302,7 @@ SN-FND-002 (scaffold + sane_pdf skeleton), SN-CORE-004 (content-addressed blob s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #374 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -416,7 +416,7 @@ High-zoom text/vectors must stay crisp (tiles at display DPI), never upscaled-bl
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #375 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -473,7 +473,7 @@ Surface: page overview / scrubber invoked from the page rail (screens §7.7) and
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #376 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -530,7 +530,7 @@ Surface: Import overlay (screens §9) with sources Files / Paste a link / Recent
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #377 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -587,7 +587,7 @@ Surface: Import overlay meter row + Upgrade overlay (screens §9, §14). Renders
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #378 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -644,7 +644,7 @@ Surface: a confirm-and-place sheet reusing the Import overlay visual language (s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #379 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -701,7 +701,7 @@ No direct chrome; this backs search (screens §11) and the Smart Highlighter ([S
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #380 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -758,7 +758,7 @@ Surface: an in-document find bar consistent with the Search visual language (scr
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #381 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -815,7 +815,7 @@ Surface: an outline/TOC panel in the reading chrome (screens §7.7 page tools). 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #382 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -872,7 +872,7 @@ Surface: link tap in the PDF facsimile (screens §7.2). External link confirm sh
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #383 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -929,7 +929,7 @@ Surface: drawing over the PDF facsimile with the standard pen/highlighter tools 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #384 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -938,16 +938,16 @@ Surface: drawing over the PDF facsimile with the standard pen/highlighter tools 
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-PDF-001](pdf.md#sn-pdf-001) |
-| Depends on | [SN-PDF-009](pdf.md#sn-pdf-009), [SN-PDF-013](pdf.md#sn-pdf-013) |
+| Depends on | [SN-PDF-009](pdf.md#sn-pdf-009), [SN-PDF-013](pdf.md#sn-pdf-013), [SN-BRS-018](brushes.md#sn-brs-018) |
 | Security controls | `MASVS-PRIVACY-1`, `CWE-20` |
 | Extra labels | agent-ready, innovation |
 
 #### Context
-Highlighting PDF text is only satisfying when the mark snaps cleanly to text runs rather than smearing freehand, so Sane Notes ships a Smart Highlighter that snaps to PDF text quads plus a straight-line highlighter (draw-then-hold to straighten) (docs/product/prd-02-library-documents-audio-search.md PRD-LB-137). This uses the extracted text quads ([SN-PDF-009](pdf.md#sn-pdf-009)) to align a highlight annotation to the underlying runs, and reuses the annotation overlay ([SN-PDF-013](pdf.md#sn-pdf-013)) so the result is our live, editable mark, not a flattened SDK annotation. It is a direct answer to competitors' text-markup and a differentiator when combined with our audio-synced ink.
+Highlighting PDF text is only satisfying when the mark snaps cleanly to text runs rather than smearing freehand, so Sane Notes ships a Smart Highlighter that snaps to PDF text quads plus a straight-line highlighter (draw-then-hold to straighten) (docs/product/prd-02-library-documents-audio-search.md PRD-LB-137). This uses the extracted text quads ([SN-PDF-009](pdf.md#sn-pdf-009)) to align a highlight annotation to the underlying runs, reuses the annotation overlay ([SN-PDF-013](pdf.md#sn-pdf-013)) so the result is our live, editable mark (not a flattened SDK annotation), and consumes the highlighter tool + straight-line/smart-snap behaviour from [SN-BRS-018](brushes.md#sn-brs-018) (the brush engine owns the tool; this issue owns the PDF text-markup). It is a direct answer to competitors' text-markup and a differentiator when combined with our audio-synced ink.
 
 #### Scope
-**In:** a Smart Highlighter mode that hit-tests the drag against text quads and produces highlight geometry snapped to whole runs/lines; long-press-select to markup a span (highlight/underline/strikeout/squiggly using the text quads); a straight-line highlighter (draw then hold to straighten a freehand highlight); text-markup annotations persisted as live objects (page-space geometry).
-**Out:** the base overlay/coordinate mapping ([SN-PDF-013](pdf.md#sn-pdf-013)); text extraction ([SN-PDF-009](pdf.md#sn-pdf-009)); FreeText/Note/Shape/Stamp ([SN-PDF-015](pdf.md#sn-pdf-015)); shape recognition on blank pages (SN-SHP).
+**In:** the PDF text-markup layer that consumes the highlighter tool + straight-line/smart-snap behaviour from [SN-BRS-018](brushes.md#sn-brs-018) and the PDF text quads from [SN-PDF-009](pdf.md#sn-pdf-009): hit-testing a drag against text quads to produce highlight geometry snapped to whole runs/lines; long-press-select to markup a span (highlight/underline/strikeout/squiggly using the text quads); text-markup annotations persisted as live objects (page-space geometry) via the overlay ([SN-PDF-013](pdf.md#sn-pdf-013)).
+**Out:** the highlighter tool, its palette toggle, the straight-line dwell mode and the generic smart-snap/anchor model - owned by [SN-BRS-018](brushes.md#sn-brs-018), which this layer consumes; the base overlay/coordinate mapping ([SN-PDF-013](pdf.md#sn-pdf-013)); text extraction ([SN-PDF-009](pdf.md#sn-pdf-009)); FreeText/Note/Shape/Stamp ([SN-PDF-015](pdf.md#sn-pdf-015)); shape recognition on blank pages (SN-SHP).
 
 #### Acceptance criteria
 - [ ] Dragging in Smart Highlighter mode snaps the highlight to the covered text runs; the mark aligns to glyph bounds within tolerance (golden).
@@ -969,7 +969,7 @@ Surface: highlighter tool over the PDF facsimile (screens §7.2, §7.3). The Sma
 `packages/sane_pdf/test/annotate/smart_highlighter_test.dart` (snap accuracy, markup subtypes, straighten-on-hold, text-layerless fallback, zoom/scroll persistence), golden per look.
 
 #### Dependencies
-[SN-PDF-009](pdf.md#sn-pdf-009) (text quads), [SN-PDF-013](pdf.md#sn-pdf-013) (annotation overlay). Feeds [SN-PDF-016](pdf.md#sn-pdf-016) (XFDF markup subtypes).
+[SN-BRS-018](brushes.md#sn-brs-018) (highlighter tool + straight-line/smart-snap), [SN-PDF-009](pdf.md#sn-pdf-009) (text quads), [SN-PDF-013](pdf.md#sn-pdf-013) (annotation overlay). Feeds [SN-PDF-016](pdf.md#sn-pdf-016) (XFDF markup subtypes).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, golden, security scans)
@@ -986,7 +986,7 @@ Surface: highlighter tool over the PDF facsimile (screens §7.2, §7.3). The Sma
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #385 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1043,7 +1043,7 @@ Surface: annotation tools over the PDF facsimile (screens §7.2, §7.4). Sticky 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #386 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1100,7 +1100,7 @@ Surface: an export/interop option in the Export flow (screens §10). Import XFDF
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #387 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1157,7 +1157,7 @@ Surface: page rail / page menu (screens §7.7, Open Question 11). Drag-to-reorde
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #388 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1214,7 +1214,7 @@ Surface: page menu / 'combine' action and the paper/margin control (screens §7.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #389 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1271,7 +1271,7 @@ Surface: Export flow (screens §10) with format choices (PDF flattened / PDF edi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #390 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1328,7 +1328,7 @@ Surface: an Export option 'Make handwriting searchable' in the Export flow (scre
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #391 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1385,7 +1385,7 @@ Surface: Print/Share entries in the Export flow (screens §10). Print preview wi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #392 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M3 Audio & Recognition |
@@ -1442,7 +1442,7 @@ Surface: tapping a form field on the PDF facsimile opens the appropriate input (
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #393 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M2 Library & Documents |
@@ -1558,7 +1558,7 @@ None beyond baseline: this is a test/CI asset with no user-facing surface. Basel
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #394 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1674,7 +1674,7 @@ None beyond baseline: this is a test/CI asset. It indirectly guarantees the smoo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #395 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |

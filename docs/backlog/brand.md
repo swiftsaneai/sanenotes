@@ -213,7 +213,7 @@ Matches `docs/design/component-inventory.md` §1 (`SaneSageMark`): fixed-colour 
 | Size | M |
 | SDLC | design |
 | Parent | [SN-BRD-001](brand.md#sn-brd-001) |
-| Depends on | [SN-BRD-002](brand.md#sn-brd-002) |
+| Depends on | [SN-BRD-003](brand.md#sn-brd-003) |
 | Security controls | `MASVS-PLATFORM-2` |
 | Extra labels | needs-design, innovation |
 
@@ -232,7 +232,7 @@ The Sage gives the product its warmth (`docs/product/vision-and-principles.md` P
 - [ ] Expressions are marked decorative for a11y; no state conveys information available only through the animation.
 
 #### Technical notes
-Assets follow the [SN-BRD-002](brand.md#sn-brd-002) vector-master layering so a pose is a swap of the character layer over the same tile. Wire through [SN-BRD-003](brand.md#sn-brd-003) (add an `expression` prop later). Motion budgets and easing per `docs/design/ux-principles.md` §6; respect `MediaQuery.disableAnimations`. AI usage per [SN-AI-001](ai.md#sn-ai-001) / ADR-0016; onboarding per [SN-ONB-001](onboarding.md#sn-onb-001).
+Assets follow the [SN-BRD-003](brand.md#sn-brd-003) single-asset indirection / vector-master layering so a pose is a swap of the character layer over the same tile; the final master art [SN-BRD-002](brand.md#sn-brd-002) (M8) is a later drop-in asset swap. Wire through [SN-BRD-003](brand.md#sn-brd-003) (add an `expression` prop later). Motion budgets and easing per `docs/design/ux-principles.md` §6; respect `MediaQuery.disableAnimations`. AI usage per [SN-AI-001](ai.md#sn-ai-001) / ADR-0016; onboarding per [SN-ONB-001](onboarding.md#sn-onb-001).
 
 #### Security & privacy
 None beyond baseline: decorative art, no note content/PII, no logging, no network (MASVS-PLATFORM-2). The mascot must **not** be used to imply a privacy state (e.g. never let a happy Sage stand in for the on-device vs cloud indicator, which is a separate required control per `docs/product/vision-and-principles.md` Principle 9).
@@ -244,7 +244,7 @@ Sparing use — at most one Sage on the Library first-run empty state (`docs/des
 Design review against the trademark rules; golden renders of each expression on the four tiles across looks; a reduce-motion test asserting each animated state falls back to a static frame. Files: `packages/sane_ui/test/golden/sage_expressions_golden_test.dart`.
 
 #### Dependencies
-[SN-BRD-002](brand.md#sn-brd-002) (master art). Consumed by [SN-ONB-001](onboarding.md#sn-onb-001) and [SN-AI-001](ai.md#sn-ai-001).
+[SN-BRD-003](brand.md#sn-brd-003) (SaneSageMark single-asset indirection / master layering the expression set is defined against; replaces the dependency on the final master art [SN-BRD-002](brand.md#sn-brd-002), which is a later asset swap in M8). Consumed by [SN-ONB-001](onboarding.md#sn-onb-001) and [SN-AI-001](ai.md#sn-ai-001).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)

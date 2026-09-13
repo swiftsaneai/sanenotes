@@ -42,7 +42,7 @@
   - [SN-SEC-011](security.md#sn-sec-011) **Validate deep links, App Links and Universal Links with an allow-list router** · p1 · security · L · M4 Identity, Sync & Privacy
     - [SN-SEC-012](security.md#sn-sec-012) **Host assetlinks.json and AASA and enable link auto-verification** · p1 · security · M · M5 Phones & Platform Parity
     - [SN-SEC-013](security.md#sn-sec-013) **Add a URL scheme allow-list and SSRF/redirect guard for outbound navigation** · p1 · security · S · M4 Identity, Sync & Privacy
-  - [SN-SEC-014](security.md#sn-sec-014) **Harden Android exported components, intents and providers** · p1 · security · M · M4 Identity, Sync & Privacy
+  - [SN-SEC-014](security.md#sn-sec-014) **Verify Android IPC hardening against the secure-coding checklist** · p1 · security · M · M5 Phones & Platform Parity
   - [SN-SEC-015](security.md#sn-sec-015) **Define and enforce the WebView hardening policy for mobile shells** · p1 · security · M · M4 Identity, Sync & Privacy
   - [SN-SEC-016](security.md#sn-sec-016) **Enforce a strict nonce CSP with Trusted Types and DOMPurify on the web** · p0 · security · L · M2 Library & Documents
     - [SN-SEC-017](security.md#sn-sec-017) **Add COOP/COEP isolation, SRI and hardening headers on the web** · p1 · security · M · M2 Library & Documents
@@ -286,7 +286,7 @@ The AndroidManifest is the app's public API to every other app on the device, an
 
 #### Scope
 **In:** an audit of the merged manifest with an explicit `android:exported` on every component and a documented exported allow-list asserted by a test; a FileProvider with a path allow-list confined to a share-staging directory and per-URI grants; `FLAG_IMMUTABLE` on every PendingIntent; guards against intent redirection (never launching a nested Intent/Parcelable received from outside); type/size/schema validation of every incoming Intent extra; a Semgrep rule plus a manifest snapshot test wired into CI.
-**Out:** App Link domain verification and the deep-link routing UX ([SN-AND-025](notifications.md#sn-and-025)); the SAF permission model ([SN-AND-018](storage.md#sn-and-018)); Play Integrity attestation ([SN-AND-020](security.md#sn-and-020)); the cross-platform sharing semantics (SN-SHR-001).
+**Out:** App Link domain verification and the deep-link routing UX ([SN-AND-025](notifications.md#sn-and-025)); the SAF permission model ([SN-AND-018](storage.md#sn-and-018)); Play Integrity attestation ([SN-AND-020](security.md#sn-and-020)); the cross-platform sharing semantics (SN-SHR-001); and the security-engineering conformance/verification tracking (mapping these controls into the secure-coding checklist §5 and controls-matrix, MASTG review), owned by [SN-SEC-014](security.md#sn-sec-014). This issue is the Android-platform owner of the concrete manifest/component/FileProvider/PendingIntent/intent-gate implementation.
 
 #### Acceptance criteria
 - [ ] Every component in the **merged** manifest (app plus all `plugins/*/android` manifests) declares `android:exported` explicitly; the exported set equals a documented allow-list (launcher activity, App Links activity, ChromeOS CREATE_NOTE activity, widget provider, share/VIEW receiver) and a snapshot test fails CI when a new exported component appears without an allow-list entry carrying a justification comment.
@@ -2077,7 +2077,7 @@ Process, not code: (1) run the M2 revision against the merged M2 work and confir
 | Size | M |
 | SDLC | maintenance |
 | Parent | [SN-CI-001](ci-cd.md#sn-ci-001) |
-| Depends on | [SN-CI-004](ci-cd.md#sn-ci-004), [SN-CI-010](ci-cd.md#sn-ci-010) |
+| Depends on | [SN-CI-010](ci-cd.md#sn-ci-010) |
 | Security controls | `SSDF-RV.1`, `OWASP-A06`, `CWE-1104`, `CWE-1395` |
 | Extra labels | agent-ready, sec: supply-chain |
 
@@ -2097,7 +2097,7 @@ Dependabot and OSV-Scanner watch what our manifests declare — pub, npm, Gradle
 - [ ] The inventory is reviewed as part of the periodic re-verification cadence ([SN-GOPS-017](security.md#sn-gops-017)).
 
 #### Technical notes
-Resolve real versions at build time where possible (a build step that records the PDFium and SQLite build strings from the linked artefacts beats trusting a README), and feed them into the SBOM so inventory and SBOM agree. Advisory sources differ per component: NVD/CVE feeds, GitHub Security Advisories, project mailing lists and Chromium release notes for PDFium. Where no machine feed exists, record a manual check in the periodic cadence rather than pretending it is automated.
+Resolve real versions at build time where possible (a build step that records the PDFium and SQLite build strings from the linked artefacts beats trusting a README), and feed them into the SBOM so inventory and SBOM agree. Advisory sources differ per component: NVD/CVE feeds, GitHub Security Advisories, project mailing lists and Chromium release notes for PDFium. Where no machine feed exists, record a manual check in the periodic cadence rather than pretending it is automated. The inventory + advisory feeds work without the SBOM; the [SN-CI-004](ci-cd.md#sn-ci-004) (M8) SBOM cross-check is added when it lands — not a scheduling blocker.
 
 #### Security & privacy
 This is the maintenance half of the parser-hardening story: [SN-SEC-004](security.md#sn-sec-004)-[SN-SEC-010](security.md#sn-sec-010) harden and fuzz our ingest paths, but a heap overflow in the upstream decoder is fixed only by updating it (OWASP-A06, CWE-1104, CWE-1395; MASVS-CODE-2 dependency currency). A shipped-but-untracked binary is also an SBOM accuracy failure, which undermines the SLSA provenance story ([SN-CI-004](ci-cd.md#sn-ci-004)). No user data is involved; advisory handling follows coordinated disclosure — do not publish exploit detail in a public tracking issue before the fix ships.
@@ -2109,7 +2109,7 @@ No end-user UI. Maintainer surface: the inventory table (sorted by risk: parsers
 Fixtures: an SBOM containing an untracked binary component fails the CI check; a fixture advisory for a version below the pinned one opens an issue, one above does not. Manual: run the watcher against the current inventory and confirm the shipped PDFium and SQLite versions are the real ones (compare with the runtime version strings queried on device). Regression: after a bump, the named tests (PDF goldens, fuzz corpus, audio round-trip) must run and pass.
 
 #### Dependencies
-[SN-CI-004](ci-cd.md#sn-ci-004) (SBOM), [SN-CI-010](ci-cd.md#sn-ci-010) (existing scanners this complements).
+[SN-CI-010](ci-cd.md#sn-ci-010) (existing scanners this complements). The inventory (`native-components.md`) and advisory-watching job ship in M7; the SBOM cross-check adopts the release CycloneDX SBOM [SN-CI-004](ci-cd.md#sn-ci-004) (M8) when it lands, so SN-CI-004 is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -2542,7 +2542,7 @@ Manual/assisted MASTG procedures on iOS + Android reference devices; automated p
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-SEC-001](security.md#sn-sec-001) |
-| Depends on | [SN-CORE-010](sync.md#sn-core-010), [SN-SYNC-013](sync.md#sn-sync-013), [SN-COL-004](collaboration.md#sn-col-004) |
+| Depends on | [SN-CORE-010](sync.md#sn-core-010), [SN-SYNC-013](sync.md#sn-sync-013) |
 | Security controls | `MASVS-CODE-4`, `TM-T-06`, `TM-T-02`, `TM-E-04`, `TM-D-01`, `OWASP-A08`, `ASVS-V2`, `CWE-20`, `CWE-502`, `CWE-400` |
 | Extra labels | sec: threat-model, agent-ready |
 
@@ -2561,7 +2561,7 @@ Manual/assisted MASTG procedures on iOS + Android reference devices; automated p
 - [ ] Rejections are counted and surfaced to the abuse-signal path without leaking content.
 
 #### Technical notes
-Add the validator in `sane_core`/`sane_sync` between decode and reduce; drive from the op-type registry ([SN-CORE-010](sync.md#sn-core-010)) and role model ([SN-SHR-015](sharing-export.md#sn-shr-015)). Fuzz with the format corpus ([SN-CORE-026](storage.md#sn-core-026)/[SN-SEC-010](security.md#sn-sec-010)). Reference threat-model DFD-A, TM-T-06, TM-E-04, MASVS-CODE-4.
+Add the validator in `sane_core`/`sane_sync` between decode and reduce; drive from the op-type registry ([SN-CORE-010](sync.md#sn-core-010)) and role model ([SN-SHR-015](sharing-export.md#sn-shr-015)). Fuzz with the format corpus ([SN-CORE-026](storage.md#sn-core-026)/[SN-SEC-010](security.md#sn-sec-010)). Reference threat-model DFD-A, TM-T-06, TM-E-04, MASVS-CODE-4. The M4 layer validates ops decoded from sync; the collab-peer role check integrates with [SN-COL-004](collaboration.md#sn-col-004)/[SN-SHR-015](sharing-export.md#sn-shr-015) when collaboration lands in M6.
 
 #### Security & privacy
 Threats: TM-T-06 (crafted payload mutates unrelated state), TM-T-02 (rollback/replay adjacency), TM-E-04 (memory-corruption via decoder), TM-D-01 (resource exhaustion). Controls: MASVS-CODE-4 (no unsafe deserialization), ASVS V2, 2025 A08 Integrity Failures, CWE-502/20/400.
@@ -2573,7 +2573,7 @@ A rejected op is invisible to the honest user; a persistently hostile peer surfa
 Unit: op-schema + bounds validators with malformed fixtures. Property/fuzz: feed the fuzz corpus of decoded ops asserting no crash, no partial apply, bounded memory. Integration: a malicious-peer harness in the collab security suite ([SN-COL-022](collaboration.md#sn-col-022)).
 
 #### Dependencies
-[SN-CORE-010](sync.md#sn-core-010), [SN-SYNC-013](sync.md#sn-sync-013), [SN-COL-004](collaboration.md#sn-col-004).
+[SN-CORE-010](sync.md#sn-core-010) (op-type registry), [SN-SYNC-013](sync.md#sn-sync-013) (transport/decrypt). The sync-op validation ships in M4; the collaboration-peer role-authorization check integrates with [SN-COL-004](collaboration.md#sn-col-004)/[SN-SHR-015](sharing-export.md#sn-shr-015) when collaboration lands in M6, so SN-COL-004 is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, fuzz, security scans).
@@ -2656,7 +2656,7 @@ Process validation: run the template on one real feature and confirm the threat 
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-SEC-001](security.md#sn-sec-001) |
-| Depends on | [SN-CRY-007](security.md#sn-cry-007), [SN-SEC-004](security.md#sn-sec-004) |
+| Depends on | [SN-SEC-004](security.md#sn-sec-004) |
 | Security controls | `MASVS-STORAGE-1`, `TM-I-03`, `TM-I-10`, `OWASP-A04`, `CWE-312`, `CWE-459`, `CWE-377` |
 | Extra labels | sec: masvs, agent-ready |
 
@@ -2675,7 +2675,7 @@ Several pipelines create intermediate artefacts that are copies of note content 
 - [ ] controls-matrix STORAGE-1 lists the transient-artefact handling.
 
 #### Technical notes
-Implement `SecureScratch` in `sane_core`/`sane_secure_store`; prefer streaming into the encrypted store over temp files where feasible. Coordinate deletion with the fail-closed discipline ([SN-GSEC-005](security.md#sn-gsec-005)). Reference threat-model TM-I-03/10 and checklist §9.
+Implement `SecureScratch` in `sane_core`/`sane_secure_store`; prefer streaming into the encrypted store over temp files where feasible. Coordinate deletion with the fail-closed discipline ([SN-GSEC-005](security.md#sn-gsec-005)). Reference threat-model TM-I-03/10 and checklist §9. In M3 `SecureScratch` uses backup-excluded paths + secure-delete; per-blob-key encryption ([SN-CRY-007](security.md#sn-cry-007)) is layered in when crypto lands in M4 — not a scheduling blocker.
 
 #### Security & privacy
 Threats: TM-I-03 (local FS read of plaintext residue), TM-I-10 (backup exfiltration). Controls: MASVS-STORAGE-1, 2025 A04, CWE-312/377/459. Closes the "encrypted at rest but plaintext in /tmp" gap.
@@ -2687,7 +2687,7 @@ No user-facing change; capture/scan/export behave identically, minus the residue
 Unit: SecureScratch write/consume/delete + error-path cleanup. Integration: run audio/scan/OCR/export flows, then assert no plaintext content in temp/cache dirs and none in a backup dump (MASTG backup review). Fuzz: interrupted operations leave no residue.
 
 #### Dependencies
-[SN-CRY-007](security.md#sn-cry-007), [SN-SEC-004](security.md#sn-sec-004).
+[SN-SEC-004](security.md#sn-sec-004) (input-validation gate). Transient artefacts are written to backup-excluded paths and securely deleted in M3; at-rest encryption of scratch files adopts the `sane_crypto` per-blob-key interface ([SN-CRY-007](security.md#sn-cry-007)) when crypto lands in M4, so SN-CRY-007 is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans).
@@ -2841,7 +2841,7 @@ None visible beyond a faster, network-independent start. The Settings → About 
 | Size | M |
 | SDLC | design |
 | Parent | [SN-SEC-001](security.md#sn-sec-001) |
-| Depends on | [SN-COL-007](collaboration.md#sn-col-007), [SN-WEB-017](ci-cd.md#sn-web-017), [SN-CI-018](ci-cd.md#sn-ci-018) |
+| Depends on | [SN-COL-007](collaboration.md#sn-col-007), [SN-CI-018](ci-cd.md#sn-ci-018) |
 | Security controls | `OWASP-A01`, `OWASP-A05`, `CWE-346`, `CWE-352`, `ASVS-V13` |
 | Extra labels | agent-ready, sec: asvs |
 
@@ -2868,7 +2868,7 @@ The web client is the only surface where our two services — the ciphertext-onl
 
 #### Technical notes
 
-Implement as one shared middleware in `services/` so both services cannot drift. Validate `Origin` on the upgrade request explicitly — do not rely on the browser. Keep the allow-list in the service config emitted by the same source as the app-origin constant used by [SN-WEB-017](ci-cd.md#sn-web-017) so a domain change updates both. Preview deploys get their own short-lived origins; the check must accept a pattern, not a wildcard suffix that a look-alike domain could satisfy (`app.sane.example.evil.com` must fail). Pair with the DAST job ([SN-CI-012](ci-cd.md#sn-ci-012)) so ZAP exercises the cross-origin cases.
+Implement as one shared middleware in `services/` so both services cannot drift. Validate `Origin` on the upgrade request explicitly — do not rely on the browser. Keep the allow-list in the service config emitted by the same source as the app-origin constant used by [SN-WEB-017](ci-cd.md#sn-web-017) so a domain change updates both. Preview deploys get their own short-lived origins; the check must accept a pattern, not a wildcard suffix that a look-alike domain could satisfy (`app.sane.example.evil.com` must fail). Pair with the DAST job ([SN-CI-012](ci-cd.md#sn-ci-012)) so ZAP exercises the cross-origin cases. The allow-list draws the app-origin constant from shared config also used by [SN-WEB-017](ci-cd.md#sn-web-017) (M8); the constant lives in config, so SN-WEB-017 is not a scheduling dependency.
 
 #### Security & privacy
 
@@ -2886,8 +2886,7 @@ No user-facing surface. Client-visible effects are error semantics: a rejected c
 - CI: [SN-CI-018](ci-cd.md#sn-ci-018) pipeline gate; [SN-CI-012](ci-cd.md#sn-ci-012) ZAP active scan cases for CORS/WS.
 
 #### Dependencies
-
-[SN-COL-007](collaboration.md#sn-col-007) (relay), [SN-WEB-017](ci-cd.md#sn-web-017) (app origin constant), [SN-CI-018](ci-cd.md#sn-ci-018) (services pipeline). Verified by [SN-SEC-032](security.md#sn-sec-032) and [SN-CI-012](ci-cd.md#sn-ci-012).
+[SN-COL-007](collaboration.md#sn-col-007) (relay), [SN-CI-018](ci-cd.md#sn-ci-018) (services pipeline). The app-origin constant is shared with [SN-WEB-017](ci-cd.md#sn-web-017) via the same source config (so a domain change updates both); it is not a scheduling blocker. Verified by [SN-SEC-032](security.md#sn-sec-032) and [SN-CI-012](ci-cd.md#sn-ci-012).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -2913,7 +2912,7 @@ No user-facing surface. Client-visible effects are error semantics: a rejected c
 | Size | M |
 | SDLC | verification |
 | Parent | [SN-SEC-001](security.md#sn-sec-001) |
-| Depends on | [SN-WEB-014](security.md#sn-web-014), [SN-WEB-015](security.md#sn-web-015), [SN-TEL-003](telemetry.md#sn-tel-003) |
+| Depends on | [SN-WEB-014](security.md#sn-web-014), [SN-WEB-015](security.md#sn-web-015) |
 | Security controls | `OWASP-A09`, `CWE-532`, `MASVS-PRIVACY-1`, `ASVS-V16` |
 | Extra labels | agent-ready |
 
@@ -2939,7 +2938,7 @@ No user-facing surface. Client-visible effects are error semantics: a rejected c
 
 #### Technical notes
 
-Keep the sink boring: a single endpoint accepting `application/reports+json` and `application/csp-report`, writing redacted records to short-retention storage, deployed with the rest of `services/` under its DevSecOps pipeline ([SN-CI-018](ci-cd.md#sn-ci-018)). Redaction runs server-side because the browser composes the report, not us. Expect noise: browser extensions and injected content generate large volumes of irrelevant violations — the runbook must say so, and the sampling defaults assume it. Reference `docs/security/secure-coding-checklist.md` §6.2, `research/web-stylus-and-pwa-capabilities.md` §10 and ADR-0010's security-impact section.
+Keep the sink boring: a single endpoint accepting `application/reports+json` and `application/csp-report`, writing redacted records to short-retention storage, deployed with the rest of `services/` under its DevSecOps pipeline ([SN-CI-018](ci-cd.md#sn-ci-018)). Redaction runs server-side because the browser composes the report, not us. Expect noise: browser extensions and injected content generate large volumes of irrelevant violations — the runbook must say so, and the sampling defaults assume it. Reference `docs/security/secure-coding-checklist.md` §6.2, `research/web-stylus-and-pwa-capabilities.md` §10 and ADR-0010's security-impact section. The report redactor ships its own patterns in M2 and aligns with [SN-TEL-003](telemetry.md#sn-tel-003) (M4) when it lands — not blocked on it.
 
 #### Security & privacy
 
@@ -2957,8 +2956,7 @@ Invisible to users. One line in the privacy dashboard "What leaves this device" 
 - Manual: deliberate violation (inline script injected in a test build) appears in the sink, redacted, within one minute; recorded in the rollout summary.
 
 #### Dependencies
-
-[SN-WEB-014](security.md#sn-web-014) (CSP/Trusted Types), [SN-WEB-015](security.md#sn-web-015) (COOP/COEP rollout), [SN-WEB-017](ci-cd.md#sn-web-017) (origin + logging policy), [SN-TEL-003](telemetry.md#sn-tel-003) (redaction patterns to reuse). Reviewed with [SN-PRV-009](privacy.md#sn-prv-009).
+[SN-WEB-014](security.md#sn-web-014) (CSP/Trusted Types), [SN-WEB-015](security.md#sn-web-015) (COOP/COEP rollout). The first-party report sink lives on the app origin ([SN-WEB-017](ci-cd.md#sn-web-017)). Server-side redaction ships here and later aligns with the shared redaction patterns from [SN-TEL-003](telemetry.md#sn-tel-003) (M4), so SN-TEL-003 is not a scheduling blocker. Reviewed with [SN-PRV-009](privacy.md#sn-prv-009).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -2975,7 +2973,7 @@ Invisible to users. One line in the privacy dashboard "What leaves this device" 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #321 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -3196,7 +3194,7 @@ Spans M0–M8; children carry their own `depends_on`. Cross-epic: [SN-CRY-001](s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #430 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -3253,7 +3251,7 @@ None.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #431 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -3309,7 +3307,7 @@ Manual: open a throwaway PR touching each CODEOWNERS path and confirm the requir
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #432 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -3707,7 +3705,7 @@ The harness is the test. Self-test: a deliberately vulnerable stub decoder must 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #433 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -3873,51 +3871,51 @@ Confirm sheet shows the destination host ("Open example.com?") for links inside 
 
 <a id="sn-sec-014"></a>
 
-**Harden Android exported components, intents and providers**
+**Verify Android IPC hardening against the secure-coding checklist**
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #434 |
 | Type | security |
 | Priority | p1 |
-| Milestone | M4 Identity, Sync & Privacy |
+| Milestone | M5 Phones & Platform Parity |
 | Platforms | android-tablet, android-phone |
 | Areas | security |
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-SEC-001](security.md#sn-sec-001) |
-| Depends on | — |
+| Depends on | [SN-AND-029](security.md#sn-and-029), [SN-SEC-004](security.md#sn-sec-004) |
 | Security controls | `MASVS-PLATFORM-1`, `OWASP-A01`, `OWASP-A05`, `CWE-926`, `CWE-927`, `CWE-200` |
 | Extra labels | agent-ready |
 
 #### Context
-A malicious app on the same device (threat-model TA5) can invoke an exported Activity/Service/Provider or hijack an implicit intent to escalate privilege or read app data (TM-E-02). The secure-coding checklist §5 mandates `exported=false` by default, immutable PendingIntents, per-URI FileProvider grants, and validation of every incoming intent extra. This issue audits and hardens the Android manifest and IPC surface so only what must be exported is, and every inter-app entry point validates its caller and inputs (MASVS-PLATFORM-1).
+A malicious app on the same device (threat-model TA5, TM-E-02) can invoke an exported component or hijack an implicit intent. The concrete Android hardening - the merged-manifest exported allow-list, exported=false defaults, immutable PendingIntents, a confined FileProvider with per-URI grants, and the incoming-intent validation chokepoint - is owned by the Android platform area in [SN-AND-029](security.md#sn-and-029). This issue is the security-engineering counterpart: it tracks that Android IPC surface against the secure-coding checklist section 5 and the controls-matrix, ensures the security CI gates are enforced, and ties the work to its sibling hardening issues, so the security area can assert the guarantee at audit (M7) rather than argue it in a PR.
 
 #### Scope
-**In:** set `android:exported=false` on every component that does not need to be reachable; permission-guard the ones that must be exported; make all PendingIntents explicit-component + `FLAG_IMMUTABLE`; protect any `ContentProvider`/`FileProvider` with per-URI grants (`grantUriPermissions` + `FLAG_GRANT_READ_URI_PERMISSION`), never an app-wide readable provider; validate action/data/extras on every incoming intent; ensure the share-target intent filter validates payloads via InputGuard [SN-SEC-004](security.md#sn-sec-004).
-**Out:** the deep-link/App-Link filters ([SN-SEC-011](security.md#sn-sec-011), [SN-SEC-012](security.md#sn-sec-012)); iOS URL handling; WebView ([SN-SEC-015](security.md#sn-sec-015)).
+**In:** mapping the Android exported-component/PendingIntent/FileProvider/intent-validation controls implemented by [SN-AND-029](security.md#sn-and-029) into secure-coding-checklist section 5 and docs/security/controls-matrix.md (MASVS-PLATFORM-1, CWE-926/927/200); confirming the mobsfscan + Semgrep exported/PendingIntent gates are enforced as security-area required checks ([SN-CI-001](ci-cd.md#sn-ci-001)); cross-referencing the sibling IPC-surface hardening (deep links [SN-SEC-011](security.md#sn-sec-011)/[SN-SEC-012](security.md#sn-sec-012), WebView [SN-SEC-015](security.md#sn-sec-015), share-payload InputGuard [SN-SEC-004](security.md#sn-sec-004)); and feeding the MASTG exported-component review ([SN-SEC-030](security.md#sn-sec-030)).
+**Out:** the concrete Android manifest/component/FileProvider/PendingIntent/intent-gate implementation and its tests - owned by [SN-AND-029](security.md#sn-and-029), which this issue verifies and tracks; the deep-link/App-Link filters ([SN-SEC-011](security.md#sn-sec-011), [SN-SEC-012](security.md#sn-sec-012)); iOS URL handling; WebView ([SN-SEC-015](security.md#sn-sec-015)).
 
 #### Acceptance criteria
-- [ ] Every Android component is `exported=false` unless a documented reason requires export; exported ones are permission-guarded.
-- [ ] All PendingIntents are `FLAG_IMMUTABLE` with an explicit component (mobsfscan-clean for mutable-PendingIntent).
-- [ ] The FileProvider exposes only per-URI-granted files; a sibling app cannot read arbitrary app files (abuse-test proven).
-- [ ] Every incoming intent's action/data/extras are validated; a malformed extra is rejected, never crashes the host.
-- [ ] Share-target payloads pass through InputGuard before use.
+- [ ] Every Android IPC control from [SN-AND-029](security.md#sn-and-029) (exported allow-list, immutable PendingIntents, confined FileProvider, incoming-intent validation) is mapped to a checklist section 5 item and a controls-matrix row with its MASVS/CWE id.
+- [ ] The mobsfscan and Semgrep gates covering exported components and PendingIntent mutability are enforced as required checks in CI ([SN-CI-001](ci-cd.md#sn-ci-001)); a regression flips a build red.
+- [ ] The controls-matrix rows for the Android IPC surface are marked Implemented only when [SN-AND-029](security.md#sn-and-029) lands and its tests pass.
+- [ ] The sibling IPC hardening issues (deep links, WebView, share-payload InputGuard) are cross-referenced so no exported entry point is unaccounted for.
+- [ ] The MASTG exported-component review ([SN-SEC-030](security.md#sn-sec-030)) is scheduled with this surface as an input.
 
 #### Technical notes
-`app/android/app/src/main/AndroidManifest.xml` + Kotlin plugin glue (docs/adr/0012-native-plugin-strategy.md). Follow secure-coding checklist §5 and §9.3. mobsfscan enforces exported/PendingIntent rules ([SN-CI-001](ci-cd.md#sn-ci-001)). Threats TM-E-02, TM-S-04. Reference docs/platform/android.md.
+This is a security-engineering verification/tracking issue, not a second implementation. The manifest/IPC work lives in [SN-AND-029](security.md#sn-and-029) (app/android/app/src/main/AndroidManifest.xml, the intent-gate chokepoint, the Semgrep rule). Here, update docs/security/controls-matrix.md and secure-coding-checklist section 5, and confirm the DevSecOps workflow ([SN-CI-001](ci-cd.md#sn-ci-001)) enforces the mobsfscan/Semgrep gates. Threats TM-E-02, TM-S-04. Reference docs/platform/android.md section 8. Scheduled in M5 alongside the Android IPC hardening implementation it verifies ([SN-AND-029](security.md#sn-and-029)); this is a verification/tracking issue and cannot precede that implementation.
 
 #### Security & privacy
-Threats: TM-E-02 (exported component / intent redirection). Controls: MASVS-PLATFORM-1, OWASP-A01/A05, CWE-926 (improper export of Android components), CWE-927 (exposed IPC), CWE-200 (info exposure). No new egress; reduces the local IPC attack surface.
+This IS part of the security verification for the local IPC attack surface. Threats: TM-E-02 (exported component / intent redirection). Controls verified (as implemented by [SN-AND-029](security.md#sn-and-029)): MASVS-PLATFORM-1, OWASP-A01/A05, CWE-926 (improper export), CWE-927 (exposed IPC), CWE-200 (info exposure). No new egress; no production behaviour change in this issue.
 
 #### UX notes
-None beyond baseline (platform config). Baseline: share-into flows still work for legitimate apps; a rejected malicious intent shows nothing to the attacker (silent safe-fail), a user-safe error only to the real user.
+None beyond baseline (verification/tracking issue, no user surface). The user-visible rejection behaviour for a malicious intent is owned and implemented by [SN-AND-029](security.md#sn-and-029).
 
 #### Test plan
-`app/test/security/android_ipc_test.dart` + instrumented test: attempt to invoke each component from a test attacker package; assert rejection; FileProvider arbitrary-read attempt fails. mobsfscan gate green. MASTG exported-component review in [SN-SEC-030](security.md#sn-sec-030).
+No new production code. Confirm [SN-AND-029](security.md#sn-and-029)'s security tests (manifest exported allow-list, intent-gate, PendingIntent flags, FileProvider traversal) run in CI as required checks and that the mobsfscan/Semgrep gates are green; record the controls-matrix/checklist mapping in the PR. MASTG review in [SN-SEC-030](security.md#sn-sec-030).
 
 #### Dependencies
-[SN-SEC-004](security.md#sn-sec-004) (share payload validation).
+[SN-AND-029](security.md#sn-and-029) (Android IPC hardening implementation), [SN-SEC-004](security.md#sn-sec-004) (share-payload InputGuard).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -5251,7 +5249,7 @@ No visible chrome; the user-visible requirement is that nothing breaks — the E
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-WEB-001](compat.md#sn-web-001) |
-| Depends on | [SN-WEB-002](compat.md#sn-web-002), [SN-WEB-017](ci-cd.md#sn-web-017) |
+| Depends on | [SN-WEB-002](compat.md#sn-web-002) |
 | Security controls | `ASVS-V3`, `MASVS-PLATFORM-2`, `CWE-1021`, `CWE-693`, `OWASP-A05` |
 | Extra labels | agent-ready |
 
@@ -5272,7 +5270,7 @@ Cross-origin isolation (`Cross-Origin-Opener-Policy: same-origin` + `Cross-Origi
 - [ ] No functional regression in the service worker, OPFS Worker or file pickers under isolation.
 
 #### Technical notes
-Headers are applied at the edge ([SN-WEB-017](ci-cd.md#sn-web-017)); keep a local dev server with identical headers under `tools/` so developers reproduce production exactly. COOP breaks `window.opener` communication, which is the usual OAuth popup mechanism — prefer the redirect flow, or use `COOP: same-origin-allow-popups` **only** if measurement proves the redirect flow unacceptable, and record that trade-off in ADR-0010 (it weakens the control). `credentialless` COEP removes the CORP requirement for no-credential subresources and is the pragmatic option if a third-party asset cannot be self-hosted; prefer self-hosting first. Add a startup capability probe next to the renderer probe from [SN-WEB-002](compat.md#sn-web-002). References: `docs/platform/web.md` §9, `docs/security/secure-coding-checklist.md` §6.2.
+Headers are applied at the edge ([SN-WEB-017](ci-cd.md#sn-web-017)); keep a local dev server with identical headers under `tools/` so developers reproduce production exactly. COOP breaks `window.opener` communication, which is the usual OAuth popup mechanism — prefer the redirect flow, or use `COOP: same-origin-allow-popups` **only** if measurement proves the redirect flow unacceptable, and record that trade-off in ADR-0010 (it weakens the control). `credentialless` COEP removes the CORP requirement for no-credential subresources and is the pragmatic option if a third-party asset cannot be self-hosted; prefer self-hosting first. Add a startup capability probe next to the renderer probe from [SN-WEB-002](compat.md#sn-web-002). References: `docs/platform/web.md` §9, `docs/security/secure-coding-checklist.md` §6.2. Headers are exercised in M1 against a local dev server with identical headers; the production edge application is [SN-WEB-017](ci-cd.md#sn-web-017) (M8) — not a scheduling blocker.
 
 #### Security & privacy
 Threats: cross-window scripting and opener-based attacks (CWE-1021, ASVS-V3); Spectre-class cross-origin data leakage that isolation exists to mitigate (CWE-693); third-party subresources silently becoming a supply-chain and tracking surface (OWASP-A05, MASVS-PRIVACY-4). Controls: COOP severs opener access; COEP forces explicit opt-in for every embedded resource; the audit forces us to **self-host** assets, which also removes third-party request beacons and satisfies the no-third-party-analytics rule (`PRD-PRIV-007`); the isolation probe logs two booleans only (CWE-532). Document the final header set in the controls matrix as an ASVS 5.0 L2 control.
@@ -5287,7 +5285,7 @@ No user-visible chrome. Two indirect UX obligations: (1) if isolation is unavail
 - Manual: Report-Only run on staging with report review; Google/Microsoft/Apple sign-in under enforced headers; Safari behaviour (isolation present but skwasm still absent).
 
 #### Dependencies
-[SN-WEB-002](compat.md#sn-web-002), [SN-WEB-017](ci-cd.md#sn-web-017).
+[SN-WEB-002](compat.md#sn-web-002). COOP/COEP headers are defined here and applied at the edge by [SN-WEB-017](ci-cd.md#sn-web-017) (production hosting, M8); a local dev server with identical headers (under `tools/`) is used until then, so SN-WEB-017 is not a scheduling blocker.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)

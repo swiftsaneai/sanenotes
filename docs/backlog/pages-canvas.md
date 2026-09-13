@@ -307,7 +307,7 @@ SN-CORE-002 (document model entities), SN-CORE-003 (CRDT), SN-CORE-004 (persiste
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #396 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -365,7 +365,7 @@ SN-CORE-002 (document model entities), SN-CORE-003 (CRDT semantics: add-wins set
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #397 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -423,7 +423,7 @@ SN-PG-002 (Page model), SN-DS-002 (tokens as ThemeExtension for 17 looks).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #398 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -481,7 +481,7 @@ SN-PG-003 (paged geometry + spacing), SN-DS-002 (tokens/looks).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #399 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -539,7 +539,7 @@ SN-PG-002 (Page model), SN-ED-002 (editor canvas widget & tool state machine).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #400 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -596,7 +596,7 @@ SN-PG-005 (viewport controller).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #401 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -654,7 +654,7 @@ SN-PG-005 (viewport controller).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #402 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -712,7 +712,7 @@ SN-PG-002 (Page model / order), SN-ED-002 (editor canvas widget & stroke state).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #403 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -769,7 +769,7 @@ SN-PG-002 (Page model).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #404 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -827,7 +827,7 @@ SN-PG-002 (Page model), SN-CORE-004 (SQLite persistence + blob/content-addressed
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #405 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -885,7 +885,7 @@ SN-PG-010 (thumbnails), SN-PG-008 (navigation/current page), SN-PG-012 (add page
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #406 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -942,7 +942,7 @@ SN-PG-002 (Page model), SN-PG-003 (paged geometry/size).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #407 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -999,7 +999,7 @@ SN-PG-011 (rail for drag), SN-CORE-003 (CRDT tombstone/movable-list).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #408 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1057,7 +1057,7 @@ SN-PG-002 (Page model), SN-CORE-003 (movable-tree), SN-LIB-002 (library home for
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #409 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1118,7 +1118,7 @@ SN-PG-003 (sizes), SN-PG-004 (fill/tint rendering), SN-TPL-001 (templates), SN-D
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #410 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1176,7 +1176,7 @@ SN-PG-002 (Page model + freeform cap constant), SN-PG-005 (pan/zoom).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #411 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1234,7 +1234,7 @@ SN-PG-002 (Page model, pdfRef), SN-PDF-002 (PDF render pipeline).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #412 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1292,7 +1292,7 @@ SN-PG-003 (paged geometry), SN-PG-011 (rail/current-page).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #413 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M3 Audio & Recognition |
@@ -1350,7 +1350,7 @@ SN-PG-016 (freeform surface), SN-PG-003 (paged sizes).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #414 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1359,7 +1359,7 @@ SN-PG-016 (freeform surface), SN-PG-003 (paged sizes).
 | Size | M |
 | SDLC | implementation |
 | Parent | [SN-PG-001](pages-canvas.md#sn-pg-001) |
-| Depends on | [SN-PG-003](pages-canvas.md#sn-pg-003), [SN-SHR-001](sharing-export.md#sn-shr-001) |
+| Depends on | [SN-PG-003](pages-canvas.md#sn-pg-003) |
 | Security controls | `MASVS-STORAGE-1`, `MASVS-PRIVACY-2` |
 | Extra labels | agent-ready |
 
@@ -1379,7 +1379,7 @@ Students print notes and annotated PDFs, so pages must lay out correctly to phys
 - [ ] Layout is generated off the UI isolate and shows progress/cancel for large notebooks (PRD-LB-361).
 
 #### Technical notes
-Generate a printable PDF with `package:pdf` and hand it to `package:printing` (PRD-LB-131); render page rasters/vector via `sane_render` and PDF pages via [SN-PDF-002](pdf.md#sn-pdf-002); flatten marks onto the page for the print variant (distinct from the live-annotations export). Freeform tiling reuses the tile bounds from [SN-PG-016](pages-canvas.md#sn-pg-016). Run generation on a background isolate.
+Generate a printable PDF with `package:pdf` and hand it to `package:printing` (PRD-LB-131); render page rasters/vector via `sane_render` and PDF pages via [SN-PDF-002](pdf.md#sn-pdf-002); flatten marks onto the page for the print variant (distinct from the live-annotations export). Freeform tiling reuses the tile bounds from [SN-PG-016](pages-canvas.md#sn-pg-016). Run generation on a background isolate. Self-contained: the printable PDF is generated here via `package:pdf`/`package:printing`; the SN-SHR-001 sharing/export epic is not a dependency — [SN-SHR-011](sharing-export.md#sn-shr-011) (system print) consumes this layout.
 
 #### Security & privacy
 Print output is a deliberate user action but still note content: include only the selected notebook/pages, never other data (MASVS-PRIVACY-2). Generate off the UI isolate; do not write an unprotected temp file (clean up any spool; app-private) (MASVS-STORAGE-1). No content logged.
@@ -1391,7 +1391,7 @@ Standard platform print sheet via `package:printing`, preceded by an in-app page
 `app/test/pages/print_layout_test.dart` (size/orientation mapping, pagination, page-range, flatten marks, freeform tiling vs fit), `app/test/pages/print_privacy_test.dart` (only selected notebook in the job), `app/integration_test/print_pipeline_test.dart` (package:printing invocation + off-isolate generation).
 
 #### Dependencies
-SN-PG-003 (sizes/orientation), SN-SHR-001 (sharing/export epic).
+[SN-PG-003](pages-canvas.md#sn-pg-003) (sizes/orientation). Print generates its own PDF via `package:pdf`/`package:printing`; it coordinates with — but does not block on — the export area ([SN-SHR-003](sharing-export.md#sn-shr-003) vector PDF, [SN-SHR-011](sharing-export.md#sn-shr-011) system print, both M2), which consume this print layout.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)

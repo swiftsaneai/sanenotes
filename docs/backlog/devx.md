@@ -23,7 +23,7 @@
   - [SN-FND-017](devx.md#sn-fnd-017) **Add the dev bootstrap/doctor script and local-setup guide** · p2 · infra · S · M0 Foundations
     - [SN-FND-018](devx.md#sn-fnd-018) **Add the dev container and Codespaces configuration** · p3 · infra · S · M0 Foundations
   - [SN-FND-019](ci-cd.md#sn-fnd-019) **Add PR automation: auto-labeler, PR-title and branch-name lint** · p2 · infra · S · M0 Foundations
-  - [SN-FND-020](devx.md#sn-fnd-020) **Define the dependency-update policy and Dependabot/Renovate grouping** · p1 · infra · S · M0 Foundations
+  - [SN-FND-020](devx.md#sn-fnd-020) **Pin dependency versions and define sane_* workspace resolution** · p1 · infra · S · M0 Foundations
   - [SN-FND-021](docs.md#sn-fnd-021) **Formalise the ADR process: template, index and CI link check** · p2 · docs · S · M0 Foundations
   - [SN-FND-022](devx.md#sn-fnd-022) **Define versioning and changelog policy (SemVer plus Melos version)** · p2 · docs · S · M0 Foundations
   - [SN-FND-023](docs.md#sn-fnd-023) **Add a LICENSE placeholder and define the SPDX header policy** · p2 · docs · XS · M0 Foundations
@@ -101,7 +101,7 @@ None — this epic is the root of the graph.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #256 |
 | Type | infra |
 | Priority | p0 |
 | Milestone | M0 Foundations |
@@ -158,7 +158,7 @@ None.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #258 |
 | Type | infra |
 | Priority | p0 |
 | Milestone | M0 Foundations |
@@ -215,7 +215,7 @@ SN-FND-002.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #259 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -671,7 +671,7 @@ SN-FND-005.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #260 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -728,7 +728,7 @@ SN-FND-004.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #261 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -838,11 +838,11 @@ SN-FND-017.
 
 <a id="sn-fnd-020"></a>
 
-**Define the dependency-update policy and Dependabot/Renovate grouping**
+**Pin dependency versions and define sane_* workspace resolution**
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #263 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -851,38 +851,38 @@ SN-FND-017.
 | Size | S |
 | SDLC | maintenance |
 | Parent | [SN-FND-001](devx.md#sn-fnd-001) |
-| Depends on | — |
+| Depends on | [SN-CI-011](ci-cd.md#sn-ci-011) |
 | Security controls | `MASVS-CODE-2`, `OWASP-A06`, `OWASP-A08`, `ASVS-V14`, `CWE-1104`, `CWE-1395` |
 | Extra labels | agent-ready, sec: supply-chain |
 
 #### Context
-ADR-0001 and ADR-0003 flag fast-moving dependencies (riverpod v3, go_router v18, google_sign_in v7, file_picker v12) that cause upgrade churn; ADR-0002 warns that one shared lockfile means a risky transitive bump affects everything, so bumps must be **gated behind integration tests and pinned**. The SSDLC maintenance phase sets a weekly Dependabot cadence (`ssdlc-process.md` §2.6). This issue writes the dependency policy and configures grouped, scheduled updates so security patches land promptly while risky majors are gated.
+ADR-0001 and ADR-0003 flag fast-moving dependencies (riverpod v3, go_router v18, google_sign_in v7, file_picker v12) that cause upgrade churn; ADR-0002 warns that one shared lockfile means a risky transitive bump affects everything, so bumps must be pinned and gated behind integration tests. The Dependabot/Renovate update *automation* policy - bot config, grouping, security-update split, cadence, SHA-pin maintenance and reviewer routing - is owned by [SN-CI-011](ci-cd.md#sn-ci-011). This issue owns the complementary developer-authoring side: the exact-version pinning discipline in the pubspecs and the internal sane_* workspace resolution rules that the bot policy then automates.
 
 #### Scope
-**In:** `docs/dev/dependency-policy.md` (pin exact versions, group patch/minor, hold majors behind an integration-test PR, `sane_*` internal deps via path/workspace, weekly cadence, who reviews); extend the existing `.github/dependabot.yml` (or add Renovate) with groups (Flutter deps, dev-deps/codegen, GitHub Actions) and a schedule; a required-checks note so no dependency PR merges without CI green.
-**Out:** OSV-Scanner/`dependency-review`/SBOM (SN-CI-001, SN-CI-004), toolchain SDK pinning ([SN-FND-010](devx.md#sn-fnd-010)), and per-package dependency choices (owned by each area).
+**In:** `docs/dev/dependency-policy.md` covering the pinning discipline (exact pins, no caret for the volatile deps named in ADR-0001), how internal sane_* deps resolve via the workspace (path/melos, never a pinned pub.dev version), and the rule that major-version bumps are held behind an integration-test PR; applying those exact pins across the monorepo pubspecs and configuring sane_* workspace resolution. It references the Dependabot/Renovate automation owned by [SN-CI-011](ci-cd.md#sn-ci-011).
+**Out:** the Dependabot/Renovate configuration, grouping, cadence, security-update split and reviewer routing ([SN-CI-011](ci-cd.md#sn-ci-011), which automates the discipline this issue defines); OSV-Scanner/dependency-review/SBOM (SN-CI-001, SN-CI-004); toolchain SDK pinning ([SN-FND-010](devx.md#sn-fnd-010)); and per-package dependency choices (owned by each area).
 
 #### Acceptance criteria
-- [ ] `docs/dev/dependency-policy.md` states: exact pins, grouping, major-version gating, cadence, and reviewer.
-- [ ] Dependabot/Renovate opens **grouped** update PRs on a weekly schedule for Dart deps, codegen dev-deps, and GitHub Actions.
-- [ ] Major-version bumps are separated from patch/minor so they can be gated behind integration tests.
-- [ ] Every dependency PR is subject to the full CI required checks ([SN-FND-003](ci-cd.md#sn-fnd-003)) before merge.
-- [ ] Internal `sane_*` deps resolve via the workspace, never a pinned pub.dev version.
+- [ ] `docs/dev/dependency-policy.md` states the exact-pin discipline, the sane_* workspace-resolution rule, and the major-version-gating rule, and points to [SN-CI-011](ci-cd.md#sn-ci-011) for the update automation.
+- [ ] The volatile deps named in ADR-0001 are pinned to exact versions (no caret) in the pubspecs.
+- [ ] Internal sane_* deps resolve via the workspace (path/melos), never a pinned pub.dev version - verified by a check.
+- [ ] Major-version bumps are documented as gated behind an integration-test PR before merge.
+- [ ] The doc and the automation policy in [SN-CI-011](ci-cd.md#sn-ci-011) are consistent and cross-reference each other (no conflicting cadence/grouping statements).
 
 #### Technical notes
-Keep pins exact in `pubspec.yaml` (no caret for the volatile ones named in ADR-0001) and let the bot propose bumps. Group to reduce PR noise (Dependabot `groups:`). Pin GitHub Actions by SHA and let the bot bump them (Renovate/Dependabot supports action-SHA updates). Cross-reference OSV-Scanner (SN-CI-001) as the vulnerability gate — this issue is the *cadence/policy*, not the scanner. Note the license-compat check is deferred to [SN-FND-023](docs.md#sn-fnd-023).
+Keep pins exact in `pubspec.yaml` (no caret for the volatile ones named in ADR-0001); let [SN-CI-011](ci-cd.md#sn-ci-011)'s bot propose bumps. Internal packages under `packages/*` and `plugins/*` resolve through the melos/workspace, not pub.dev. This issue is the pinning discipline + workspace resolution, not the bot config - the Dependabot/Renovate groups, schedule and SHA-pin maintenance live in [SN-CI-011](ci-cd.md#sn-ci-011). License-compat is deferred to [SN-FND-023](docs.md#sn-fnd-023); CI vulnerability gating is OSV-Scanner (SN-CI-001).
 
 #### Security & privacy
-Supply-chain core control (OWASP-A06 vulnerable/outdated components, OWASP-A08 integrity, MASVS-CODE-2, ASVS V14; unmaintained/unpinned deps are CWE-1104, stale ones CWE-1395): pinning + scheduled review + CI gating keeps the shared lockfile safe and patched. No secrets. Document that a transitive bump touching `sane_crypto`/`sane_sync` requires CODEOWNERS review (ssdlc-process §1).
+Supply-chain core control (OWASP-A06 vulnerable/outdated components, OWASP-A08 integrity, MASVS-CODE-2, ASVS V14; unpinned deps are CWE-1104, stale ones CWE-1395): exact pins + workspace resolution keep the shared lockfile deterministic and safe, and are the substrate the [SN-CI-011](ci-cd.md#sn-ci-011) cadence patches. No secrets. A transitive bump touching sane_crypto/sane_sync requires CODEOWNERS review (ssdlc-process section 1).
 
 #### UX notes
-Developer-facing. Grouped PRs with clear titles reduce reviewer load; the policy doc is the reference an agent cites when bumping. No end-user UI.
+Developer-facing. The pinning discipline and workspace rules are the reference an agent cites when adding or bumping a dependency; the actual grouped PRs are produced by [SN-CI-011](ci-cd.md#sn-ci-011). No end-user UI.
 
 #### Test plan
-Validate `dependabot.yml`/`renovate.json` parses; simulate a grouped update (or dry-run) and confirm grouping + schedule; assert the policy doc exists and covers the required points. Name file: `docs/dev/dependency-policy.md` (+ config validation in `tools/scripts/test/`).
+Assert the policy doc exists and covers pinning, workspace resolution and major-gating; a check that the volatile deps are exact-pinned and that sane_* deps resolve via the workspace. Name file: `docs/dev/dependency-policy.md` (+ the pin/workspace check in `tools/scripts/test/`).
 
 #### Dependencies
-SN-FND-004.
+[SN-CI-011](ci-cd.md#sn-ci-011) (Dependabot/Renovate update-automation policy), [SN-FND-003](ci-cd.md#sn-fnd-003).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)
@@ -899,7 +899,7 @@ SN-FND-004.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #265 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M0 Foundations |

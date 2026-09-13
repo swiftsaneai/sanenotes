@@ -176,7 +176,7 @@ Typed rich text (TextBlock content, table-cell text) needs a sequence CRDT that 
 
 #### Scope
 **In:** a character sequence CRDT (RGA/Fugue-style causal tree; each char has a stable `opId = Hlc`) with `insert`/`delete` (per-character tombstone); `addMark`/`removeMark` span ops anchored `before` (grows) or `after` (fixed) per `MarkType`, with a mark registry fixing the growth per type (bold/italic → grows; link/comment → fixed); merge = apply all ops in `opId` order, marks commutative, incompatible overlaps resolved LWW-on-opId; `render()` to materialised `PlainSpans` for the editor.
-**Out:** the editor widget/text tool (PRD-ED text group, other area), block structure (headings/lists/tables), and inline-object anchoring (deferred to the editor spike; document-model §11 leans "special character").
+**Out:** the editor widget/text tool (PRD-ED text group, other area), block structure (headings/lists/tables), inline-object anchoring (deferred to the editor spike; document-model §11 leans "special character"), and the text-stack adapter that binds this CRDT to TextBlock.content and materialises editor runs - that consumer/integration work is owned by [SN-TXT-002](text.md#sn-txt-002).
 
 #### Acceptance criteria
 - [ ] Concurrent inserts at the same position interleave deterministically (Fugue-style, minimising the interleaving anomaly) and converge on both replicas.

@@ -93,6 +93,16 @@ for (const it of all) {
   const seen = new Set([it.key]); let cur = it;
   while (cur && cur.parent) { if (seen.has(cur.parent)) { errors.push(`${it.key}: parent cycle`); break; } seen.add(cur.parent); cur = byKey.get(cur.parent); }
 }
+// Schedule sanity: you cannot build something before the thing it depends on exists.
+const msOrder = new Map(milestones.map((t, i) => [t, i]));
+for (const it of all) {
+  for (const d of it.depends_on || []) {
+    const dep = byKey.get(d);
+    if (dep && msOrder.get(dep.milestone) > msOrder.get(it.milestone)) {
+      warnings.push(`${it.key} (${it.milestone}) depends_on ${d} which lands later (${dep.milestone})`);
+    }
+  }
+}
 
 const count = (arr, fn) => arr.reduce((m, x) => { const k = fn(x); (Array.isArray(k) ? k : [k]).forEach(kk => m[kk] = (m[kk] || 0) + 1); return m; }, {});
 const stats = {

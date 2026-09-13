@@ -756,19 +756,19 @@ What's new is a bottom sheet on phones and a centred modal on tablet/web, using 
 | Size | M |
 | SDLC | release |
 | Parent | [SN-DOC-001](docs.md#sn-doc-001) |
-| Depends on | [SN-FND-022](devx.md#sn-fnd-022), [SN-REL-001](release.md#sn-rel-001), [SN-CI-004](ci-cd.md#sn-ci-004) |
+| Depends on | [SN-FND-022](devx.md#sn-fnd-022), [SN-REL-001](release.md#sn-rel-001), [SN-CI-004](ci-cd.md#sn-ci-004), [SN-REL-003](release.md#sn-rel-003) |
 | Security controls | `OWASP-A08`, `CWE-200`, `CWE-78`, `CWE-732`, `SSDF-RV.2`, `SSDF-PS.3`, `ASVS-V1` |
 | Extra labels | agent-ready |
 
 #### Context
-`CLAUDE.md` §5 and `CONTRIBUTING.md` §3 mandate Conventional Commits scoped to the issue key (`feat(sane_ink): add pressure curve editor (SN-INK-012)`), and [SN-FND-022](devx.md#sn-fnd-022) defines the versioning/changelog **policy** (SemVer, `melos version`, signed `v*` tags, a root `CHANGELOG.md`). `docs/security/ssdlc-process.md` §2.5–§2.6 additionally requires release notes that list security-relevant changes and credit reporters per `SECURITY.md`. What is missing is the automation that turns commits into the four artifacts a release actually needs. Hand-written release notes at 2 a.m. are where embargoed vulnerability details leak and where the store blurb silently exceeds its character limit; generating them makes the process auditable and repeatable.
+`CLAUDE.md` §5 and `CONTRIBUTING.md` §3 mandate Conventional Commits scoped to the issue key (`feat(sane_ink): add pressure curve editor (SN-INK-012)`), and [SN-FND-022](devx.md#sn-fnd-022) defines the versioning/changelog **policy** (SemVer, `melos version`, signed `v*` tags, a root `CHANGELOG.md`). `docs/security/ssdlc-process.md` §2.5–§2.6 additionally requires release notes that list security-relevant changes and credit reporters per `SECURITY.md`. The commit->artifacts generator (git-cliff config, CHANGELOG.md, store release notes, the Security section with reporter credit, redaction and commit-lint) is owned by [SN-REL-003](release.md#sn-rel-003) (release engineering). What is missing on the documentation side is publishing the generated changelog on the docs site, curating the user-facing "what's new" entries in the product voice, and feeding the in-app What's new ([SN-DOC-011](docs.md#sn-doc-011)) from the generator's output - this issue owns those, consuming [SN-REL-003](release.md#sn-rel-003).
 
 #### Scope
-**In:** `tools/scripts/release_notes/` (Dart or Node 22, matching the toolchain the release workflow already uses) that, given two refs, produces: (1) a root `CHANGELOG.md` section grouped by change type with breaking changes first; (2) per-package `CHANGELOG.md` entries through `melos version`; (3) a store "what's new" blurb capped at 500 characters (Play) with the longer App Store variant; (4) a **Security** section listing published advisories with reporter credit; (5) `app/assets/whatsnew/<version>.json` consumed by [SN-DOC-011](docs.md#sn-doc-011). Plus a `--dry-run` mode, a `--check` mode for CI, and wiring into the release workflow owned by [SN-REL-001](release.md#sn-rel-001).
-**Out:** signing, notarization, SBOM/provenance ([SN-CI-004](ci-cd.md#sn-ci-004)), store upload and listing metadata ([SN-REL-001](release.md#sn-rel-001)), the versioning policy itself ([SN-FND-022](devx.md#sn-fnd-022)), and the disclosure SLA (`docs/security/ssdlc-process.md` §3).
+**In:** publishing the generated `CHANGELOG.md` on the docs site ([SN-DOC-005](docs.md#sn-doc-005)) with the house style and passing the markdown lint/link checks ([SN-DOC-003](docs.md#sn-doc-003)); curating the user-facing "what's new" entries in the product voice (concrete user outcomes, help-slug links) from the generator's output and validating them against the schema [SN-DOC-011](docs.md#sn-doc-011) consumes (`app/assets/whatsnew/<version>.json`); and defining the per-package `CHANGELOG.md` presentation. The commit->artifacts generation engine itself (grouping, store-blurb capping, Security/embargo handling, `--dry-run`/`--check`, release-workflow wiring) is owned by [SN-REL-003](release.md#sn-rel-003) and produces the artifacts this issue documents/publishes.
+**Out:** the commit->artifacts generator (git-cliff/commit parsing, CHANGELOG.md/store-note/Security-section generation, embargo filtering, commit-lint) - owned by [SN-REL-003](release.md#sn-rel-003), which this issue consumes; signing, notarization, SBOM/provenance ([SN-CI-004](ci-cd.md#sn-ci-004)); store upload and listing metadata ([SN-REL-001](release.md#sn-rel-001)); the versioning policy itself ([SN-FND-022](devx.md#sn-fnd-022)); and the disclosure SLA (`docs/security/ssdlc-process.md` §3).
 
 #### Acceptance criteria
-- [ ] Given the same two refs, the generator produces byte-identical output on repeated runs (no timestamps, stable ordering: breaking → feat → fix → perf → security → other, then by scope, then by commit date).
+- [ ] The generator ([SN-REL-003](release.md#sn-rel-003)) produces byte-identical output on repeated runs; this issue asserts the docs-site publication and the whatsnew entries derived from it are likewise reproducible.
 - [ ] Each entry renders the user-visible summary, a link to the PR, and the `SN-AREA-NNN` key parsed from the subject; commits with no Conventional prefix land under "Other" and produce a warning, never a failed release.
 - [ ] `!`/`BREAKING CHANGE` commits produce a MAJOR section that is impossible to miss (first, with its own heading).
 - [ ] The Play blurb is ≤ 500 characters, truncated on a word boundary with a deterministic ellipsis, and the generator fails if the curated highlight list cannot fit — it never silently drops a highlight.
@@ -793,7 +793,7 @@ Two audiences, two voices. The developer-facing `CHANGELOG.md` follows the house
 - Manual: dry-run against the real repo before the first tagged release; confirm the Security section matches published advisories only.
 
 #### Dependencies
-[SN-FND-022](devx.md#sn-fnd-022), [SN-REL-001](release.md#sn-rel-001), [SN-CI-004](ci-cd.md#sn-ci-004).
+[SN-REL-003](release.md#sn-rel-003) (changelog/release-notes generator), [SN-FND-022](devx.md#sn-fnd-022), [SN-REL-001](release.md#sn-rel-001), [SN-CI-004](ci-cd.md#sn-ci-004).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -938,7 +938,7 @@ Screenshots must look like the product a reader is holding: default look and lig
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #264 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -995,7 +995,7 @@ None.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #266 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M0 Foundations |

@@ -455,7 +455,7 @@ Surface: Editor "Paper & templates" (docs/design/screens-and-flows.md §7.1 tool
 | Size | S |
 | SDLC | implementation |
 | Parent | [SN-TPL-001](templates.md#sn-tpl-001) |
-| Depends on | [SN-TPL-006](templates.md#sn-tpl-006), [SN-BILL-001](billing.md#sn-bill-001) |
+| Depends on | [SN-TPL-006](templates.md#sn-tpl-006) |
 | Security controls | `MASVS-STORAGE-1`, `OWASP-A01` |
 | Extra labels | agent-ready |
 
@@ -474,7 +474,7 @@ Sane Notes must not paywall the paper students use daily. PRD-LB-098 requires th
 - [ ] The gate reads entitlement through the `sane_billing` interface only (no direct store/IAP call from the templates layer).
 
 #### Technical notes
-Add `app/lib/features/templates/template_entitlement.dart` mapping `PaperType`/store item id → tier, consuming `EntitlementRepository` from `sane_billing` ([SN-BILL-001](billing.md#sn-bill-001)). The free set is a constant list per PRD-LB-098 (blank, lined, grid, dot, cornell). Gate at selection, not at render (previews always show). Upgrade overlay is invoked, not built here (design §13 copy: "3 people per notebook · Lined, grid, dotted paper" free vs "every template" Pro). Entitlement is per-account (PRD-LB-351). Implements PRD-LB-098; ties to §14 plan matrix.
+Add `app/lib/features/templates/template_entitlement.dart` mapping `PaperType`/store item id → tier, consuming `EntitlementRepository` from `sane_billing` ([SN-BILL-001](billing.md#sn-bill-001)). The free set is a constant list per PRD-LB-098 (blank, lined, grid, dot, cornell). Gate at selection, not at render (previews always show). Upgrade overlay is invoked, not built here (design §13 copy: "3 people per notebook · Lined, grid, dotted paper" free vs "every template" Pro). Entitlement is per-account (PRD-LB-351). Implements PRD-LB-098; ties to §14 plan matrix. Ships in M2 without SN-BILL-001: the entitlement read is behind the `EntitlementProvider` contract ([SN-BILL-012](billing.md#sn-bill-012)), with a permissive stub (fail-open to Free) until billing lands in M8.
 
 #### Security & privacy
 Authorization boundary: a client-side gate is a UX affordance, not a trust boundary — do not treat the free/Pro flag as a security control for anything sensitive; it only unlocks local paper (OWASP-A01 broken access control is out of scope because no server asset is protected here). Entitlement token is verified in `sane_billing`, not re-implemented here. No plan/PII logging. Fail-open by design. IDs: MASVS-STORAGE-1, OWASP-A01.
@@ -486,7 +486,7 @@ Surface: Templates overlay Pro badges + Upgrade overlay (docs/design/screens-and
 `app/test/features/templates/template_entitlement_test.dart` (free set selectable, Pro badged + gated, Pro plan ungated, fail-open on missing entitlement). Uses a fake `EntitlementRepository`.
 
 #### Dependencies
-[SN-TPL-006](templates.md#sn-tpl-006) (overlay to badge/gate), [SN-BILL-001](billing.md#sn-bill-001) (entitlement source + Upgrade overlay).
+[SN-TPL-006](templates.md#sn-tpl-006) (overlay to badge/gate). The entitlement/Pro state is read through the `sane_billing` EntitlementProvider contract ([SN-BILL-012](billing.md#sn-bill-012)); a permissive stub (fail-open to Free) stands in until billing ships in M8, so SN-BILL-001 is not a scheduling blocker for this milestone.
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
@@ -626,7 +626,7 @@ Surfaces: Templates overlay My Templates section (docs/design/screens-and-flows.
 | Size | L |
 | SDLC | implementation |
 | Parent | [SN-TPL-001](templates.md#sn-tpl-001) |
-| Depends on | [SN-TPL-010](templates.md#sn-tpl-010), [SN-BILL-001](billing.md#sn-bill-001) |
+| Depends on | [SN-TPL-010](templates.md#sn-tpl-010) |
 | Security controls | `MASVS-NETWORK-1`, `MASVS-CODE-2`, `MASVS-CODE-4`, `CWE-494`, `CWE-829`, `CWE-400` |
 | Extra labels | needs-decision, innovation |
 
@@ -645,7 +645,7 @@ PRD-LB-096 (MAY) proposes a **Template / Marketplace store** — paper, covers, 
 - [ ] With no network, the store shows a clear offline state and previously installed packs still work; monetisation follows the build-time flag (default Pro-unlock) — a `// DESIGN-OPEN:` comment links the pending decision.
 
 #### Technical notes
-Define the schema in `docs/` (a new `template-catalogue.md`) and a Dart model in `sane_core`/app. Downloads use TLS 1.2+; verify an Ed25519 signature over the manifest and BLAKE3/SHA-256 per-asset hashes before install (approved crypto only, CLAUDE.md §7.7; via `sane_crypto`). No new egress without an ADR + threat-model row (CLAUDE.md §7.4) — add the store-fetch row. Entitlement/price fields resolve through `sane_billing` ([SN-BILL-001](billing.md#sn-bill-001)); the Pro-unlock-vs-purchase behaviour is a compile-time flag (PRD-LB-096 open decision). Install path reuses [SN-TPL-010](templates.md#sn-tpl-010) My Templates. Any sticker/font/SVG payload must be sanitised by [SN-TPL-013](templates.md#sn-tpl-013).
+Define the schema in `docs/` (a new `template-catalogue.md`) and a Dart model in `sane_core`/app. Downloads use TLS 1.2+; verify an Ed25519 signature over the manifest and BLAKE3/SHA-256 per-asset hashes before install (approved crypto only, CLAUDE.md §7.7; via `sane_crypto`). No new egress without an ADR + threat-model row (CLAUDE.md §7.4) — add the store-fetch row. Entitlement/price fields resolve through `sane_billing` ([SN-BILL-001](billing.md#sn-bill-001)); the Pro-unlock-vs-purchase behaviour is a compile-time flag (PRD-LB-096 open decision). Install path reuses [SN-TPL-010](templates.md#sn-tpl-010) My Templates. Any sticker/font/SVG payload must be sanitised by [SN-TPL-013](templates.md#sn-tpl-013). Ships without SN-BILL-001: entitlement/price fields consume the `EntitlementProvider` contract ([SN-BILL-012](billing.md#sn-bill-012)) behind a narrow interface, with a Pro-unlock stub until billing lands in M8.
 
 #### Security & privacy
 A store is a supply-chain surface: verify signatures + integrity hashes before trusting any downloaded byte (CWE-494 download-without-integrity, CWE-829 inclusion of untrusted functionality), reject active content, cap sizes (CWE-400), and pin/validate TLS (MASVS-NETWORK-1). Manifest parsing validates schema/version (MASVS-CODE-2/4). No note content is sent to the store; browsing telemetry stays off (opt-in only). IDs: MASVS-NETWORK-1, MASVS-CODE-2, MASVS-CODE-4, CWE-494, CWE-829, CWE-400.
@@ -657,7 +657,7 @@ Surface: store tab within the Templates overlay + Free vs Pro (docs/design/scree
 `app/test/features/templates/store_catalogue_test.dart` (schema/version validation, unsigned/ tampered rejected, install→My Templates), `store_offline_test.dart` (offline + installed-still-works), `manifest_signature_test.dart` (Ed25519 verify via sane_crypto). Negative/abuse cases coordinate with [SN-TPL-013](templates.md#sn-tpl-013).
 
 #### Dependencies
-[SN-TPL-010](templates.md#sn-tpl-010) (My Templates install target), [SN-BILL-001](billing.md#sn-bill-001) (entitlement/purchase). Coordinates with [SN-SEC-001](security.md#sn-sec-001) (threat-model row) and [SN-TPL-013](templates.md#sn-tpl-013) (payload sanitising). **Maintainer decision required:** template-store monetisation model (PRD-LB-096; CLAUDE.md §13).
+[SN-TPL-010](templates.md#sn-tpl-010) (My Templates install target). Entitlement/price fields resolve through the `sane_billing` EntitlementProvider contract ([SN-BILL-012](billing.md#sn-bill-012)); a compile-time Pro-unlock stub stands in until billing ships in M8, so SN-BILL-001 is not a scheduling blocker. Coordinates with [SN-SEC-001](security.md#sn-sec-001) (threat-model row) and [SN-TPL-013](templates.md#sn-tpl-013) (payload sanitising). **Maintainer decision required:** template-store monetisation model (PRD-LB-096; CLAUDE.md §13).
 
 #### Definition of done
 - [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
