@@ -1,0 +1,275 @@
+[
+  {
+    "key": "SN-TEL-009",
+    "title": "Add a rotating, resettable install token with no stable identifier",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-4",
+      "MASVS-STORAGE-2",
+      "MASVS-CRYPTO-1",
+      "ASVS-V14",
+      "TM-P-01",
+      "TM-P-02",
+      "CWE-359",
+      "CWE-1188"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-CRY-002",
+      "SN-TEL-007"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nADR-0011 decision 6 allows crash reports to carry 'a rotating, local, resettable install token at most' and explicitly forbids a stable user id or precise device identifier; decision 4 bans precise device identifiers from any telemetry payload. Without *some* grouping key, two crashes from one device look like two users and a crash storm is unreadable; with the wrong key (IDFV, ANDROID_ID, advertising id) the app becomes trackable and the Play Data Safety and Apple Privacy Manifest declarations stop being true (`PRD-PRIV-006`, {{SN-PRV-014}}). The compromise is a locally generated random token that rotates on a schedule and on user request, so short-term grouping works and long-term linkability does not.\nThe token is also the salt for the opaque object-id hashes produced by {{SN-TEL-003}}, which is what stops two installs producing the same hash for the same notebook id (TM-P-01 linkability).\n\n## Scope\n**In:** generation of a 128-bit CSPRNG token; storage in the platform secure store via the `sane_secure_store` plugin; a 30-day rotation schedule plus rotation on kill-switch purge, on account deletion and on explicit user reset; exposure as the hash salt to {{SN-TEL-003}}; a `reset()` API for the 'what we collect' screen ({{SN-PRV-009}}); a negative test asserting no OS advertising/vendor identifier API is called anywhere in the app.\n**Out:** the key hierarchy for note encryption ({{SN-CRY-002}}), the consent UI, and any server-side identity.\n\n## Acceptance criteria\n- [ ] The token is 128 bits from a CSPRNG (`Random.secure()` / platform CSPRNG), never derived from any device, account, email, phone or hardware value.\n- [ ] It is stored only in Keychain/Keystore through `sane_secure_store`, never in the notes DB, SharedPreferences/UserDefaults, logs, backups or the synced cloud store.\n- [ ] It rotates automatically after 30 days, and immediately on: telemetry kill switch ({{SN-TEL-007}}), account deletion ({{SN-PRV-006}}), and explicit user reset.\n- [ ] After rotation, a new crash record carries the new token and there is no field linking old and new tokens (test asserts payload equality is impossible across a rotation).\n- [ ] The token never appears in the diagnostics bundle ({{SN-TEL-008}}) or in any log line.\n- [ ] With telemetry disabled, no token is generated at all (a fresh, never-opted-in install has no token in the secure store).\n- [ ] A static check/test asserts the codebase calls no advertising or vendor-identifier API (`ASIdentifierManager`, `identifierForVendor`, `Settings.Secure.ANDROID_ID`, Advertising ID) — feeding the Required-Reason API audit in {{SN-PRV-014}}.\n- [ ] Web surface: the token lives in memory plus an origin-scoped store, documented as a reduced guarantee (no hardware binding) consistent with `PRD-STOR-003` open decision 7.\n\n## Technical notes\nImplement `InstallTokenStore` in `app/lib/telemetry/install_token.dart` over the `sane_secure_store` federated plugin (Keychain with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`-style class so it never migrates to a new device via backup; Android Keystore-backed preference). Expose the salt to `sane_core`'s serialiser as a plain `String` parameter so the pure-Dart package keeps no platform dependency (CLAUDE.md section 3 DAG). Rotation bookkeeping stores only the rotation date, not a history. Cite ADR-0011 decision 4 and 6, ADR-0007 for secure-store usage patterns, and `PRD-AUTH-006`-adjacent secure-storage rules in `PRD-AUTH-006`/`PRD-KEY-002` for where secrets may live.\n\n## Security & privacy\nThreats: TM-P-01 (linkability across time), TM-P-02 (identifiability from device identifiers), TM-I-05 (identifier leaking into logs). Controls: MASVS-PRIVACY-1/4, MASVS-STORAGE-2 (keys and secrets in the platform keystore), MASVS-CRYPTO-1 (CSPRNG only, never a non-cryptographic `Random`), ASVS V14, CWE-359, CWE-1188 (insecure default initialisation). Fail-closed: if secure storage is unavailable the app must run **without** a token and mark affected records ungrouped, never fall back to a device identifier.\n\n## UX notes\nOne visible control: a 'Reset the diagnostics id' action on the 'what we collect' screen ({{SN-PRV-009}}, Settings > Privacy & export in design/Sane Notes.dc.html, docs/design/screens-and-flows.md section 12), with copy explaining it in one line ('Starts a new anonymous id. Old reports cannot be linked to new ones.'). Renders in all **17 looks plus light/dark**, 44pt/48dp target, Semantics label, >= 4.5:1 contrast, keyboard reachable on web (docs/design/accessibility.md). Confirmation toast on reset; no dialog needed (the action is harmless).\n\n## Test plan\n- Unit: `app/test/telemetry/install_token_test.dart` — CSPRNG source, 30-day rotation, rotation on purge/reset, no token when telemetry disabled, unavailable-secure-store fallback is 'no token'.\n- Unit: `app/test/telemetry/no_device_identifier_test.dart` — source scan asserts no advertising/vendor identifier API usage.\n- Integration: `app/integration_test/install_token_rotation_test.dart` — crash records before and after rotation share no linking field.\n\n## Dependencies\n{{SN-CRY-002}} (secure store / Keychain-Keystore layer), {{SN-TEL-007}} (purge triggers rotation).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit/integration, security scans)\n- [ ] ADR-0011 decision 6 satisfied; identifier findings fed into {{SN-PRV-014}} Required-Reason API audit\n- [ ] Reviewed against docs/security/secure-coding-checklist.md by a CODEOWNER"
+  },
+  {
+    "key": "SN-TEL-010",
+    "title": "Prove zero telemetry egress before opt-in with a blocking CI gate",
+    "type": "test",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy",
+      "ci-cd"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-PRIVACY-4",
+      "MASVS-NETWORK-1",
+      "MASVS-CODE-2",
+      "ASVS-V14",
+      "OWASP-A09",
+      "TM-P-06",
+      "TM-P-07",
+      "TM-R-03",
+      "CWE-359"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-007",
+      "SN-FND-003",
+      "SN-CI-001"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design",
+      "sec: threat-model"
+    ],
+    "body": "## Context\nADR-0011 'How to verify' item 1 is the load-bearing test for the whole privacy posture: 'a fresh install (any flavour) transmits no telemetry/crash data before opt-in — assert zero egress to any analytics/crash endpoint in an instrumented run'. If that ever regresses, the App Store privacy labels and the Play Data Safety declaration of 'no data collected' become false statements to two app stores and to every user — which is why this is p0 and must **block** merges, not warn. CLAUDE.md section 7 rule 4 makes the same point generally: no new network call without an ADR and a threat-model row, telemetry off by default.\nThis issue builds the instrumented run and wires it into CI as a required check, complementing {{SN-PRV-010}} (which bans analytics SDKs at the dependency level) and {{SN-TEL-007}} (which guarantees the default-off state machine).\n\n## Scope\n**In:** an integration test that boots the app with a fresh profile directory under each flavour define set, drives a short scripted session (open library, draw a stroke, force a caught error), and asserts **zero** outbound HTTP/WebSocket requests; an egress interceptor that fails on any host not on an explicit allow-list; a CI job wired into `.github/workflows/devsecops.yml` as a required check; a second assertion that no telemetry client object is constructed while disabled.\n**Out:** the pubspec/SBOM analytics-SDK ban ({{SN-PRV-010}}), MobSF/ZAP dynamic scans (security area), and post-opt-in payload checks ({{SN-TEL-012}}).\n\n## Acceptance criteria\n- [ ] The test runs with `SANE_FLAVOR` set to dev, beta and release-equivalent define sets and passes in all three.\n- [ ] Zero network requests are observed during the scripted session with consent off; the assertion message names the offending URL host and the originating stack when it fails.\n- [ ] Triggering a caught error and a crash-record write produces a queued record locally but still zero requests.\n- [ ] The allow-list is empty for this scenario (no host may be contacted); any future legitimate egress must be added deliberately with a code comment citing its ADR and threat-model row.\n- [ ] A negative-control run (a deliberately injected request behind a test-only flag) makes the test fail, proving the interceptor works.\n- [ ] The CI job runs on every PR, completes in under 10 minutes, and is listed as a required status check in branch protection (docs/security/devsecops-pipeline.md section 3).\n- [ ] Failure output tells the developer exactly which ADR-0011 guarantee broke, so the fix is obvious without reading this issue.\n\n## Technical notes\nImplement as `app/integration_test/telemetry_zero_egress_test.dart` using an `HttpOverrides`-based interceptor plus a platform-channel mock that fails any native network plugin call; for web, run under a headless Chrome with a request-logging proxy or a `fetch` monkey-patch guard. Wire a `telemetry-egress` job into `.github/workflows/devsecops.yml` beside the existing `issues-schema` and planned `unit-tests` jobs (docs/security/devsecops-pipeline.md sections 1 and 2.1), pinning the action SHAs per the supply-chain rules. Keep it in the same suite as {{SN-TEL-005}}'s crash-capture integration test so one boot covers both.\n\n## Security & privacy\nThreats: TM-P-06 (unawareness), TM-P-07 (non-compliance with GDPR/DPDP consent-before-collection), TM-R-03 (user cannot prove what left the device), TM-P-02 (identifiability if an SDK phoned home). Controls: MASVS-PRIVACY-4 (third-party sharing restrictions), MASVS-NETWORK-1, MASVS-CODE-2 (dependency hygiene, jointly with {{SN-PRV-010}}), ASVS V14, OWASP-A09, CWE-359. This is a verification control: it does not add attack surface, it proves the absence of one.\n\n## UX notes\nNo UI. It protects the truthfulness of the copy on Settings > Privacy & export and the privacy dashboard ({{SN-PRV-002}}, {{SN-PRV-009}}; design/Sane Notes.dc.html, docs/design/screens-and-flows.md section 12), which claims nothing is collected by default. None beyond baseline: the test itself must log no note content or tokens, and its fixtures use synthetic data only.\n\n## Test plan\n- Integration: `app/integration_test/telemetry_zero_egress_test.dart` (the deliverable).\n- Meta-test: `app/integration_test/telemetry_zero_egress_negative_control_test.dart` — injected request fails the gate.\n- CI: the `telemetry-egress` job green on PRs; verified red on a branch that enables telemetry by default.\n\n## Dependencies\n{{SN-TEL-007}} (default-off state machine), {{SN-FND-003}} (Flutter CI workflow), {{SN-CI-001}} (DevSecOps pipeline that hosts the job).\n\n## Definition of done\n- [ ] Code + tests merged, CI green and the new job required in branch protection\n- [ ] ADR-0011 verify item 1 explicitly cited in the test file header; docs/security/devsecops-pipeline.md job table updated\n- [ ] Reviewed against docs/security/secure-coding-checklist.md by a CODEOWNER"
+  },
+  {
+    "key": "SN-TEL-011",
+    "title": "SPIKE: choose the opt-in crash backend under ADR-0011 constraints",
+    "type": "spike",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "design",
+    "security": [
+      "MASVS-PRIVACY-4",
+      "MASVS-CODE-2",
+      "MASVS-NETWORK-1",
+      "ASVS-V14",
+      "OWASP-A03",
+      "TM-P-08",
+      "TM-T-05",
+      "CWE-1104"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-005",
+      "SN-TEL-010"
+    ],
+    "labels_extra": [
+      "needs-decision",
+      "sec: privacy-by-design",
+      "sec: supply-chain"
+    ],
+    "body": "## Context\nADR-0011 decision 2 permits a crash *backend* only if it 'is self-hosted or configured to receive only the redacted payload, and only after opt-in', and requires verifying that the chosen pipeline sends nothing on first run. It does not name a vendor — that is a maintainer decision with cost, hosting and supply-chain consequences, so it carries `needs-decision`. The candidates behave very differently under our constraints: self-hosted Sentry with `sentry_flutter` can be configured with `sendDefaultPii: false`, auto-breadcrumbs off and a `beforeSend` scrub, but it is a large dependency that captures a lot by default; Firebase Crashlytics pulls in Firebase installations identifiers and Play Services, which collides with 'no third-party analytics SDK' and with the Play Data Safety story; a DIY endpoint receiving only our own serialised payload ({{SN-TEL-003}}) is the smallest attack surface but means we operate it.\nThe deliverable is a written decision recorded as an ADR-0011 addendum (or a new ADR per CLAUDE.md section 11), not code. It unblocks {{SN-TEL-012}} and {{SN-TEL-014}}.\n\n## Scope\n**In:** a time-boxed (2-day) evaluation of self-hosted Sentry, Firebase Crashlytics and a DIY endpoint against a fixed criteria matrix; a prototype spike branch measuring first-run egress and binary size for the top two; the written decision + ADR update; an SBOM/licence note for whatever is proposed.\n**Out:** the production integration ({{SN-TEL-012}}), symbolication tooling ({{SN-TEL-014}}), and any credential provisioning.\n\n## Acceptance criteria\n- [ ] A criteria matrix is published covering, per candidate: default egress on first run (measured, not claimed); identifiers collected by default; ability to receive only our redacted payload; self-hostability and data residency; native (Swift/Kotlin) crash coverage; symbolication support for `--split-debug-info`; binary/size impact; transitive dependency count and licences; cost at 10k and 100k installs; and Play Data Safety / Apple Privacy Manifest consequences.\n- [ ] First-run egress is **measured** for each candidate on a spike branch using the {{SN-TEL-010}} harness, with results recorded in the matrix.\n- [ ] The recommendation states explicitly how ADR-0011 decision 2 ('verify the chosen crash pipeline sends nothing on first run') will remain continuously enforced after integration.\n- [ ] A rejected-option rationale is written for each non-chosen candidate, in the ADR's Alternatives-considered style.\n- [ ] The decision names the required maintainer inputs (hosting, budget, data region) so {{SN-TEL-012}} can be labelled `needs-credentials` precisely.\n- [ ] Spike code is deleted or clearly quarantined; nothing from the spike ships.\n- [ ] The outcome is reflected in docs/security/controls-matrix.md (MASVS-PRIVACY-4 row) and, if a new dependency is proposed, in the dependency policy enforced by {{SN-PRV-010}}.\n\n## Technical notes\nRun the measurement with the {{SN-TEL-010}} zero-egress harness on a branch per candidate; capture packet-level evidence (proxy log) rather than trusting SDK documentation. Sentry configuration to test: `sendDefaultPii=false`, `attachScreenshot=false`, `attachViewHierarchy=false`, auto session tracking off, breadcrumbs off, `beforeSend` forcing our serialised payload. Crashlytics must be assessed with Firebase installations behaviour on both platforms. Record the decision per CLAUDE.md section 11 (ADR style: Context / Decision / Alternatives / Consequences / How to verify / Status) and link it from ADR-0011 and docs/architecture/overview.md Appendix B.\n\n## Security & privacy\nThreats: TM-P-08 (data sent to a third party is retained or linked), TM-T-05 (supply-chain compromise via a heavyweight SDK), TM-P-02 (identifiability through SDK-generated installation ids), TM-P-07 (store-declaration mismatch). Controls: MASVS-PRIVACY-4, MASVS-CODE-2 (dependency currency and CVE exposure), MASVS-NETWORK-1, ASVS V14, OWASP-A03 (2025 supply-chain failures), CWE-1104 (use of unmaintained/unvetted third-party components). The spike must not add any dependency to `main`.\n\n## UX notes\nNo UI. The decision constrains the copy on the 'what we collect' screen ({{SN-PRV-009}}) and the store declarations ({{SN-PRV-015}}), because whatever the backend receives must be listed verbatim there. None beyond baseline.\n\n## Test plan\n- Measurement: run `app/integration_test/telemetry_zero_egress_test.dart` on each spike branch; attach proxy logs to the issue.\n- Review: Security/Privacy Owner signs off the matrix and the recommendation before the maintainer decision is recorded.\n- No production tests (spike produces a document, not shipping code).\n\n## Dependencies\n{{SN-TEL-005}} (a sanitised record to send), {{SN-TEL-010}} (the egress harness used for measurement).\n\n## Definition of done\n- [ ] Written decision merged as an ADR-0011 addendum or a new ADR, linked from docs/architecture/overview.md Appendix B\n- [ ] Criteria matrix with measured first-run egress published; maintainer decision recorded (issue carries `needs-decision` until then)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; docs/security/controls-matrix.md updated"
+  },
+  {
+    "key": "SN-TEL-012",
+    "title": "Implement the opt-in crash and metrics upload adapter",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-NETWORK-1",
+      "MASVS-NETWORK-2",
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-4",
+      "ASVS-V12",
+      "ASVS-V14",
+      "OWASP-A02",
+      "TM-P-08",
+      "TM-I-01",
+      "CWE-311",
+      "CWE-295"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-011",
+      "SN-TEL-007",
+      "SN-TEL-003"
+    ],
+    "labels_extra": [
+      "needs-credentials",
+      "sec: privacy-by-design",
+      "sec: masvs"
+    ],
+    "body": "## Context\nOnce a user opts in, the sanitised crash records ({{SN-TEL-005}}) and weekly aggregates ({{SN-TEL-006}}) have to reach the backend chosen in {{SN-TEL-011}} — and that upload path is the **only** egress in the product that carries anything derived from app behaviour, so it gets the strictest treatment. `PRD-TEL-004` calls it out: telemetry endpoints are the one narrow exception to 'no Sane server for content', they must be strictly separate infrastructure that never receives note content, and they must be documented in the threat model under LINDDUN linkability/identifiability. CLAUDE.md section 7 rule 4 requires an ADR plus a threat-model row for any new network call, with purpose and data sent listed in the PR.\nThis lands in M8 alongside launch, matching ADR-0011's status line ('opt-in telemetry ships in M8 Launch & Growth'). It needs maintainer-supplied endpoint/DSN credentials via CI secrets, hence `needs-credentials`.\n\n## Scope\n**In:** a `TelemetrySink` interface plus the adapter for the chosen backend in `app/lib/telemetry/`; construction only after consent is granted; TLS 1.2+ with certificate pinning for our own endpoint; payload built solely from {{SN-TEL-003}} output; batching, retry with the {{SN-TEL-007}} backoff, and honouring the kill switch mid-flight; endpoint configuration via `--dart-define` and CI secrets; threat-model and ADR rows for the new egress.\n**Out:** the backend choice ({{SN-TEL-011}}), symbolication ({{SN-TEL-014}}), field perf metrics content ({{SN-TEL-013}}), the consent UI ({{SN-PRV-009}}).\n\n## Acceptance criteria\n- [ ] No HTTP client, SDK or connection is created while consent is off; construction happens lazily on first send after opt-in (asserted by {{SN-TEL-010}}).\n- [ ] Every payload is byte-identical to the {{SN-TEL-003}} serialiser output plus a schema version — the adapter may not add fields, headers with identifiers, or SDK-default metadata.\n- [ ] TLS 1.2+ enforced; certificate pinning applied for a Sane-operated endpoint; no cleartext traffic on any platform (Android `usesCleartextTraffic=false`, iOS ATS on) — a MitM attempt with a user-installed CA fails closed.\n- [ ] Sends are batched at most once per hour and only on an unmetered connection by default, respecting the `wifiOnly`-style preference semantics in `PRD-SYNC-008`.\n- [ ] Flipping the kill switch mid-send cancels the request and purges the queue ({{SN-TEL-007}}); a test asserts no retry follows.\n- [ ] A 4xx response drops the payload (never retried into a loop); a 5xx backs off per the schedule; all failures are content-free logged at `warn`.\n- [ ] Endpoints come from `SANE_*` dart-defines with no default pointing at production in dev/beta; no secret is hardcoded (gitleaks/trufflehog clean).\n- [ ] The PR lists every new egress with purpose and exact data sent, and adds the corresponding row to docs/security/threat-model.md.\n\n## Technical notes\nAdapter in `app/lib/telemetry/telemetry_sink_http.dart` behind a `TelemetrySink` interface so the backend can be swapped without touching callers; pinning via the platform plugin layer (CLAUDE.md section 3 — plugins are leaves) following the MASVS-NETWORK-2 pattern already used for the entitlement/relay endpoints (docs/security/controls-matrix.md section 1). Configuration keys follow the `--dart-define` matrix style of docs/architecture/overview.md section 7.1 (for example `SANE_TELEMETRY_URL`, injected from CI secrets for release). Run sends on the sync/background isolate, never the UI isolate (overview section 6).\n\n## Security & privacy\nThreats: TM-P-08 (third-party retention/linking), TM-I-01 (interception in transit), TM-P-01/TM-P-02 (linkability/identifiability through headers, IP and timing — mitigate with batching, jitter and no custom identifying headers), TM-T-05 (supply chain, if an SDK is involved). Controls: MASVS-NETWORK-1/2, MASVS-PRIVACY-1/4, ASVS V12 (secure communication), ASVS V14, OWASP-A02, CWE-311 (missing encryption), CWE-295 (improper certificate validation). Fail-closed: any pinning or TLS failure drops the payload rather than downgrading.\n\n## UX notes\nThe only user-visible effects are the states rendered by {{SN-PRV-009}} and {{SN-TEL-007}} in Settings > Privacy & export (design/Sane Notes.dc.html, docs/design/screens-and-flows.md section 12): on, waiting for a connection, off. No upload progress UI is needed or wanted; telemetry must never interrupt the user. Any error is silent to the user and visible only in the diagnostics bundle ({{SN-TEL-008}}). None beyond baseline for looks/a11y since no new surface is added.\n\n## Test plan\n- Unit: `app/test/telemetry/telemetry_sink_http_test.dart` — payload equality with serialiser output, no extra headers, 4xx drop, 5xx backoff, cancel on kill switch.\n- Integration: `app/integration_test/telemetry_upload_test.dart` against a local test server — batching cadence, unmetered-only behaviour, TLS failure fails closed.\n- Security: MitM test with a user-installed CA proves pinning blocks the send; gitleaks/trufflehog clean on the PR.\n\n## Dependencies\n{{SN-TEL-011}} (backend decision), {{SN-TEL-007}} (state machine and kill switch), {{SN-TEL-003}} (payload), plus maintainer-supplied endpoint credentials via CI secrets.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit/integration, Semgrep, mobsfscan, secret scan)\n- [ ] New ADR row/addendum + docs/security/threat-model.md egress row + docs/security/controls-matrix.md NETWORK rows updated\n- [ ] Reviewed against docs/security/secure-coding-checklist.md by a CODEOWNER"
+  },
+  {
+    "key": "SN-TEL-013",
+    "title": "Collect opt-in field performance metrics against the decision-7 budgets",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "telemetry",
+      "perf",
+      "privacy"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-3",
+      "ASVS-V14",
+      "TM-P-01",
+      "TM-P-04",
+      "TM-I-05",
+      "CWE-359"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-006",
+      "SN-PERF-002",
+      "SN-TEL-012",
+      "SN-TEL-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design",
+      "innovation"
+    ],
+    "body": "## Context\nADR-0011's Context names the second reason telemetry exists at all: 'prove the performance budgets (decision 7) in the field, not just in CI', and its Consequences accept that field data will be sparse and volunteer-biased, compensated by strong CI gates and a device lab. docs/platform/performance-budgets.md fixes ten budgets B1-B10 with p95/p99 gating and warns that emulators are never a valid latency signal — which means real-device field data, however sparse, is the only way to know whether the budgets hold on the long tail of hardware students actually own. This issue wires the perf harness metrics into the opt-in aggregate pipeline as coarse buckets so that a device class, not a device, is what we learn about.\nIt depends on the aggregator ({{SN-TEL-006}}) for storage and on {{SN-PERF-002}} for the metric definitions, and reports through {{SN-TEL-012}}.\n\n## Scope\n**In:** instrumentation hooks that feed B1/B2/B3 pen-to-pixel p95, B4 frame rate, B5 frames over 16.7 ms while writing, B6 cold start, B7 1,000-page notebook open and B9 peak memory into the aggregator as catalogue buckets; an ink-tier label (Tier A native front-buffer vs Tier B pure Flutter); a device-class label; sampling so instrumentation costs nothing measurable; documentation of how field buckets compare to CI baselines.\n**Out:** the measurement harness itself ({{SN-PERF-002}}), CI perf gates ({{SN-PERF-003}}), the device lab ({{SN-PERF-004}}), the transport ({{SN-TEL-012}}), any dashboard.\n\n## Acceptance criteria\n- [ ] Each shipped metric maps to a budget ID from docs/platform/performance-budgets.md section 1 and to a catalogue entry from {{SN-TEL-002}}; a metric with no catalogue entry cannot be emitted.\n- [ ] Values are recorded as p95 within a session and then bucketed; no raw per-frame or per-stroke sample ever leaves the aggregator (test asserts stored rows are bounded by bucket count).\n- [ ] Ink tier (A/B) and device class are attached; device **model strings, serials and screen identifiers are not**.\n- [ ] With telemetry off, instrumentation is compiled-out or short-circuited so it adds no measurable cost: the draw loop budget (no frame over 16.7 ms while writing, B5) is unaffected, proven by a before/after harness run.\n- [ ] Instrumentation itself never logs on the hot path in profile/release (CLAUDE.md section 8, overview section 8.2).\n- [ ] The cold-start metric (B6) is captured without delaying startup by more than 2 ms.\n- [ ] A short doc section explains how to read field buckets against the CI baseline, including the volunteer-bias caveat from ADR-0011 Consequences.\n- [ ] Web surface degrades gracefully where a metric is unavailable (for example memory), emitting nothing rather than a fabricated value.\n\n## Technical notes\nHooks live where the measurements already exist: `tools/perf_harness` metric names are reused verbatim, and the runtime collectors sit in `app/lib/telemetry/perf_metrics.dart` reading frame timings via `SchedulerBinding.addTimingsCallback` and the ink pipeline's existing latency instrumentation from {{SN-INK-009}}/{{SN-PERF-002}}. Aggregation is the {{SN-TEL-006}} path (storage isolate). Do not add a new sampling thread; reuse existing callbacks. Cite ADR-0011 decision 3, ADR-0001 (the ink-tier exit criterion that field data continuously re-evaluates, per performance-budgets.md section 3 'both ink tiers tracked').\n\n## Security & privacy\nThreats: TM-P-01 (linkability — a device model plus timing is near-identifying, so only device class ships), TM-P-04 (detectability — coarse weekly windows hide usage shape), TM-I-05 (no content, no coordinates: latency is a scalar, never a stroke). Controls: MASVS-PRIVACY-2/3, ASVS V14, CWE-359. Fail-closed: an unavailable metric emits nothing. Every metric added here must appear verbatim on the 'what we collect' screen ({{SN-PRV-009}}) via {{SN-TEL-015}}'s review gate.\n\n## UX notes\nNo new UI. The metric list is surfaced verbatim on the 'what we collect' screen in Settings > Privacy & export (design/Sane Notes.dc.html, docs/design/screens-and-flows.md section 12) with student-readable phrasing ('How long the app takes to show your ink, rounded into ranges'). Copy must not imply we watch what the user writes. None beyond baseline for looks/a11y.\n\n## Test plan\n- Unit: `app/test/telemetry/perf_metrics_test.dart` — budget-ID mapping, p95 computation, bucketing, unavailable-metric behaviour, disabled no-op.\n- Integration: `app/integration_test/perf_metrics_overhead_test.dart` — with telemetry on and off, the B5 jank budget and B6 cold-start budget are unchanged within noise.\n- Harness: a `tools/perf_harness` run before/after the change showing no regression in B1-B3.\n\n## Dependencies\n{{SN-TEL-006}} (aggregator), {{SN-PERF-002}} (latency measurement harness and metric definitions), {{SN-TEL-012}} (upload path), {{SN-TEL-002}} (catalogue entries).\n\n## Definition of done\n- [ ] Code + tests merged, CI green including the perf gates ({{SN-PERF-003}})\n- [ ] docs/platform/performance-budgets.md cross-referenced with the field-metric names; docs/security/telemetry-catalogue.md updated\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-TEL-014",
+    "title": "Build the release symbolication pipeline for obfuscated crash reports",
+    "type": "infra",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "telemetry",
+      "ci-cd",
+      "release"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "release",
+    "security": [
+      "MASVS-RESILIENCE-3",
+      "MASVS-CODE-4",
+      "ASVS-V13",
+      "OWASP-A08",
+      "TM-T-05",
+      "TM-I-05",
+      "CWE-522",
+      "CWE-540"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-012",
+      "SN-REL-001",
+      "SN-CI-004"
+    ],
+    "labels_extra": [
+      "needs-credentials",
+      "sec: supply-chain"
+    ],
+    "body": "## Context\nRelease builds run `--obfuscate --split-debug-info` (docs/security/controls-matrix.md MASVS-RESILIENCE-3, docs/architecture/overview.md section 7 flavour table), which means a field crash report arrives as obfuscated symbols and is unreadable without the matching debug-info map. ADR-0011's Security impact section fixes the rule: 'crash symbolication uses `--split-debug-info` maps kept server-side/off-device; obfuscation maps are secrets, not shipped in the app'. Without a pipeline that captures, stores and retrieves those maps per build id, opt-in crash reporting is technically working and practically useless, and there is a real risk an engineer 'temporarily' ships a map or disables obfuscation to debug — a resilience regression.\nThis issue builds the pipeline as part of release engineering ({{SN-REL-001}}), so every signed artifact has a retrievable map and a documented symbolicate step.\n\n## Scope\n**In:** emitting and archiving `--split-debug-info` maps (plus Android mapping files and iOS dSYMs for native frames) from the release workflow; a private, access-controlled artifact store keyed by build id + version + platform; a `tools/scripts/symbolicate.mjs` wrapper around `flutter symbolize`; retention policy; a CI check that a release build is rejected if its map was not archived; documentation in the release runbook.\n**Out:** the crash transport ({{SN-TEL-012}}), backend-side automatic symbolication if the chosen vendor does it ({{SN-TEL-011}} decides), and store signing itself ({{SN-REL-001}}).\n\n## Acceptance criteria\n- [ ] Every release and beta build emits a debug-info map, an Android mapping file and iOS dSYMs, all uploaded to the private store as part of the release job; the job fails if any is missing.\n- [ ] Maps are **never** included in the shipped artifact — a test unpacks the APK/AAB/IPA and asserts no `.symbols`/mapping/dSYM payload is present.\n- [ ] Maps are stored with restricted access (CI secret-scoped credentials, least-privilege token), are not in the git repo, and are excluded from SBOM publication while being recorded in the release manifest by checksum.\n- [ ] `tools/scripts/symbolicate.mjs <build-id> <stack-file>` resolves a stack from a real obfuscated release build end-to-end in under 60 seconds.\n- [ ] Retention is explicit (maps kept at least as long as the corresponding app version is supported, minimum 18 months) and documented.\n- [ ] A rotation/audit note records who can access the store; access is reviewed at each release per docs/security/devsecops-pipeline.md section 5 (secrets policy).\n- [ ] The release runbook documents the symbolicate step so an on-call engineer can use it without reading code.\n\n## Technical notes\nExtend the release workflow (`.github/workflows/release.yml`, planned in docs/security/devsecops-pipeline.md section 2.7) with an upload step using pinned full-SHA actions and OIDC-based credentials rather than long-lived keys. Build ids come from the Flutter build metadata already embedded in the crash record by {{SN-TEL-005}}, so the lookup key is available on every report. Keep the wrapper in `tools/scripts/` per the monorepo layout (ADR-0002). Attach map checksums to the release provenance/SBOM artifacts produced by {{SN-CI-004}} so map integrity is verifiable without exposing the maps.\n\n## Security & privacy\nThreats: TM-T-05 (supply chain / build-artifact tampering), TM-I-05 (a leaked map plus a crash stack reveals more internal structure than intended), plus the anti-pattern risk of shipping maps in-app. Controls: MASVS-RESILIENCE-3 (obfuscation preserved), MASVS-CODE-4, ASVS V13 (secure configuration), OWASP-A08 (software and data integrity), CWE-522 (insufficiently protected credentials — the store's access token), CWE-540 (sensitive info in source/artifacts). Maps are secrets: never committed, never attached to a public GitHub Release, never handed to a third party that has not been assessed in {{SN-TEL-011}}.\n\n## UX notes\nNo user-facing surface. Indirect user benefit: crashes that users opted into reporting can actually be fixed, and obfuscation (which protects them) never has to be weakened to debug. None beyond baseline — the pipeline handles no note content and no personal data, only build artifacts.\n\n## Test plan\n- CI: a release dry-run proves maps are uploaded and the job fails when the upload step is removed.\n- Unit/script: `tools/scripts/__tests__/symbolicate_test.mjs` — resolves a fixture obfuscated stack to the expected frames.\n- Artifact test: `tools/scripts/check_no_symbols_in_artifact.mjs` run in CI against the built APK/AAB/IPA.\n- Manual: on-call walkthrough of the runbook by someone who did not write it.\n\n## Dependencies\n{{SN-TEL-012}} (reports to symbolicate), {{SN-REL-001}} (release workflow and signing), {{SN-CI-004}} (SBOM/provenance to record map checksums), plus maintainer-supplied artifact-store credentials.\n\n## Definition of done\n- [ ] Pipeline + scripts + tests merged, release dry-run green\n- [ ] docs/security/devsecops-pipeline.md and the release runbook updated; ADR-0011 Security-impact bullet satisfied\n- [ ] Reviewed against docs/security/secure-coding-checklist.md by a CODEOWNER"
+  },
+  {
+    "key": "SN-TEL-015",
+    "title": "Gate every new telemetry event behind a privacy review in CI",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy",
+      "ci-cd"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-4",
+      "MASVS-CODE-3",
+      "ASVS-V14",
+      "OWASP-A09",
+      "TM-P-06",
+      "TM-P-07",
+      "TM-I-05",
+      "CWE-359"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-002",
+      "SN-CI-001",
+      "SN-PRV-009"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design",
+      "good first issue"
+    ],
+    "body": "## Context\nTelemetry scope creep is the normal failure mode: a well-meaning change adds one more field, then another, and six months later the 'no data collected' declaration is false. ADR-0011 verify item 5 requires that the 'what we collect' screen match the actual allow-list, and decision 4 requires deny-by-default so a new field cannot be exfiltrated by accident. `PRD-PRIV-007` goes further — any future SDK or collection addition must be gated on a threat-model and privacy-label update. A serialiser that drops unknown fields protects users at runtime, but nothing yet forces a human privacy review when someone legitimately *adds* an entry to the catalogue.\nThis issue adds that gate: a CI check plus CODEOWNERS plus a PR-template section, so every catalogue change is reviewed, described in user-facing language, and reflected in the screen the user reads.\n\n## Scope\n**In:** `tools/scripts/check_telemetry_catalogue.mjs` validating catalogue diffs; a CI job wired into `.github/workflows/devsecops.yml`; a CODEOWNERS entry making the Security/Privacy Owner a required reviewer for the catalogue and `packages/sane_core/lib/src/telemetry/`; a checklist block in `.github/PULL_REQUEST_TEMPLATE.md`; a test that the 'what we collect' screen content equals the catalogue.\n**Out:** the catalogue content itself ({{SN-TEL-002}}), the consent screen ({{SN-PRV-009}}), the analytics-SDK dependency ban ({{SN-PRV-010}}), store-label verification ({{SN-PRV-016}}).\n\n## Acceptance criteria\n- [ ] The CI job fails when a PR adds or changes a catalogue entry that lacks: a bucket definition, a retention window, a one-sentence user-facing description, or a justification line.\n- [ ] The job fails if a catalogue entry exists without a matching row on the 'what we collect' screen data source, or vice versa (ADR-0011 verify item 5).\n- [ ] The job fails on any new field whose name or type matches a deny pattern (free text, raw timestamp, identifier-like names such as `email`, `phone`, `deviceId`, `path`, `title`, `content`).\n- [ ] CODEOWNERS requires Security/Privacy Owner review for `docs/security/telemetry-catalogue.md` and `packages/sane_core/lib/src/telemetry/**`.\n- [ ] The PR template gains a 'Telemetry change' block: what is collected, why, bucket, retention, screen copy, threat-model/controls-matrix rows touched.\n- [ ] The job runs in under 60 seconds and produces an error message naming the exact catalogue line at fault.\n- [ ] A documented escape hatch does not exist: there is no skip label; a needed exception requires an ADR update.\n\n## Technical notes\nWrite the checker in Node 22 (matching `scripts/validate-issues.mjs` conventions) and run it in the same workflow as the existing `issues-schema` job (docs/security/devsecops-pipeline.md section 1.7), with pinned full-SHA actions. Parse `docs/security/telemetry-catalogue.md` and the Dart const catalogue and compare both against the screen's data source; reuse the doc/Dart equality test added by {{SN-TEL-002}}. CODEOWNERS additions follow the existing security-critical path pattern in CLAUDE.md section 5. Keep the deny-pattern list next to the catalogue so it is reviewed like code.\n\n## Security & privacy\nThreats: TM-P-06 (unawareness — screen and reality drift apart), TM-P-07 (non-compliance — store declarations and privacy policy become inaccurate), TM-I-05 (a new field smuggles content or PII). Controls: MASVS-PRIVACY-2/4, MASVS-CODE-3, ASVS V14, OWASP-A09, CWE-359. This is a process control implementing NIST SSDF PO.4 (criteria for security checks) and PW.7 as mapped in docs/security/controls-matrix.md section 6.\n\n## UX notes\nNo UI, but the gate exists to protect a UI guarantee: the 'what we collect' screen in Settings > Privacy & export (design/Sane Notes.dc.html, docs/design/screens-and-flows.md section 12) must list every metric verbatim, in student-readable English. The checker enforces that each new entry ships copy that reads well at phone width and in all **17 looks plus light/dark** (the screen is a simple list, so the constraint is sentence length, not layout). None beyond baseline otherwise.\n\n## Test plan\n- Script tests: `tools/scripts/__tests__/check_telemetry_catalogue_test.mjs` — passes on the current catalogue; fails on a fixture missing a description, a fixture with a deny-pattern field, and a fixture out of sync with the screen.\n- CI: job green on `main`, verified red on a branch that adds an undescribed field.\n- Unit: reuse `packages/sane_core/test/telemetry/telemetry_catalogue_test.dart` for doc/Dart equality.\n\n## Dependencies\n{{SN-TEL-002}} (catalogue to check), {{SN-CI-001}} (DevSecOps pipeline hosting the job), {{SN-PRV-009}} (the screen data source compared against).\n\n## Definition of done\n- [ ] Script + CI job + CODEOWNERS + PR-template block merged, CI green\n- [ ] ADR-0011 verify item 5 covered; docs/security/devsecops-pipeline.md job table and docs/security/controls-matrix.md SSDF rows updated\n- [ ] Reviewed against docs/security/secure-coding-checklist.md by a CODEOWNER"
+  }
+]

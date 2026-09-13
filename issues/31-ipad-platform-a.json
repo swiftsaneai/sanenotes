@@ -4,30 +4,57 @@
     "title": "Build the iPadOS platform surface (Pencil Pro, windowing, widgets, App Store)",
     "type": "epic",
     "priority": "p1",
-    "platforms": ["ipad"],
-    "areas": ["input-gestures", "compat"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "input-gestures",
+      "compat"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "XL",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-1", "MASVS-PLATFORM-3", "MASVS-PRIVACY-1", "MASVS-PRIVACY-2"],
-    "depends_on": ["SN-FND-002"],
-    "labels_extra": ["agent-ready", "innovation"],
-    "body": "## Context\niPad is the flagship surface: the reference device for the wet-ink latency budget (<= 16 ms pen-to-pixel, locked decision 7) and the surface competitors do best, so Sane Notes MUST match or beat Apple Notes / Goodnotes / Notability here or it has no wedge (docs/platform/ipad.md intro). This epic delivers the iPadOS-specific platform integration that sits on top of the shared Flutter editor and the `sane_ink`/`sane_ink_surface` fast path: Apple Pencil Pro extras (squeeze, barrel roll, hover, haptics, double-tap) via the `sane_stylus` plugin; Scribble via `sane_scribble`; iPadOS 26 windowing/multitasking (Split View, Slide Over, Stage Manager, additive windows); Quick Note linking; App Intents/Shortcuts/Spotlight; WidgetKit widgets + ControlWidget; Live Activities; keyboard/menu-bar/trackpad support; Files app integration; Universal Links; the `PrivacyInfo.xcprivacy` manifest + required-reason API audit; and the App Store / TestFlight release gates. It implements docs/platform/ipad.md, docs/design/gestures-and-shortcuts.md, docs/platform/compatibility-matrix.md, the M5 stylus-mastery requirements (PRD-ED-023 roll, PRD-ED-033 hover, PRD-ED-102 haptics), ADR-0012 (native plugin strategy) and ADR-0001 (single-codebase exit criterion + L4 multi-window risk).\n\n## Scope\n**In:** the iPadOS-only platform features listed above and their native Swift plugin impls, entitlements, and store-compliance artefacts.\n**Out:** the shared Dart ink pipeline and native ink surface (SN-INK area), the brush engine (SN-BRS), the cross-platform editor/library/sync/crypto logic, and the iPhone/Android/Web surfaces (their own area epics).\n\n## Acceptance criteria\n- [ ] All child issues below are closed and CI is green.\n- [ ] Every decision-7 iPad budget holds on the Tier 1 device lab (M-series ProMotion iPad Pro + iPad Air, docs/platform/compatibility-matrix.md §2).\n- [ ] The App Store release gates in docs/platform/ipad.md §9 pass (privacy manifest, required-reason APIs, Sign in with Apple presence, multitasking/pointer/keyboard).\n- [ ] No note content leaves the device and nothing from the draw loop is logged in profile/release.\n\n## Technical notes\nPlugins under `plugins/`: `sane_stylus`, `sane_scribble`, `sane_secure_store`, `sane_cloud_drive`, `sane_ml_native`, `sane_pdfkit` (ADR-0012). App-level iPadOS integration (scenes, App Intents, WidgetKit, ActivityKit) lives in `app/` per ADR-0003. Children:\n- [ ] {{SN-IPAD-002}} sane_stylus iOS capability probe\n- [ ] {{SN-IPAD-003}} Pencil Pro squeeze palette\n- [ ] {{SN-IPAD-004}} Pencil Pro barrel roll\n- [ ] {{SN-IPAD-005}} Pencil hover preview\n- [ ] {{SN-IPAD-006}} Pencil Pro haptics\n- [ ] {{SN-IPAD-007}} Pencil double-tap binding\n- [ ] {{SN-IPAD-008}} Scribble in text fields\n- [ ] {{SN-IPAD-009}} multi-window feasibility spike\n- [ ] {{SN-IPAD-010}} Split View / Slide Over / Stage Manager\n- [ ] {{SN-IPAD-011}} additive windowing\n- [ ] {{SN-IPAD-012}} menu bar + keyboard shortcuts\n- [ ] {{SN-IPAD-013}} trackpad & pointer support\n- [ ] {{SN-IPAD-014}} Quick Note linking\n- [ ] {{SN-IPAD-015}} App Intents & Shortcuts\n- [ ] {{SN-IPAD-016}} WidgetKit widgets\n- [ ] {{SN-IPAD-017}} ControlWidget\n- [ ] {{SN-IPAD-018}} Live Activity for recording\n- [ ] {{SN-IPAD-019}} Files app integration\n- [ ] {{SN-IPAD-020}} Universal Links\n- [ ] {{SN-IPAD-021}} privacy manifest & required-reason APIs\n- [ ] {{SN-IPAD-022}} PencilKit interop decision\n- [ ] {{SN-IPAD-023}} App Store Connect readiness\n- [ ] {{SN-IPAD-024}} TestFlight pipeline\n- [ ] {{SN-IPAD-025}} iPad perf validation\n\n## Security & privacy\nThe native bridge, deep links, intents, widgets and Files imports are all untrusted-input boundaries (ADR-0012 security impact; MASVS-PLATFORM-1/3). Widgets/Live Activities/Quick Note must never leak note content to the Lock Screen or the OS activity index (MASVS-PRIVACY-1/2). The privacy manifest declares zero tracking and only opt-in crash reports (decision 8). Baseline: no content/coordinates/tokens in logs.\n\n## UX notes\nAll iPad chrome (contextual palette, hover cursor, widgets, menu bar, Live Activity) follows design/Sane Notes.dc.html and docs/design/screens-and-flows.md and MUST render in all 17 looks + light/dark, with Semantics labels, 44 pt targets, >= 4.5:1 contrast, and full keyboard reachability.\n\n## Test plan\nPer child issue. Golden tests for every painted surface across looks; `integration_test` + `patrol` for native dialogs; `tools/perf_harness` on the Tier 1 device lab.\n\n## Dependencies\n{{SN-FND-002}} monorepo scaffold. Individual children depend on SN-INK, SN-ED, SN-CORE, SN-LIB, SN-AUD and SN-PERF work as noted in each.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PLATFORM-3",
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-2"
+    ],
+    "depends_on": [
+      "SN-FND-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\niPad is the flagship surface: the reference device for the wet-ink latency budget (<= 16 ms pen-to-pixel, locked decision 7) and the surface competitors do best, so Sane Notes MUST match or beat Apple Notes / Goodnotes / Notability here or it has no wedge (docs/platform/ipad.md intro). This epic delivers the iPadOS-specific platform integration that sits on top of the shared Flutter editor and the `sane_ink`/`sane_ink_surface` fast path: Apple Pencil Pro extras (squeeze, barrel roll, hover, haptics, double-tap) via the `sane_stylus` plugin; Scribble via `sane_scribble`; iPadOS 26 windowing/multitasking (Split View, Slide Over, Stage Manager, additive windows); Quick Note linking; App Intents/Shortcuts/Spotlight; WidgetKit widgets + ControlWidget; Live Activities; keyboard/menu-bar/trackpad support; Files app integration; Universal Links; the `PrivacyInfo.xcprivacy` manifest + required-reason API audit; and the App Store / TestFlight release gates. It implements docs/platform/ipad.md, docs/design/gestures-and-shortcuts.md, docs/platform/compatibility-matrix.md, the M5 stylus-mastery requirements (PRD-ED-023 roll, PRD-ED-033 hover, PRD-ED-102 haptics), ADR-0012 (native plugin strategy) and ADR-0001 (single-codebase exit criterion + L4 multi-window risk).\n\n## Scope\n**In:** the iPadOS-only platform features listed above and their native Swift plugin impls, entitlements, and store-compliance artefacts.\n**Out:** the shared Dart ink pipeline and native ink surface (SN-INK area), the brush engine (SN-BRS), the cross-platform editor/library/sync/crypto logic, and the iPhone/Android/Web surfaces (their own area epics).\n\n## Acceptance criteria\n- [ ] All child issues below are closed and CI is green.\n- [ ] Every decision-7 iPad budget holds on the Tier 1 device lab (M-series ProMotion iPad Pro + iPad Air, docs/platform/compatibility-matrix.md §2).\n- [ ] The App Store release gates in docs/platform/ipad.md §9 pass (privacy manifest, required-reason APIs, Sign in with Apple presence, multitasking/pointer/keyboard).\n- [ ] No note content leaves the device and nothing from the draw loop is logged in profile/release.\n\n## Technical notes\nPlugins under `plugins/`: `sane_stylus`, `sane_scribble`, `sane_secure_store`, `sane_cloud_drive`, `sane_ml_native`, `sane_pdfkit` (ADR-0012). App-level iPadOS integration (scenes, App Intents, WidgetKit, ActivityKit) lives in `app/` per ADR-0003. Children:\n- [ ] {{SN-IPAD-002}} sane_stylus iOS capability probe\n- [ ] {{SN-IPAD-003}} Pencil Pro squeeze palette\n- [ ] {{SN-IPAD-004}} Pencil Pro barrel roll\n- [ ] {{SN-IPAD-005}} Pencil hover preview\n- [ ] {{SN-IPAD-006}} Pencil Pro haptics\n- [ ] {{SN-IPAD-007}} Pencil double-tap binding\n- [ ] {{SN-IPAD-008}} Scribble in text fields\n- [ ] {{SN-IPAD-009}} multi-window feasibility spike\n- [ ] {{SN-IPAD-010}} Split View / Slide Over / Stage Manager\n- [ ] {{SN-IPAD-011}} additive windowing\n- [ ] {{SN-IPAD-012}} menu bar + keyboard shortcuts\n- [ ] {{SN-IPAD-013}} trackpad & pointer support\n- [ ] {{SN-IPAD-014}} Quick Note linking\n- [ ] {{SN-IPAD-015}} App Intents & Shortcuts\n- [ ] {{SN-IPAD-016}} WidgetKit widgets\n- [ ] {{SN-IPAD-017}} ControlWidget\n- [ ] {{SN-IPAD-018}} Live Activity for recording\n- [ ] {{SN-IPAD-019}} Files app integration\n- [ ] {{SN-IPAD-020}} Universal Links\n- [ ] {{SN-IPAD-021}} privacy manifest & required-reason APIs\n- [ ] {{SN-IPAD-022}} PencilKit interop decision\n- [ ] {{SN-IPAD-023}} App Store Connect readiness\n- [ ] {{SN-IPAD-024}} TestFlight pipeline\n- [ ] {{SN-IPAD-025}} iPad perf validation\n- [ ] {{SN-IPAD-026}} native text-input platform views (L2)\n- [ ] {{SN-IPAD-027}} iPadOS 26/18/17.5 availability gating\n- [ ] {{SN-IPAD-028}} scene/editor state restoration\n- [ ] {{SN-IPAD-029}} Tier 2 iPad degradation checks\n- [ ] {{SN-IPAD-030}} inter-app drag and drop\n- [ ] {{SN-IPAD-031}} iOS target config, capabilities & entitlements\n\n## Security & privacy\nThe native bridge, deep links, intents, widgets and Files imports are all untrusted-input boundaries (ADR-0012 security impact; MASVS-PLATFORM-1/3). Widgets/Live Activities/Quick Note must never leak note content to the Lock Screen or the OS activity index (MASVS-PRIVACY-1/2). The privacy manifest declares zero tracking and only opt-in crash reports (decision 8). Baseline: no content/coordinates/tokens in logs.\n\n## UX notes\nAll iPad chrome (contextual palette, hover cursor, widgets, menu bar, Live Activity) follows design/Sane Notes.dc.html and docs/design/screens-and-flows.md and MUST render in all 17 looks + light/dark, with Semantics labels, 44 pt targets, >= 4.5:1 contrast, and full keyboard reachability.\n\n## Test plan\nPer child issue. Golden tests for every painted surface across looks; `integration_test` + `patrol` for native dialogs; `tools/perf_harness` on the Tier 1 device lab.\n\n## Dependencies\n{{SN-FND-002}} monorepo scaffold. Individual children depend on SN-INK, SN-ED, SN-CORE, SN-LIB, SN-AUD and SN-PERF work as noted in each.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
     "key": "SN-IPAD-002",
     "title": "Implement sane_stylus iOS capability probe for connected Apple Pencils",
     "type": "task",
     "priority": "p1",
-    "platforms": ["ipad"],
-    "areas": ["input-gestures", "ink"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "input-gestures",
+      "ink"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-1", "MASVS-CODE-4"],
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-CODE-4"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-FND-002"],
-    "labels_extra": ["agent-ready"],
+    "depends_on": [
+      "SN-FND-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
     "body": "## Context\nEvery Pencil extra (squeeze, barrel roll, hover, haptics, double-tap) is capability-gated: the brush engine and stylus code MUST feature-detect per connected Pencil, never assume a model, because the four generations have different envelopes (docs/platform/ipad.md §2; docs/design/gestures-and-shortcuts.md §3). This task delivers the `sane_stylus` federated plugin's Dart platform-interface and the iOS/iPadOS Swift implementation's capability probe, which the later Pencil-feature issues consume. It is the foundation of the whole stylus-mastery set and implements ADR-0012's federated-plugin + Pigeon contract.\n\n## Scope\n**In:** `plugins/sane_stylus` platform-interface (`SaneStylusPlatform`), the Pigeon schema, the Swift impl returning a `PencilCapabilities` descriptor (pressure/tilt/azimuth/roll/doubleTap/squeeze/hover/haptics booleans) detected per connected Pencil, connect/disconnect events, and a mock impl for tests.\n**Out:** the actual squeeze/roll/hover/haptics/double-tap handlers ({{SN-IPAD-003}}..{{SN-IPAD-007}}); the wet-ink sample capture ({{SN-INK-006}}).\n\n## Acceptance criteria\n- [ ] `capabilities()` returns a `PencilCapabilities` struct correct for Pencil 1, Pencil 2, Pencil USB-C, and Pencil Pro per the docs/platform/ipad.md §2 matrix (roll/squeeze/haptics only true on Pencil Pro; hover only on M-iPads).\n- [ ] Capability changes when a different Pencil connects emit a stream event within one run loop.\n- [ ] The mock impl lets `packages/` and `app/` tests run with no device; unknown/absent Pencil resolves to an all-false envelope (finger/velocity fallback).\n- [ ] Pigeon-generated Dart/Swift stubs are checked in and CI fails if stale.\n\n## Technical notes\nSwift reads `UIPencilInteraction`, `UITouch.type == .pencil`, and hover availability; expose via `EventChannel`/Pigeon per ADR-0012. Interface sketch in docs/platform/ipad.md §6 (`SaneStylusPlatform`). Consumed by `sane_ink` and the editor. Do not sniff device model strings; probe APIs. Deployment target `IPHONEOS_DEPLOYMENT_TARGET = 17.0`.\n\n## Security & privacy\nChannel payloads crossing Dart<->native are untrusted input: validate the `PencilCapabilities` shape on the Dart side and reject malformed payloads (MASVS-PLATFORM-1, MASVS-CODE-4). No PII: capability booleans only, no identifiers. Baseline: no logging of stroke data or tokens.\n\n## UX notes\nNo user-facing UI. Downstream features read this probe to hide controls a Pencil cannot drive (e.g. no squeeze row on Pencil 2); those surfaces follow docs/design/screens-and-flows.md. Ensure the absence of a capability is announced by an accessible fallback, not a silently dead control.\n\n## Test plan\nUnit: `plugins/sane_stylus/test/capabilities_test.dart` (matrix per Pencil, mock impl). Golden: none. Integration: `plugins/sane_stylus/example/integration_test/probe_test.dart` via `patrol` on a real iPad with Pencil Pro + Pencil 2.\n\n## Dependencies\n{{SN-FND-002}} monorepo scaffold (plugin skeleton).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -35,15 +62,28 @@
     "title": "Implement Apple Pencil Pro squeeze to open the contextual tool palette",
     "type": "feature",
     "priority": "p2",
-    "platforms": ["ipad"],
-    "areas": ["input-gestures", "editor"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "input-gestures",
+      "editor"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-1"],
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-IPAD-002", "SN-ED-005"],
-    "labels_extra": ["agent-ready", "innovation"],
+    "depends_on": [
+      "SN-IPAD-002",
+      "SN-ED-005"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
     "body": "## Context\nSqueeze is a Pencil Pro differentiator no finger or older Pencil offers. Squeezing the pencil MUST open the contextual QuickMenu / arc palette (recent pens + colours + undo/redo + the 6 most-used actions) anchored at the pencil's hover pose (docs/platform/ipad.md §5; docs/design/gestures-and-shortcuts.md §3.2). This closes the parity gap with Notability's Arc menu and Fresco's squeeze toolbar and implements the M5 stylus-mastery scope of PRD-01.\n\n## Scope\n**In:** wiring `sane_stylus` squeeze events (`onPencilSqueeze { phase }`, phases began/changed/ended) to open/anchor the editor's existing contextual palette overlay; squeeze during a QuickShape confirms the shape; honour the user's system `preferredSqueezeAction`.\n**Out:** the palette overlay's own visual design (reuse the editor overlay from {{SN-ED-005}}); barrel roll ({{SN-IPAD-004}}); hover ({{SN-IPAD-005}}).\n\n## Acceptance criteria\n- [ ] A squeeze opens the contextual palette anchored at `hoverPose.location`; a second squeeze or tap-away dismisses it.\n- [ ] If the system `preferredSqueezeAction` is `.runSystemShortcut` the app receives no squeeze event and MUST NOT depend on squeeze as the only path to any action (every action also reachable from the dock/menu).\n- [ ] Squeeze `phase` transitions (began/changed/ended) can confirm an in-progress QuickShape (docs/design/gestures-and-shortcuts.md §5).\n- [ ] Palette open/anchor latency <= 100 ms; no dropped frames while drawing.\n- [ ] Feature hidden when `capabilities().squeeze == false`.\n\n## Technical notes\nConsume `PencilInteraction.squeeze(phase, hoverPose)` from {{SN-IPAD-002}}. Swift side `UIPencilInteraction` / `.onPencilSqueeze` + `preferredSqueezeAction` (docs/platform/ipad.md §3 API map). The palette is the design-system floating tool overlay, not a system menu. State in `app/` Riverpod, not the plugin.\n\n## Security & privacy\nSqueeze maps only to non-destructive UI (tool swap, menu) so an accidental trigger is harmless (docs/design/gestures-and-shortcuts.md §7). Untrusted channel event validated before use (MASVS-PLATFORM-1). Baseline: no content/tokens logged.\n\n## UX notes\nReuse the contextual QuickMenu / arc palette from design/Sane Notes.dc.html and docs/design/screens-and-flows.md §7; render in all 17 looks + light/dark (golden). Provide a non-gesture equivalent (dock QuickMenu button) per WCAG 2.5.1; 44 pt targets, Semantics labels on every arc action, contrast >= 4.5:1. Respect the palette's dock-side under left-handed mode.\n\n## Test plan\nWidget: `app/test/editor/squeeze_palette_test.dart` (open/anchor/dismiss, capability-off hides it). Golden: `app/test/golden/squeeze_palette_looks_test.dart` across looks. Integration: `app/integration_test/pencil_squeeze_test.dart` via `patrol` on Pencil Pro.\n\n## Dependencies\n{{SN-IPAD-002}} capability probe; {{SN-ED-005}} palette dock overlay.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -51,15 +91,28 @@
     "title": "Implement Apple Pencil Pro barrel roll to rotate calligraphy and chisel nibs",
     "type": "feature",
     "priority": "p2",
-    "platforms": ["ipad"],
-    "areas": ["input-gestures", "brushes"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "input-gestures",
+      "brushes"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-1"],
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-IPAD-002", "SN-BRS-002"],
-    "labels_extra": ["agent-ready", "innovation"],
+    "depends_on": [
+      "SN-IPAD-002",
+      "SN-BRS-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
     "body": "## Context\nBarrel roll is Pencil Pro + iPadOS 17.5-only and gives calligraphy a real analog feel: rolling the pencil MUST rotate the chisel/calligraphy nib live, combining `rollAngle` with `azimuth` for responsiveness (docs/platform/ipad.md §5; docs/design/gestures-and-shortcuts.md §3.3). Roll arrives first as a digitizer estimate and is refined over Bluetooth, so it MUST be reconciled or fast strokes render subtly wrong (docs/platform/ipad.md §4 step 4). Implements PRD-ED-023 (roll capture, M5) and the brush orientation binding PRD-ED-158.\n\n## Scope\n**In:** map `rollAngle` (+ `azimuth`) to the nib orientation of the calligraphy pen and chisel highlighter/marker; a per-pen \"Lock angle\" toggle that overrides roll and uses the nib-angle slider; hover preview of nib angle before contact; estimated-property reconciliation of roll and force via `touchesEstimatedPropertiesUpdated`, correlated by `estimationUpdateIndex`, patched into stored stroke points before serialisation.\n**Out:** the brush parameter schema itself ({{SN-BRS-002}}); hover cursor rendering ({{SN-IPAD-005}}).\n\n## Acceptance criteria\n- [ ] Rolling the Pencil Pro rotates the chisel/calligraphy nib live at >= 60 fps with no added pen-to-pixel latency beyond the ProMotion budget (<= 16 ms).\n- [ ] Final reconciled roll/force values replace the initial estimates in the serialised stroke (byte-check after reconciliation).\n- [ ] \"Lock angle\" on a pen disables roll and uses the slider value (Notability model).\n- [ ] On non-Pro Pencils/finger/mouse the nib angle falls back to azimuth-only (or the slider) and no roll control is shown (`capabilities().roll == false`).\n\n## Technical notes\nConsume `rollAngle` and `estimatedUpdates` streams from {{SN-IPAD-002}}. Swift `UITouch.rollAngle` + `touchesEstimatedPropertiesUpdated(_:)` (docs/platform/ipad.md §3/§4). Nib orientation binds through the brush `barrelRollToSize/Opacity` and orientation params ({{SN-BRS-002}}). Reconciliation must patch `sane_ink` stroke points, not just the wet preview.\n\n## Security & privacy\nNone beyond baseline: roll/force are per-stroke geometry, never logged (draw loop logs nothing in profile/release). Channel events validated (MASVS-PLATFORM-1).\n\n## UX notes\nCalligraphy/chisel nibs from design/Sane Notes.dc.html brush set; nib-angle preview on hover matches docs/design/screens-and-flows.md §7. Provide the \"Lock angle\" toggle and the numeric nib-angle slider as the non-gesture alternative (WCAG 2.5.1). Golden-test nib rotation across looks + light/dark.\n\n## Test plan\nUnit: `packages/sane_ink/test/estimated_reconciliation_test.dart` (roll/force patch by updateIndex). Golden: `app/test/golden/calligraphy_roll_looks_test.dart`. Integration: `app/integration_test/pencil_roll_test.dart` via `patrol` on Pencil Pro.\n\n## Dependencies\n{{SN-IPAD-002}} capability probe; {{SN-BRS-002}} brush parameter schema.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -67,15 +120,26 @@
     "title": "Implement Apple Pencil hover preview for brush cursor and palette anchoring",
     "type": "feature",
     "priority": "p2",
-    "platforms": ["ipad"],
-    "areas": ["input-gestures", "editor"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "input-gestures",
+      "editor"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "S",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-1"],
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-IPAD-002"],
-    "labels_extra": ["agent-ready"],
+    "depends_on": [
+      "SN-IPAD-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
     "body": "## Context\nHover (Pencil 2/Pro on M-iPads) shows where a mark will land before contact, which matters when annotating dense text or PDFs (docs/platform/ipad.md §5; docs/design/gestures-and-shortcuts.md §3.4). Sane Notes MUST show a brush cursor previewing size/shape/colour at the hover point, and anchor the contextual palette to the hover pose. Implements PRD-ED-033 (hover preview, M5).\n\n## Scope\n**In:** subscribe to the `HoverPose` stream (location, zOffset, azimuth, altitude, roll); render a brush cursor at the hover point; feed the pose to the squeeze palette anchor ({{SN-IPAD-003}}); optional hover pinch/slide to adjust size/opacity.\n**Out:** the squeeze palette itself; the wet stroke; Android/web hover (their platform areas).\n\n## Acceptance criteria\n- [ ] While hovering with a supporting Pencil, a brush cursor tracks the tip at >= 60 fps and previews the active brush's size/shape/colour.\n- [ ] The cursor disappears on contact (stroke starts) and on Pencil disconnect.\n- [ ] Hover preview is hidden when `capabilities().hover == false` (Pencil 1, USB-C on non-hover iPads, finger) with no dead affordance.\n- [ ] Cursor honours the current look's ink/cursor tokens and inverts correctly in dark mode.\n\n## Technical notes\nConsume `hover` stream from {{SN-IPAD-002}}; Swift `UIHoverGestureRecognizer` + `UIPencilHoverPose` (docs/platform/ipad.md §3 API map). Render the cursor in the Flutter chrome layer (`CustomPainter` in a `RepaintBoundary`), never on the native front buffer. Feature-detect hover, never sniff device.\n\n## Security & privacy\nNone beyond baseline: hover coordinates are transient UI, never logged or persisted; channel events validated (MASVS-PLATFORM-1). No tokens/content logged.\n\n## UX notes\nBrush cursor per design/Sane Notes.dc.html hover state and docs/design/screens-and-flows.md §7; render across all 17 looks + light/dark (golden). The cursor is an enhancement, not the only feedback; ensure size/colour are also shown in the dock for users without hover. Respect reduced-motion.\n\n## Test plan\nWidget: `app/test/editor/hover_cursor_test.dart` (tracks pose, hides on contact/disconnect/capability-off). Golden: `app/test/golden/hover_cursor_looks_test.dart`. Integration: `app/integration_test/pencil_hover_test.dart` via `patrol` on an M-iPad with Pencil Pro.\n\n## Dependencies\n{{SN-IPAD-002}} capability probe.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -83,15 +147,26 @@
     "title": "Fire Apple Pencil Pro haptics on shape-snap and alignment via feedback generator",
     "type": "feature",
     "priority": "p3",
-    "platforms": ["ipad"],
-    "areas": ["input-gestures"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "input-gestures"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "S",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-1"],
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-IPAD-002"],
-    "labels_extra": ["agent-ready", "innovation"],
+    "depends_on": [
+      "SN-IPAD-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
     "body": "## Context\nPencil Pro haptics let the user feel a snap/shape confirmation without looking, a subtle polish competitors mostly lack (docs/platform/ipad.md §5; docs/design/gestures-and-shortcuts.md §3.5). Sane Notes MUST fire a spatial haptic on shape recognition/close and on snap-to-guide. Implements PRD-ED-102 (haptic on snap/shape-complete, M5).\n\n## Scope\n**In:** wire the editor's shape-snap and alignment events to `sane_stylus.triggerFeedback(kind, at)`; Swift routes to `UICanvasFeedbackGenerator.pathCompleted(at:)` / `alignmentOccurred(at:)`; an in-app haptics toggle; honour the system haptics-off setting.\n**Out:** shape recognition itself ({{SN-SHP-001}}); Android/web haptics.\n\n## Acceptance criteria\n- [ ] A haptic fires within one frame of a shape closing (`pathCompleted`) and of an alignment snap (`alignmentOccurred`), spatially anchored at the event point (iOS 18 view+point form).\n- [ ] No haptic when `capabilities().haptics == false`, when the in-app toggle is off, or when system haptics are disabled.\n- [ ] The haptic is never the only confirmation: a visual confirm also shows (accessibility).\n- [ ] Firing haptics adds no measurable pen-to-pixel latency.\n\n## Technical notes\nConsume the feedback API from {{SN-IPAD-002}}; Swift `UICanvasFeedbackGenerator(view:)` (docs/platform/ipad.md §3/§5). iOS 18 routes to the Pencil automatically — no Pencil-specific API. Trigger points come from the shapes/snapping work ({{SN-SHP-001}}) and the alignment engine.\n\n## Security & privacy\nNone beyond baseline: haptic triggers carry no content; channel events validated (MASVS-PLATFORM-1). No logging of content or tokens.\n\n## UX notes\nPairs with the visual snap indicators in design/Sane Notes.dc.html / docs/design/screens-and-flows.md §7. Haptic is an additional non-visual confirmation that helps low-vision users but MUST NOT be the sole signal (docs/design/gestures-and-shortcuts.md §9). Expose the toggle in Settings > Handwriting & stylus.\n\n## Test plan\nWidget: `app/test/editor/haptic_feedback_test.dart` (fires on snap/close, respects toggles and capability-off) using a mock `sane_stylus`. Integration: `app/integration_test/pencil_haptics_test.dart` via `patrol` on Pencil Pro (manual felt-confirmation note).\n\n## Dependencies\n{{SN-IPAD-002}} capability probe; shape/alignment events from {{SN-SHP-001}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -99,15 +174,26 @@
     "title": "Bind Apple Pencil double-tap to a remappable editor action",
     "type": "feature",
     "priority": "p2",
-    "platforms": ["ipad"],
-    "areas": ["input-gestures", "settings"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "input-gestures",
+      "settings"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "S",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-1"],
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-IPAD-002"],
-    "labels_extra": ["agent-ready"],
+    "depends_on": [
+      "SN-IPAD-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
     "body": "## Context\nDouble-tap (Pencil 2 & Pro) is a well-known quick tool swap. Sane Notes MUST honour the user's system preference and default to toggling eraser/last tool, while offering an in-app remapping (docs/platform/ipad.md §5; docs/design/gestures-and-shortcuts.md §3.1). This is core stylus parity (M5).\n\n## Scope\n**In:** subscribe to `doubleTap` interactions; default action = toggle current tool <-> eraser; Settings mapping (Eraser / Previous tool / Colors, extend with Eyedropper / QuickMenu); respect the system `preferredTapAction` where set.\n**Out:** squeeze ({{SN-IPAD-003}}); the eraser tool itself.\n\n## Acceptance criteria\n- [ ] A double-tap performs the mapped action; default toggles current tool <-> eraser.\n- [ ] The Settings option (Eraser / Previous tool / Colors / Eyedropper / QuickMenu) changes behaviour immediately.\n- [ ] Where the system `preferredTapAction` is set, the app's own mapping applies inside the Editor per docs/design/gestures-and-shortcuts.md §3.1.\n- [ ] Double-tap is hidden/no-op when `capabilities().doubleTap == false`.\n- [ ] The action is non-destructive so an accidental mid-note trigger is harmless (docs/design/gestures-and-shortcuts.md §7).\n\n## Technical notes\nConsume `doubleTap` from {{SN-IPAD-002}}; Swift `UIPencilInteraction` / `onPencilDoubleTap`, `preferredTapAction` (docs/platform/ipad.md §3). Mapping persisted in settings (PRD-SET inventory). Editor tool state lives in `app/` Riverpod.\n\n## Security & privacy\nNone beyond baseline: mapping is a local preference; channel events validated (MASVS-PLATFORM-1). No content/tokens logged.\n\n## UX notes\nSettings row \"Double-tap the pencil\" per docs/design/screens-and-flows.md §12; render across looks + light/dark. Provide equivalent dock buttons so the action is reachable without the gesture (WCAG 2.5.1); 44 pt targets, Semantics labels.\n\n## Test plan\nWidget: `app/test/editor/double_tap_binding_test.dart` (each mapping, capability-off). Integration: `app/integration_test/pencil_double_tap_test.dart` via `patrol` on Pencil 2/Pro.\n\n## Dependencies\n{{SN-IPAD-002}} capability probe.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -115,15 +201,28 @@
     "title": "Implement Scribble handwriting-to-text in text fields via sane_scribble",
     "type": "feature",
     "priority": "p2",
-    "platforms": ["ipad"],
-    "areas": ["ocr-hwr", "input-gestures", "text"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "ocr-hwr",
+      "input-gestures",
+      "text"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-1", "MASVS-PRIVACY-1"],
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PRIVACY-1"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-FND-002"],
-    "labels_extra": ["agent-ready"],
+    "depends_on": [
+      "SN-FND-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
     "body": "## Context\niPadOS gives Scribble (handwriting into text fields) for free, and Sane Notes should let users write into the note title, search bar and text boxes with the Pencil (docs/platform/ipad.md §6/§7; docs/design/gestures-and-shortcuts.md §3.6). Crucially the canvas ink path and the Scribble text-field path are SEPARATE — Scribble strokes never become canvas ink, and Scribble is not scriptable beyond enable/suppress. Implements PRD-ED-110 (Scribble/write-to-text into text fields). Because Flutter paints its own text (limitation L2), first-class fields SHOULD use a native text-input platform view.\n\n## Scope\n**In:** `plugins/sane_scribble` platform-interface + Swift impl: `setScribbleEnabled(enabled, fieldBounds)`, `registerWriteAnywhere(writableElements)` via `UIIndirectScribbleInteraction`, and a `recognizedText` stream; suppress Scribble over the drawing surface so the pen inks there; enable it for the title/search/text-box fields.\n**Out:** canvas handwriting recognition/convert-to-text (SN-OCR/SN-ED-086); Android/web handwriting entry.\n\n## Acceptance criteria\n- [ ] Writing with the Pencil over the note-title / search / a text box inserts recognised text into that field; recognised text arrives as normal text input, not canvas ink.\n- [ ] Scribble is suppressed over the canvas so a pen stroke there draws, never types (separate input paths).\n- [ ] Write-anywhere regions registered via `UIIndirectScribbleInteraction` accept handwriting; unsupported languages degrade to the on-screen keyboard.\n- [ ] No attempt is made to build a recognizer from Scribble strokes (docs/platform/ipad.md §6 limitation).\n\n## Technical notes\nSwift `UIScribbleInteraction` (enable/suppress per field) + `UIIndirectScribbleInteraction` (custom regions), per docs/platform/ipad.md §3/§6. Prefer a native text-input platform view for the few first-class fields (L2). Interface sketch `SaneScribblePlatform` in docs/platform/ipad.md §6. Consumed by `app/editor` text entry.\n\n## Security & privacy\nRecognised text is user content entering a field — treat as untrusted input, validate/escape before use in search or persistence (MASVS-PLATFORM-1). Do not log recognised text or send it off device (MASVS-PRIVACY-1); recognition is on-device (Apple Scribble). Baseline: no content in logs.\n\n## UX notes\nApplies to the note-title, universal Search (Cmd+K), and text boxes in design/Sane Notes.dc.html and docs/design/screens-and-flows.md §7/§12. Provide keyboard and dictation as alternatives (WCAG); ensure VoiceOver reads the field correctly since Flutter paints text (hand-author Semantics). 44 pt targets, contrast >= 4.5:1, both light/dark.\n\n## Test plan\nWidget: `app/test/text/scribble_fields_test.dart` (enable/suppress per field via mock). Integration: `app/integration_test/scribble_title_search_test.dart` via `patrol` on an iPad with Pencil (writes into title/search, canvas still inks).\n\n## Dependencies\n{{SN-FND-002}} monorepo scaffold; text tool from {{SN-TXT-001}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -131,15 +230,26 @@
     "title": "Spike: verify Flutter multi-view and multi-window support on iPadOS 26",
     "type": "spike",
     "priority": "p1",
-    "platforms": ["ipad"],
-    "areas": ["compat"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "compat"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "S",
     "sdlc": "design",
-    "security": ["MASVS-PLATFORM-1"],
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-FND-002"],
-    "labels_extra": ["agent-ready", "needs-decision"],
+    "depends_on": [
+      "SN-FND-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "needs-decision"
+    ],
     "body": "## Context\niPadOS 26 shipped a new windowing system and Sane Notes wants additive windows (a new window per note). But multi-window/multi-view support on Flutter is uncertain and is flagged as a real risk item L4 in docs/platform/ipad.md §10, to be verified at spike time and recorded in ADR-0001. This time-boxed spike de-risks {{SN-IPAD-011}} before it is built.\n\n## Scope\n**In:** measure the current Flutter stable's multi-view/multi-window capability on iPadOS 26 (one `FlutterEngine` per scene vs multi-view embedding); prototype opening a second window bound to a second note; document feasibility, state-sharing model, and a fallback (in-app tabbed windows); write the outcome into ADR-0001 and docs/platform/ipad.md §7.\n**Out:** the production additive-windowing feature ({{SN-IPAD-011}}); Stage Manager layout adaptation ({{SN-IPAD-010}}).\n\n## Acceptance criteria\n- [ ] A written decision states whether native scenes/additive windows are feasible on the pinned Flutter version, with the engine/embedding approach and its state-sharing implications.\n- [ ] If not feasible, the documented fallback is tabbed in-app windows (docs/platform/ipad.md §10 L4).\n- [ ] ADR-0001 and docs/platform/ipad.md updated with the outcome; a throwaway prototype branch is linked.\n- [ ] The decision names the maintainer approval needed to pick the windowing approach (needs-decision).\n\n## Technical notes\nReference ADR-0001 (single-codebase + exit criteria), ADR-0003 (app structure), docs/platform/ipad.md §7 windowing + L4. Investigate `UISceneSession`/`UIWindowScene`, multiple `FlutterViewController`s, and any multi-view API. Keep the prototype throwaway (no production code merged).\n\n## Security & privacy\nNone beyond baseline: prototype only; a per-window note must still respect locks so a second window cannot bypass a note lock (note for the follow-up feature). No content/tokens logged.\n\n## UX notes\nDocument how additive windows appear in the app-menu window list with descriptive (notebook-title) names (docs/platform/ipad.md §7). No shipped UI in the spike; the follow-up feature covers looks/a11y.\n\n## Test plan\nManual: prototype opens two windows on an iPadOS 26 device; screenshots + notes attached to the ADR. No automated tests for a throwaway spike.\n\n## Dependencies\n{{SN-FND-002}} monorepo scaffold.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; ADR-0001 + docs/platform/ipad.md record the outcome\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -147,59 +257,113 @@
     "title": "Adapt editor layout to Split View, Slide Over and Stage Manager without state loss",
     "type": "feature",
     "priority": "p1",
-    "platforms": ["ipad"],
-    "areas": ["compat", "editor"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "compat",
+      "editor"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "L",
     "sdlc": "implementation",
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-ED-002"],
-    "labels_extra": ["agent-ready"],
-    "body": "## Context\nThe App Store expects iPad apps to support multiple window sizes and multitasking, and NOT to lock orientation or opt out of resizability (docs/platform/ipad.md §9/§7). Sane Notes MUST coexist with Split View, Slide Over, Stage Manager and the resize handle, adapting every layout to any window size and re-laying-out at runtime without losing editor state (docs/platform/compatibility-matrix.md §5 window classes). This is a hard release gate.\n\n## Scope\n**In:** drive the app's adaptive layout off window-size-class-equivalent breakpoints (Compact/Medium/Expanded/Large/Extra-large per docs/platform/compatibility-matrix.md §5); collapse to phone-style chrome at narrow widths; preserve editor state (open note, tool, selection, scroll/zoom, undo stack) across resize / Split View / Stage Manager transitions; support external display via Stage Manager on M-series iPads.\n**Out:** additive multi-window (scene per note) ({{SN-IPAD-011}}); phone-specific layouts (SN-PHN area).\n\n## Acceptance criteria\n- [ ] Resizing the window (Split View 1/3-2/3, Slide Over, Stage Manager free resize) reflows the layout with no dropped editor state (open note, tool, selection, zoom, undo depth intact).\n- [ ] At < 900 dp the sidebar collapses to the narrow class; at Expanded+ the two-pane + rail layout shows (docs/design/screens-and-flows.md adaptive rules).\n- [ ] Orientation is not locked and resizability is not opted out (verified in Info.plist / scene manifest).\n- [ ] External display via Stage Manager shows an extended workspace on an M-series iPad.\n- [ ] Class change mid-stroke does not corrupt the in-progress stroke.\n\n## Technical notes\nUse `MediaQuery`/`LayoutBuilder` size classes (ADR-0003 adaptive layout), not device checks. Editor state held in `app/` Riverpod providers that survive relayout (no state in ephemeral widgets). Reference docs/platform/ipad.md §7, docs/platform/compatibility-matrix.md §5. Scene manifest must declare multiple supported window sizes.\n\n## Security & privacy\nNone beyond baseline: layout only; no content leaves the device and nothing is logged. A locked note remains locked across window transitions.\n\n## UX notes\nAll breakpoints follow docs/design/screens-and-flows.md and design/Sane Notes.dc.html; every look + light/dark must lay out correctly at Compact through Extra-large (golden per class). 44 pt targets hold at every width; keyboard focus order preserved across relayout; contrast >= 4.5:1.\n\n## Test plan\nWidget: `app/test/layout/size_class_reflow_test.dart` (state preserved across simulated window resizes). Golden: `app/test/golden/layout_classes_test.dart` (Compact/Medium/Expanded/Large/Extra-large x looks). Integration: `app/integration_test/stage_manager_resize_test.dart` via `patrol` on an M-series iPad.\n\n## Dependencies\n{{SN-ED-002}} editor canvas & tool state machine.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
+    "depends_on": [
+      "SN-ED-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe App Store expects iPad apps to support multiple window sizes and multitasking, and NOT to lock orientation or opt out of resizability (docs/platform/ipad.md §9/§7). Sane Notes MUST coexist with Split View, Slide Over, Stage Manager and the resize handle, adapting every layout to any window size and re-laying-out at runtime without losing editor state (docs/platform/compatibility-matrix.md §5 window classes). This is a hard release gate.\n\n## Scope\n**In:** drive the app's adaptive layout off window-size-class-equivalent breakpoints (Compact/Medium/Expanded/Large/Extra-large per docs/platform/compatibility-matrix.md §5); collapse to phone-style chrome at narrow widths; preserve editor state (open note, tool, selection, scroll/zoom, undo stack) across resize / Split View / Stage Manager transitions; support external display via Stage Manager on M-series iPads.\n**Out:** additive multi-window (scene per note) ({{SN-IPAD-011}}); phone-specific layouts (SN-PHN area).\n\n## Acceptance criteria\n- [ ] Resizing the window (Split View 1/3-2/3, Slide Over, Stage Manager free resize) reflows the layout with no dropped editor state (open note, tool, selection, zoom, undo depth intact).\n- [ ] At < 900 dp the sidebar collapses to the narrow class; at Expanded+ the two-pane + rail layout shows (docs/design/screens-and-flows.md adaptive rules).\n- [ ] Orientation is not locked and resizability is not opted out (verified in Info.plist / scene manifest).\n- [ ] External display via Stage Manager shows an extended workspace on an M-series iPad.\n- [ ] Class change mid-stroke does not corrupt the in-progress stroke.\n\n## Technical notes\nUse `MediaQuery`/`LayoutBuilder` size classes (ADR-0003 adaptive layout), not device checks. Editor state held in `app/` Riverpod providers that survive relayout (no state in ephemeral widgets). Reference docs/platform/ipad.md §7, docs/platform/compatibility-matrix.md §5. Scene manifest must declare multiple supported window sizes.\n\n## Security & privacy\nNone beyond baseline: layout only; no content leaves the device and nothing is logged. A locked note remains locked across window transitions (MASVS-AUTH-1), and no locked content appears in a resized/backgrounded snapshot (MASVS-PRIVACY-1).\n\n## UX notes\nAll breakpoints follow docs/design/screens-and-flows.md and design/Sane Notes.dc.html; every look + light/dark must lay out correctly at Compact through Extra-large (golden per class). 44 pt targets hold at every width; keyboard focus order preserved across relayout; contrast >= 4.5:1.\n\n## Test plan\nWidget: `app/test/layout/size_class_reflow_test.dart` (state preserved across simulated window resizes). Golden: `app/test/golden/layout_classes_test.dart` (Compact/Medium/Expanded/Large/Extra-large x looks). Integration: `app/integration_test/stage_manager_resize_test.dart` via `patrol` on an M-series iPad.\n\n## Dependencies\n{{SN-ED-002}} editor canvas & tool state machine.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-PRIVACY-1"
+    ]
   },
   {
     "key": "SN-IPAD-011",
     "title": "Adopt additive windowing with a scene and descriptive name per note",
     "type": "feature",
     "priority": "p2",
-    "platforms": ["ipad"],
-    "areas": ["compat", "editor"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "compat",
+      "editor"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "L",
     "sdlc": "implementation",
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-IPAD-009", "SN-IPAD-010"],
-    "labels_extra": ["agent-ready"],
-    "body": "## Context\niPadOS 26 windowing rewards apps that open a NEW window per note rather than replacing the current one, and that give each window a descriptive name for the app-menu window list (docs/platform/ipad.md §7). This feature implements additive windowing on the approach chosen by the {{SN-IPAD-009}} spike (native scenes, or the tabbed fallback if scenes are infeasible on Flutter, per L4).\n\n## Scope\n**In:** open a note/notebook in a new window/scene (`UISceneSession`/`UIWindowScene`) with the notebook title as the window name; a menu/gesture to open-in-new-window; per-window editor state; safe teardown; the tabbed in-app fallback if the spike ruled native scenes out.\n**Out:** the multi-window feasibility decision ({{SN-IPAD-009}}); Split View/Stage Manager layout adaptation ({{SN-IPAD-010}}).\n\n## Acceptance criteria\n- [ ] \"Open in new window\" creates a window bound to that note with the notebook title shown in the app-menu window list.\n- [ ] Two windows on the same notebook stay consistent (edits in one reflect in the other via the shared document model, no divergence).\n- [ ] A note open in a window respects its lock; a second window cannot bypass a note/app lock.\n- [ ] If native scenes are infeasible (spike outcome), the tabbed in-app fallback ships instead and the ADR records why.\n- [ ] Closing a window does not lose unsaved edits (local-first autosave).\n\n## Technical notes\nBuild on the {{SN-IPAD-009}} outcome and ADR-0001/ADR-0003. Native scene lifecycle in Swift/`app/`; shared document model from `sane_core` so windows never fork state. Reference docs/platform/ipad.md §7 additive windowing + external display.\n\n## Security & privacy\nA per-window note MUST honour app/notebook/note locks (MASVS-AUTH/LOCK) — opening in a new window is not an unlock. No content/tokens logged; no content on the window-switcher snapshot for a locked note (privacy blur).\n\n## UX notes\nWindow naming + \"Open in new window\" affordance per docs/design/screens-and-flows.md and design/Sane Notes.dc.html; render across looks + light/dark. Provide a keyboard/menu path (not gesture-only). Locked notes show a privacy placeholder in the window switcher.\n\n## Test plan\nWidget/unit: `app/test/windowing/additive_window_state_test.dart` (shared model consistency, lock respected). Integration: `app/integration_test/open_in_new_window_test.dart` via `patrol` on iPadOS 26 (or the tabbed fallback path).\n\n## Dependencies\n{{SN-IPAD-009}} multi-window spike; {{SN-IPAD-010}} multitasking layout.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
+    "depends_on": [
+      "SN-IPAD-009",
+      "SN-IPAD-010"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\niPadOS 26 windowing rewards apps that open a NEW window per note rather than replacing the current one, and that give each window a descriptive name for the app-menu window list (docs/platform/ipad.md §7). This feature implements additive windowing on the approach chosen by the {{SN-IPAD-009}} spike (native scenes, or the tabbed fallback if scenes are infeasible on Flutter, per L4).\n\n## Scope\n**In:** open a note/notebook in a new window/scene (`UISceneSession`/`UIWindowScene`) with the notebook title as the window name; a menu/gesture to open-in-new-window; per-window editor state; safe teardown; the tabbed in-app fallback if the spike ruled native scenes out.\n**Out:** the multi-window feasibility decision ({{SN-IPAD-009}}); Split View/Stage Manager layout adaptation ({{SN-IPAD-010}}).\n\n## Acceptance criteria\n- [ ] \"Open in new window\" creates a window bound to that note with the notebook title shown in the app-menu window list.\n- [ ] Two windows on the same notebook stay consistent (edits in one reflect in the other via the shared document model, no divergence).\n- [ ] A note open in a window respects its lock; a second window cannot bypass a note/app lock.\n- [ ] If native scenes are infeasible (spike outcome), the tabbed in-app fallback ships instead and the ADR records why.\n- [ ] Closing a window does not lose unsaved edits (local-first autosave).\n\n## Technical notes\nBuild on the {{SN-IPAD-009}} outcome and ADR-0001/ADR-0003. Native scene lifecycle in Swift/`app/`; shared document model from `sane_core` so windows never fork state. Reference docs/platform/ipad.md §7 additive windowing + external display.\n\n## Security & privacy\nA per-window note MUST honour app/notebook/note locks (MASVS-AUTH/LOCK) — opening in a new window is not an unlock. No content/tokens logged; no content on the window-switcher snapshot for a locked note (privacy blur, MASVS-PRIVACY-2). Scene-activation payloads crossing the platform channel are untrusted input and are validated before use (MASVS-PLATFORM-1).\n\n## UX notes\nWindow naming + \"Open in new window\" affordance per docs/design/screens-and-flows.md and design/Sane Notes.dc.html; render across looks + light/dark. Provide a keyboard/menu path (not gesture-only). Locked notes show a privacy placeholder in the window switcher.\n\n## Test plan\nWidget/unit: `app/test/windowing/additive_window_state_test.dart` (shared model consistency, lock respected). Integration: `app/integration_test/open_in_new_window_test.dart` via `patrol` on iPadOS 26 (or the tabbed fallback path).\n\n## Dependencies\n{{SN-IPAD-009}} multi-window spike; {{SN-IPAD-010}} multitasking layout.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-PRIVACY-2",
+      "MASVS-PLATFORM-1"
+    ]
   },
   {
     "key": "SN-IPAD-012",
     "title": "Populate the iPad menu bar and wire the full keyboard-shortcut surface",
     "type": "feature",
     "priority": "p1",
-    "platforms": ["ipad"],
-    "areas": ["input-gestures", "editor"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "input-gestures",
+      "editor"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "implementation",
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-ED-002"],
-    "labels_extra": ["agent-ready"],
-    "body": "## Context\niPad is expected to have full keyboard-shortcut support, and iPadOS 26 wants the persistent menu bar populated with the editor's real menus so keyboard users and the menu bar both work (docs/platform/ipad.md §7/§9). The shortcut scheme is already specified across platforms in docs/design/gestures-and-shortcuts.md §6 (Goodnotes/Notability conventions). This delivers the menu bar + shortcuts on iPad.\n\n## Scope\n**In:** File/Edit/Insert/View/Tools menus in the persistent menu bar; the single-key tool shortcuts (P/H/E/V/S/T/I/R) suppressed while a text field is focused; edit/file/nav/view shortcuts (undo/redo, Cmd+K search, Cmd+F find, zoom, focus mode Cmd+Shift+F, Cmd+R record, Cmd+/ cheat sheet); long-press Cmd shows the live shortcut cheat sheet.\n**Out:** trackpad/pointer behaviour ({{SN-IPAD-013}}); the actions' own implementations (their feature areas).\n\n## Acceptance criteria\n- [ ] The menu bar exposes File/Edit/Insert/View/Tools with the shortcuts from docs/design/gestures-and-shortcuts.md §6.\n- [ ] Single-key tool switches (P/H/E/V/S/T/I/R) work only when the Editor has focus and no text field is active; inside a text field the key types the character (§7 conflict rule).\n- [ ] Cmd+K opens universal search, Cmd+F in-note find, Cmd+Shift+F focus mode, Cmd+R start/stop recording, Cmd+/ the cheat sheet.\n- [ ] Long-pressing Cmd shows the live shortcut overlay (Notability/Goodnotes pattern).\n- [ ] Esc dismisses overlays / cancels the in-progress action / exits search.\n\n## Technical notes\nUse Flutter `Shortcuts`/`Actions` + `PlatformMenuBar` for the iPad menu bar (ADR-0003). Suppress single-key tool shortcuts when a text field owns focus. Map to editor tool state ({{SN-ED-002}}). Full key table in docs/design/gestures-and-shortcuts.md §6.1-6.3.\n\n## Security & privacy\nNone beyond baseline: shortcuts trigger local actions only; no content/tokens logged. A shortcut cannot bypass a note/app lock.\n\n## UX notes\nCheat sheet + menu labels per docs/design/screens-and-flows.md; render across looks + light/dark. Every menu item and shortcut is a non-gesture alternative (WCAG 2.5.1). Ensure focus order and menu semantics are screen-reader correct; the cheat sheet is keyboard-dismissable.\n\n## Test plan\nWidget: `app/test/input/keyboard_shortcuts_test.dart` (tool keys gated by focus, modified shortcuts fire, Esc behaviour). Golden: `app/test/golden/shortcut_cheatsheet_looks_test.dart`. Integration: `app/integration_test/menu_bar_test.dart` via `patrol` with a hardware keyboard.\n\n## Dependencies\n{{SN-ED-002}} editor canvas & tool state machine.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
+    "depends_on": [
+      "SN-ED-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\niPad is expected to have full keyboard-shortcut support, and iPadOS 26 wants the persistent menu bar populated with the editor's real menus so keyboard users and the menu bar both work (docs/platform/ipad.md §7/§9). The shortcut scheme is already specified across platforms in docs/design/gestures-and-shortcuts.md §6 (Goodnotes/Notability conventions). This delivers the menu bar + shortcuts on iPad.\n\n## Scope\n**In:** File/Edit/Insert/View/Tools menus in the persistent menu bar; the single-key tool shortcuts (P/H/E/V/S/T/I/R) suppressed while a text field is focused; edit/file/nav/view shortcuts (undo/redo, Cmd+K search, Cmd+F find, zoom, focus mode Cmd+Shift+F, Cmd+R record, Cmd+/ cheat sheet); long-press Cmd shows the live shortcut cheat sheet.\n**Out:** trackpad/pointer behaviour ({{SN-IPAD-013}}); the actions' own implementations (their feature areas).\n\n## Acceptance criteria\n- [ ] The menu bar exposes File/Edit/Insert/View/Tools with the shortcuts from docs/design/gestures-and-shortcuts.md §6.\n- [ ] Single-key tool switches (P/H/E/V/S/T/I/R) work only when the Editor has focus and no text field is active; inside a text field the key types the character (§7 conflict rule).\n- [ ] Cmd+K opens universal search, Cmd+F in-note find, Cmd+Shift+F focus mode, Cmd+R start/stop recording, Cmd+/ the cheat sheet.\n- [ ] Long-pressing Cmd shows the live shortcut overlay (Notability/Goodnotes pattern).\n- [ ] Esc dismisses overlays / cancels the in-progress action / exits search.\n\n## Technical notes\nUse Flutter `Shortcuts`/`Actions` + `PlatformMenuBar` for the iPad menu bar (ADR-0003). Suppress single-key tool shortcuts when a text field owns focus. Map to editor tool state ({{SN-ED-002}}). Full key table in docs/design/gestures-and-shortcuts.md §6.1-6.3.\n\n## Security & privacy\nNone beyond baseline: shortcuts trigger local actions only; no content/tokens logged. A shortcut cannot bypass a note/app lock (MASVS-AUTH-1); no note content or tokens are written to logs (MASVS-PRIVACY-1).\n\n## UX notes\nCheat sheet + menu labels per docs/design/screens-and-flows.md; render across looks + light/dark. Every menu item and shortcut is a non-gesture alternative (WCAG 2.5.1). Ensure focus order and menu semantics are screen-reader correct; the cheat sheet is keyboard-dismissable.\n\n## Test plan\nWidget: `app/test/input/keyboard_shortcuts_test.dart` (tool keys gated by focus, modified shortcuts fire, Esc behaviour). Golden: `app/test/golden/shortcut_cheatsheet_looks_test.dart`. Integration: `app/integration_test/menu_bar_test.dart` via `patrol` with a hardware keyboard.\n\n## Dependencies\n{{SN-ED-002}} editor canvas & tool state machine.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-PRIVACY-1"
+    ]
   },
   {
     "key": "SN-IPAD-013",
     "title": "Support trackpad and pointer input with hover states and right-click menus",
     "type": "feature",
     "priority": "p1",
-    "platforms": ["ipad"],
-    "areas": ["input-gestures", "editor"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "input-gestures",
+      "editor"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "implementation",
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-ED-002"],
-    "labels_extra": ["agent-ready"],
-    "body": "## Context\nFull pointer support is an App Store expectation on iPad (docs/platform/ipad.md §9), and the input map already defines mouse/trackpad behaviour in docs/design/gestures-and-shortcuts.md §6.4: left-drag draws with the active tool (no pressure, velocity thinning keeps life), two-finger scroll, Ctrl+wheel zoom, right-click context menus, hover tooltips/brush-cursor, middle/space-drag pan. Every long-press object menu MUST have a right-click equivalent.\n\n## Scope\n**In:** pointer draw with velocity-derived width; two-finger scroll and Ctrl/pinch zoom on the trackpad; right-click (and secondary-click) context menus for object actions on a selection and page actions on empty canvas; hover states and brush-cursor preview; middle-drag / space-drag pan; pointer effects on interactive chrome.\n**Out:** Pencil hover ({{SN-IPAD-005}}); keyboard shortcuts/menu bar ({{SN-IPAD-012}}).\n\n## Acceptance criteria\n- [ ] A trackpad/mouse left-drag draws with the active tool using velocity thinning (no pressure) per docs/design/gestures-and-shortcuts.md §6.4.\n- [ ] Two-finger scroll scrolls, Ctrl+wheel (or trackpad pinch) zooms, middle/space-drag pans.\n- [ ] Right-click opens the object context menu on a selection and the page context menu on empty canvas; every long-press menu has this right-click equivalent (§6.4).\n- [ ] Hovering a control shows its tooltip/pointer effect; hovering the canvas shows the brush cursor.\n- [ ] Palm/finger vs pointer precedence follows docs/design/gestures-and-shortcuts.md §7.\n\n## Technical notes\nUse Flutter `MouseRegion`/`Listener` with `PointerDeviceKind.mouse`/`trackpad`; branch pointer vs stylus vs finger (never resample the pen path). Context menus via the design-system menu component. Reference docs/design/gestures-and-shortcuts.md §6.4/§7 and ADR-0003.\n\n## Security & privacy\nNone beyond baseline: local input only; no content/tokens logged. Context-menu actions honour note/app locks.\n\n## UX notes\nPointer effects, hover states and right-click menus per design/Sane Notes.dc.html and docs/design/screens-and-flows.md; render across all 17 looks + light/dark (golden for menus/hover). Keyboard-reachable equivalents for every right-click action (WCAG); 44 pt targets; contrast >= 4.5:1.\n\n## Test plan\nWidget: `app/test/input/pointer_support_test.dart` (draw/scroll/zoom/pan, right-click menus, hover). Golden: `app/test/golden/context_menu_looks_test.dart`. Integration: `app/integration_test/trackpad_test.dart` via `patrol` with a Magic Keyboard/trackpad.\n\n## Dependencies\n{{SN-ED-002}} editor canvas & tool state machine.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
+    "depends_on": [
+      "SN-ED-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nFull pointer support is an App Store expectation on iPad (docs/platform/ipad.md §9), and the input map already defines mouse/trackpad behaviour in docs/design/gestures-and-shortcuts.md §6.4: left-drag draws with the active tool (no pressure, velocity thinning keeps life), two-finger scroll, Ctrl+wheel zoom, right-click context menus, hover tooltips/brush-cursor, middle/space-drag pan. Every long-press object menu MUST have a right-click equivalent.\n\n## Scope\n**In:** pointer draw with velocity-derived width; two-finger scroll and Ctrl/pinch zoom on the trackpad; right-click (and secondary-click) context menus for object actions on a selection and page actions on empty canvas; hover states and brush-cursor preview; middle-drag / space-drag pan; pointer effects on interactive chrome.\n**Out:** Pencil hover ({{SN-IPAD-005}}); keyboard shortcuts/menu bar ({{SN-IPAD-012}}).\n\n## Acceptance criteria\n- [ ] A trackpad/mouse left-drag draws with the active tool using velocity thinning (no pressure) per docs/design/gestures-and-shortcuts.md §6.4.\n- [ ] Two-finger scroll scrolls, Ctrl+wheel (or trackpad pinch) zooms, middle/space-drag pans.\n- [ ] Right-click opens the object context menu on a selection and the page context menu on empty canvas; every long-press menu has this right-click equivalent (§6.4).\n- [ ] Hovering a control shows its tooltip/pointer effect; hovering the canvas shows the brush cursor.\n- [ ] Palm/finger vs pointer precedence follows docs/design/gestures-and-shortcuts.md §7.\n\n## Technical notes\nUse Flutter `MouseRegion`/`Listener` with `PointerDeviceKind.mouse`/`trackpad`; branch pointer vs stylus vs finger (never resample the pen path). Context menus via the design-system menu component. Reference docs/design/gestures-and-shortcuts.md §6.4/§7 and ADR-0003.\n\n## Security & privacy\nNone beyond baseline: local input only; no content/tokens logged. Context-menu actions honour note/app locks (MASVS-AUTH-1); no note content or tokens are written to logs (MASVS-PRIVACY-1).\n\n## UX notes\nPointer effects, hover states and right-click menus per design/Sane Notes.dc.html and docs/design/screens-and-flows.md; render across all 17 looks + light/dark (golden for menus/hover). Keyboard-reachable equivalents for every right-click action (WCAG); 44 pt targets; contrast >= 4.5:1.\n\n## Test plan\nWidget: `app/test/input/pointer_support_test.dart` (draw/scroll/zoom/pan, right-click menus, hover). Golden: `app/test/golden/context_menu_looks_test.dart`. Integration: `app/integration_test/trackpad_test.dart` via `patrol` with a Magic Keyboard/trackpad.\n\n## Dependencies\n{{SN-ED-002}} editor canvas & tool state machine.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-PRIVACY-1"
+    ]
   }
 ]

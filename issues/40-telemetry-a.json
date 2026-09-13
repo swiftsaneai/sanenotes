@@ -1,0 +1,308 @@
+[
+  {
+    "key": "SN-TEL-001",
+    "title": "Epic: Opt-in, content-free telemetry, crash reporting and diagnostics",
+    "type": "epic",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "XL",
+    "sdlc": "requirements",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-3",
+      "MASVS-PRIVACY-4",
+      "MASVS-STORAGE-1",
+      "MASVS-NETWORK-1",
+      "ASVS-V14",
+      "ASVS-V16",
+      "OWASP-A09",
+      "TM-I-05",
+      "TM-P-06",
+      "TM-R-03",
+      "CWE-532"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design",
+      "innovation"
+    ],
+    "body": "## Context\nSane Notes promises local-first, zero-knowledge note-taking with App Store privacy labels and Play Data Safety declaring 'no data collected' except opt-in crash reports (locked decisions 6 and 8, CLAUDE.md section 2). At the same time the team still has to diagnose field crashes and jank, prove the decision-7 performance budgets on real hardware, and let a user help debug an issue without leaking a single character of their notes. [ADR-0011](../adr/0011-telemetry-and-diagnostics.md) resolves that tension: telemetry is **opt-in only, off by default on every flavour, aggregated on-device before any transmission, and never contains note content or personal identifiers**, with **no always-on third-party analytics SDK linked into the app**. This epic owns the *pipeline* that makes that true in code: the event catalogue and deny-by-default field allow-list, the redacting serialiser, the in-memory ring-buffer diagnostics log, sanitised crash capture, on-device bucketed aggregation, the kill switch and purge, the user-driven diagnostics bundle, the opt-in crash/perf upload path, and the CI proof that a fresh install transmits nothing.\nIt implements `PRD-TEL-001..004` (docs/product/prd-03-identity-sync-privacy-settings-billing.md section 11), supports `PRD-PRIV-001` / `PRD-PRIV-004` / `PRD-DEL-003`, and builds on the logging policy in docs/architecture/overview.md section 8.2 and the flavour matrix in section 7.1 (`SANE_TELEMETRY_DEFAULT=false` on dev, beta and release). The consent UI, the 'what we collect' screen and the analytics-SDK dependency ban live in the privacy area ({{SN-PRV-009}}, {{SN-PRV-010}}); this epic provides the mechanisms they switch on and off.\n\n## Scope\n**In:** telemetry event catalogue + field allow-list; deny-by-default serialiser with redaction fuzzing; redacted ring-buffer log sink; sanitised crash capture from every Dart error entrypoint; on-device coarse-bucket aggregation; kill switch / queue purge / transmission state machine; redacted diagnostics-bundle export; rotating resettable install token; zero-egress CI gate; crash-backend decision spike; crash upload adapter; opt-in field performance metrics; release symbolication pipeline; a PR gate requiring privacy review of every new event.\n**Out:** the consent toggle and 'what we collect' screen ({{SN-PRV-009}}), the CI ban on analytics/ad SDKs ({{SN-PRV-010}}), the Apple Privacy Manifest and Required-Reason API audit ({{SN-PRV-014}}), the CI perf gates themselves ({{SN-PERF-003}}), and any server-side dashboarding.\n\n## Acceptance criteria\n- [ ] {{SN-TEL-002}} Telemetry event catalogue + field allow-list defined and documented\n- [ ] {{SN-TEL-003}} Deny-by-default telemetry serialiser with redaction property/fuzz tests\n- [ ] {{SN-TEL-004}} Redacted in-memory ring-buffer diagnostics log sink\n- [ ] {{SN-TEL-005}} Sanitised crash capture from all Dart error entrypoints\n- [ ] {{SN-TEL-006}} On-device coarse-bucket aggregation of counters and histograms\n- [ ] {{SN-TEL-007}} Kill switch, queue purge and transmission state machine\n- [ ] {{SN-TEL-008}} Redacted diagnostics bundle export for support\n- [ ] {{SN-TEL-009}} Rotating, resettable install token with no stable identifier\n- [ ] {{SN-TEL-010}} CI gate proving zero telemetry egress before opt-in\n- [ ] {{SN-TEL-011}} Crash-backend decision spike (self-hosted Sentry vs Crashlytics vs DIY)\n- [ ] {{SN-TEL-012}} Opt-in crash-report upload adapter and transport\n- [ ] {{SN-TEL-013}} Opt-in field performance metrics against the decision-7 budgets\n- [ ] {{SN-TEL-014}} Release symbolication pipeline for obfuscated crash reports\n- [ ] {{SN-TEL-015}} PR gate requiring privacy review of every new telemetry event\n\n## Technical notes\nPure-Dart mechanics (catalogue, allow-list serialiser, ring buffer, aggregation, bundle assembly) live in `packages/sane_core/lib/src/telemetry/` next to the `SaneLog` facade (docs/architecture/overview.md section 8.2); anything needing Flutter or platform APIs (error hooks, share sheet, network, secure store) lives in `app/lib/telemetry/` and the `sane_secure_store` plugin — `sane_core` must never import `package:flutter` (CLAUDE.md section 3 DAG). Config comes from `--dart-define` (`SANE_TELEMETRY_DEFAULT`, `SANE_LOG_LEVEL`, `SANE_FLAVOR`) per overview section 7.1 and {{SN-FND-005}}. Implements ADR-0011 decisions 1-8 and its seven 'How to verify' items.\n\n## Security & privacy\nThreats: TM-I-05 (content/keys/PII written to logs or diagnostics), TM-P-06 (user unaware what is processed), TM-P-01/TM-P-02/TM-P-04 (linkability/identifiability/detectability through identifiers and timing), TM-P-07 (GDPR/DPDP/COPPA non-compliance), TM-R-03 (user cannot prove what left the device). Controls: MASVS-PRIVACY-1..4, MASVS-STORAGE-1 (queued records at rest), MASVS-NETWORK-1 (TLS-only egress), ASVS V14 (data protection), ASVS V16 (logging and error handling), OWASP-A09, CWE-532 (sensitive info in logs), CWE-359 (private info exposure). Baseline for every child: no note content, ink coordinates, decrypted data, keys, tokens, recovery codes, cloud file paths, email or phone numbers are ever logged or transmitted; object ids appear only as opaque short hashes.\n\n## UX notes\nUser-visible surfaces are the Settings screen, **Privacy & export** tab (design/Sane Notes.dc.html, docs/design/screens-and-flows.md section 12): the telemetry opt-in ({{SN-PRV-009}}) and **Export diagnostics** ({{SN-TEL-008}}). Both use `sane_ui` tokens, render correctly in all **17 looks plus light/dark**, and meet docs/design/accessibility.md (Semantics labels, 44pt/48dp targets, contrast >= 4.5:1, keyboard reachable on web). Copy is plain, student-readable and never alarming; when telemetry is off the surface says so explicitly.\n\n## Test plan\nTracked across children: `packages/sane_core/test/telemetry/` (catalogue, serialiser, ring buffer, aggregation), `app/test/telemetry/` (crash capture, kill switch, install token), `app/integration_test/telemetry_zero_egress_test.dart` (ADR-0011 verify item 1), golden tests for the diagnostics-export screen across looks, and the CI jobs added by {{SN-TEL-010}} and {{SN-TEL-015}}.\n\n## Dependencies\n{{SN-FND-002}} (monorepo scaffold), {{SN-FND-005}} (flavours and --dart-define matrix), {{SN-PRV-009}} (consent authority), {{SN-CRY-002}} (secure store for the install token), {{SN-PERF-002}} (perf metric definitions).\n\n## Definition of done\n- [ ] All 14 child issues closed; a fresh install provably transmits nothing before opt-in\n- [ ] ADR-0011 'How to verify' items 1-7 each covered by an automated test or documented gate\n- [ ] docs/security/controls-matrix.md MASVS-PRIVACY rows and docs/security/threat-model.md TM-I-05 / TM-P-06 rows updated to Implemented where behaviour changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md",
+    "depends_on": [
+      "SN-FND-002",
+      "SN-FND-005",
+      "SN-PRV-009",
+      "SN-CRY-002",
+      "SN-PERF-002"
+    ]
+  },
+  {
+    "key": "SN-TEL-002",
+    "title": "Define the telemetry event catalogue and field allow-list",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "design",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-4",
+      "ASVS-V14",
+      "TM-P-06",
+      "TM-I-05",
+      "CWE-359"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-FND-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design",
+      "good first issue"
+    ],
+    "body": "## Context\nADR-0011 decision 4 requires a **hard redaction allow-list (deny by default)** so that a new field cannot be exfiltrated by accident, and decision 8 requires a 'what we collect' screen that lists every metric verbatim. Both need one machine-readable source of truth, authored before any collection code exists, otherwise the screen and the serialiser will drift apart. This issue defines that catalogue: every event name, every field on it, the field type, its bucketing rule, the retention window and the plain-English sentence shown to the user. ADR-0011 decision 3 fixes what may ever be collected after opt-in: aggregate content-free counters and performance traces such as wet-ink p95 latency bucket, cold-start ms bucket, frames over 16.7 ms while writing, feature X used N times this week, and crash type plus symbol-only stack.\nThe catalogue is consumed by the serialiser ({{SN-TEL-003}}), the aggregator ({{SN-TEL-006}}), the 'what we collect' screen ({{SN-PRV-009}}) and the PR gate ({{SN-TEL-015}}). It implements `PRD-TEL-002` and `PRD-TEL-003` from docs/product/prd-03-identity-sync-privacy-settings-billing.md section 11.\n\n## Scope\n**In:** `docs/security/telemetry-catalogue.md` (human-readable table, one row per field, with the verbatim user-facing sentence) and a matching const Dart catalogue in `packages/sane_core/lib/src/telemetry/telemetry_catalogue.dart`; bucket boundary definitions; the initial event set (app lifecycle, ink latency, frame jank, cold start, notebook open, feature-use counters, crash type); the retention window per event; the explicit **deny list** restating what may never appear.\n**Out:** the serialiser ({{SN-TEL-003}}), aggregation windows ({{SN-TEL-006}}), any UI, and any upload.\n\n## Acceptance criteria\n- [ ] Every catalogue entry carries: event name, field name, type (counter | bucketed histogram | enum | version string), bucket boundaries, retention window, and a one-sentence user-facing description.\n- [ ] No entry permits a free-text field, a raw timestamp finer than ISO-week granularity, a stable device or user identifier, or any note-derived value; the document states this as an invariant.\n- [ ] The Dart catalogue is a `const` structure with no `dynamic` in its public API and is unit-testable without Flutter (`sane_core` is pure Dart).\n- [ ] Every event lists the ADR-0011 decision-3 category it belongs to (usage counter, performance trace, crash record).\n- [ ] The initial set covers at minimum: cold start bucket, pen-to-pixel p95 bucket per ink tier, frames over 16.7 ms count bucket, notebook-open bucket, per-feature weekly use counters, crash type + symbol-only stack, app version, flavour, OS major version, device class.\n- [ ] Doc and Dart constant are asserted identical by a test, so they cannot drift.\n- [ ] A short 'how to add an event' section points at {{SN-TEL-015}} (privacy review gate).\n\n## Technical notes\nAuthor the Dart side as `const List<TelemetryEventSpec>` with `TelemetryFieldSpec` value objects (immutable, `final`, dartdoc on every public member per CLAUDE.md section 6). Device class means a coarse bucket (for example `tablet-high`, `tablet-mid`, `phone-low`, `web-desktop`) drawn from docs/platform/compatibility-matrix.md, never a model string plus serial. Performance field names must line up with the budget IDs B1-B10 in docs/platform/performance-budgets.md section 1 so {{SN-TEL-013}} and {{SN-PERF-002}} speak the same language. Keep the catalogue in `sane_core` because every layer may emit events and the package sits below the feature packages in the DAG (CLAUDE.md section 3).\n\n## Security & privacy\nThreats: TM-I-05 (content or PII reaching diagnostics), TM-P-06 (unawareness), TM-P-01/TM-P-02 (linkability/identifiability from identifiers or high-resolution timing). Controls: MASVS-PRIVACY-2 (collection transparency), MASVS-PRIVACY-4 (third-party sharing restrictions), ASVS V14, CWE-359. The catalogue is itself the control: deny-by-default means a field that is not listed here can never be serialised. Baseline: no note content or tokens anywhere; ids only as opaque short hashes.\n\n## UX notes\nNo UI in this issue, but the user-facing sentence column *is* the copy rendered by the 'what we collect' screen ({{SN-PRV-009}}, Settings > Privacy & export in design/Sane Notes.dc.html). Write each sentence in student-readable plain English, no jargon, no marketing ('How long the app took to open, rounded to the nearest half second'). Long lists must stay scannable at phone width, so keep sentences under ~90 characters.\n\n## Test plan\n- Unit: `packages/sane_core/test/telemetry/telemetry_catalogue_test.dart` — no free-text fields; every field has bucket boundaries and a description; names unique; doc table and Dart constant match (parse the markdown table in the test).\n- Manual: Security/Privacy Owner reviews the catalogue against ADR-0011 decision 3 and 4 before merge.\n\n## Dependencies\n{{SN-FND-002}} (monorepo scaffold so `sane_core` exists).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] docs/security/telemetry-catalogue.md published and linked from ADR-0011 and docs/security/controls-matrix.md\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-TEL-003",
+    "title": "Implement the deny-by-default telemetry serialiser with redaction fuzzing",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-4",
+      "MASVS-CODE-3",
+      "ASVS-V14",
+      "ASVS-V16",
+      "OWASP-A09",
+      "TM-I-05",
+      "TM-P-01",
+      "CWE-532",
+      "CWE-359",
+      "CWE-200"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design",
+      "sec: masvs"
+    ],
+    "body": "## Context\nADR-0011 decision 4 makes data minimisation an enforced code property rather than a policy: 'the telemetry serialiser uses a field allow-list (deny by default), so a new field cannot be exfiltrated by accident'. ADR-0011 'How to verify' item 3 requires allow-list unit tests that fuzz the serialiser with note content, keys and emails and assert none of it appears in the output; item 4 requires the same property for the diagnostics-bundle exporter and log sinks. This is the single highest-value control in the telemetry area — every other component ({{SN-TEL-004}} ring buffer, {{SN-TEL-005}} crash records, {{SN-TEL-006}} aggregates, {{SN-TEL-008}} diagnostics bundle, {{SN-TEL-012}} upload) serialises through it, so one correct implementation protects all of them.\nIt implements `PRD-TEL-002` ('stripped of note content and stable identifiers... crash reports MUST scrub file paths, note titles, and tokens') and the logging policy in docs/architecture/overview.md section 8.2.\n\n## Scope\n**In:** `TelemetrySerialiser` in `packages/sane_core/lib/src/telemetry/` that takes an event name plus typed fields and returns either an allow-listed, bucketed, canonical JSON map or a `Failure`; drop-and-count behaviour for unknown fields; bucketing of numerics; truncation of timestamps to ISO week; opaque short-hash rendering of object ids; a shared `redact()` helper used by the log sink and bundle exporter; property-based and corpus fuzz tests.\n**Out:** the catalogue itself ({{SN-TEL-002}}), aggregation windows ({{SN-TEL-006}}), transport ({{SN-TEL-012}}), and the consent gate ({{SN-PRV-009}}).\n\n## Acceptance criteria\n- [ ] A field whose name is not in the catalogue is **dropped**, never emitted, and counted in a local `droppedFieldCount` diagnostic (itself content-free).\n- [ ] A field whose value type does not match the catalogue spec is dropped, not coerced.\n- [ ] Numeric fields are emitted only as catalogue bucket labels; a raw value never reaches the output (assert on 10,000 random values that output cardinality equals the bucket count).\n- [ ] Timestamps are truncated to ISO week; no field in the output can order two events within a session.\n- [ ] Object ids are emitted as a salted 8-character hash; the same id in two different runs of a fresh install does not produce the same hash (salt is per install, from {{SN-TEL-009}}).\n- [ ] Fuzz test: given a corpus of note text (including Devanagari and Arabic), ink coordinate lists, base64 keys, JWTs, emails, +91 phone numbers, file paths and URLs injected into every field position, the serialised output contains **zero** substrings of length >= 6 from the corpus.\n- [ ] Serialisation of a 200-field event completes in < 1 ms on the reference CI runner and never runs on the UI isolate hot path.\n- [ ] Errors are returned as `Result<T, Failure>` (`TelemetryFailure`), never thrown across the package boundary (CLAUDE.md section 6).\n\n## Technical notes\nPure Dart in `sane_core` (no `package:flutter`). Public API: `Result<Map<String, Object>, TelemetryFailure> serialise(TelemetryEvent event)`. Implement the deny-by-default check as a lookup in the `const` catalogue from {{SN-TEL-002}} — never reflection, never `dynamic` (MASVS-CODE-4 bans dynamic deserialisation patterns). Reuse the same `redact()` for the `SaneLog` structured-field allow-list described in docs/architecture/overview.md section 8.2 so there is exactly one redaction implementation in the codebase. Property tests can use a small hand-rolled generator; if a package is added it must clear {{SN-PRV-010}}'s dependency policy and the SBOM.\n\n## Security & privacy\nThreats: TM-I-05 (note content, keys, tokens, PII written to logs or diagnostics), TM-P-01 (linkability through ids or timing), TM-P-04 (detectability through precise timestamps). Controls: MASVS-PRIVACY-2/4, MASVS-CODE-3 (code-quality/injection prevention), ASVS V14 (data protection) and V16 (logging without sensitive data), OWASP-A09, CWE-532, CWE-359, CWE-200. Fail-closed: on any catalogue mismatch the serialiser drops the field rather than passing it through, and on catalogue corruption it returns a `Failure` and emits nothing. This issue is p0 because a defect here silently breaks the 'no data collected' store declaration.\n\n## UX notes\nNo direct UI. The behaviour is visible indirectly in the 'what we collect' screen ({{SN-PRV-009}}) and in the diagnostics bundle preview ({{SN-TEL-008}}), both in Settings > Privacy & export (design/Sane Notes.dc.html, docs/design/screens-and-flows.md section 12); both must be able to render the serialiser's exact output so the user sees the truth. None beyond that baseline.\n\n## Test plan\n- Unit: `packages/sane_core/test/telemetry/telemetry_serialiser_test.dart` — unknown field dropped; type mismatch dropped; bucketing; week truncation; hash salting; Result error paths.\n- Property/fuzz: `packages/sane_core/test/telemetry/telemetry_redaction_fuzz_test.dart` — the hostile corpus above, >= 1,000 iterations, asserting zero leakage; corpus fixture in `packages/sane_core/test/fixtures/redaction_corpus.dart` (synthetic data only, no real PII).\n- Perf: micro-benchmark asserting the < 1 ms bound.\n\n## Dependencies\n{{SN-TEL-002}} (catalogue), and {{SN-TEL-009}} for the per-install hash salt (the serialiser accepts the salt as a parameter so it can land first).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, Semgrep, mobsfscan)\n- [ ] ADR-0011 verify items 3 and 4 demonstrably covered by the named tests\n- [ ] docs/security/controls-matrix.md MASVS-PRIVACY-2/4 rows moved toward Implemented\n- [ ] Reviewed against docs/security/secure-coding-checklist.md by a CODEOWNER"
+  },
+  {
+    "key": "SN-TEL-004",
+    "title": "Implement the redacted in-memory ring-buffer diagnostics log sink",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-3",
+      "ASVS-V16",
+      "OWASP-A09",
+      "TM-I-05",
+      "CWE-532",
+      "CWE-312"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-003",
+      "SN-FND-005"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\ndocs/architecture/overview.md section 8.2 fixes the sinks per flavour: dev logs pretty-printed to console at trace level, while **beta and release write to an in-memory ring buffer the user can export as a redacted diagnostics bundle**, plus an opt-in sanitised crash report. ADR-0011 decision 5 builds the 'Export diagnostics' feature on exactly that buffer: levels, event names, sanitised fields, device model, OS, app version, flavour. Without the buffer there is no way to debug a beta user's problem without either shipping an analytics SDK (forbidden) or writing logs to disk (a new at-rest asset we do not want). Keeping it in memory only means a crash or a kill switch discards it, which is the privacy-preferred default.\nThis issue implements the sink behind the existing `SaneLog` facade in `sane_core` so no call site changes, and it is the data source for {{SN-TEL-008}} (bundle export) and {{SN-TEL-005}} (crash context).\n\n## Scope\n**In:** a fixed-capacity ring buffer in `packages/sane_core/lib/src/telemetry/`; registration as the `SaneLog` sink for beta/release (console sink stays for dev); level filtering from `SANE_LOG_LEVEL`; structured-field redaction through {{SN-TEL-003}}; capacity and byte caps with oldest-first eviction; a read API that returns an immutable snapshot; a `clear()` used by the kill switch ({{SN-TEL-007}}).\n**Out:** the bundle file format and share sheet ({{SN-TEL-008}}), crash records ({{SN-TEL-005}}), any disk persistence, any upload.\n\n## Acceptance criteria\n- [ ] Buffer holds at most 2,000 entries **and** at most 512 KB; whichever cap is reached first evicts oldest-first, and a counter records how many entries were dropped.\n- [ ] Entries store level, monotonic sequence number, ISO-week-truncated time, event name and redacted structured fields only — never an interpolated free-text message.\n- [ ] Every field passes through the {{SN-TEL-003}} redactor before entering the buffer, so the buffer itself can never hold note content, coordinates, keys, tokens, paths, email or phone numbers.\n- [ ] Nothing is written to disk: a test asserts no file handle is opened by the sink, and the buffer is gone after process restart.\n- [ ] Level filtering honours `SANE_LOG_LEVEL` (dev trace, beta info, release warn per overview section 7.1); a filtered-out call allocates nothing.\n- [ ] Appending 10,000 entries costs < 20 ms total on the CI runner, and the draw loop in profile/release logs nothing at all (asserted by {{SN-PERF-002}}'s no-log assertion where available).\n- [ ] `clear()` leaves the buffer empty and resets counters; a snapshot taken before `clear()` is unaffected (immutability).\n\n## Technical notes\nImplement as a pre-allocated circular list of immutable `LogRecord` value objects, no growth allocation per append. Register in the app bootstrap (`app/lib/bootstrap/`) rather than in `sane_core` so flavour selection lives with the composition root (docs/architecture/overview.md section 7 and ADR-0003). Do not make it a mutable global singleton — expose it through a Riverpod provider in `app/` per CLAUDE.md section 6. Web note: Dart isolates map to Web Workers, so the buffer is per-isolate; expose a merge on read so storage/sync/search isolate records appear in the bundle (docs/architecture/overview.md section 6).\n\n## Security & privacy\nThreats: TM-I-05 (diagnostics leakage). Controls: MASVS-STORAGE-1 (nothing sensitive at rest — here satisfied by holding nothing at rest at all), MASVS-PRIVACY-3 (retention and user control: bounded, memory-only, clearable), ASVS V16 (logging without sensitive data), OWASP-A09, CWE-532, CWE-312 (cleartext storage — avoided by not storing). The buffer must stay memory-only precisely so that a device seizure or an OS backup cannot yield diagnostics (`PRD-LEAK-005`).\n\n## UX notes\nNo direct UI; it feeds Settings > Privacy & export > Export diagnostics ({{SN-TEL-008}}, design/Sane Notes.dc.html, docs/design/screens-and-flows.md section 12). The empty-buffer case must be representable so that screen can show 'Nothing to report yet'. None beyond baseline (no content logged, tokens never logged).\n\n## Test plan\n- Unit: `packages/sane_core/test/telemetry/ring_buffer_sink_test.dart` — capacity and byte eviction, drop counter, level filtering, immutability of snapshots, `clear()`.\n- Unit: `packages/sane_core/test/telemetry/ring_buffer_redaction_test.dart` — hostile corpus (shared with {{SN-TEL-003}}) never appears in a snapshot.\n- Widget/integration: `app/test/telemetry/log_sink_wiring_test.dart` — dev uses console, beta/release use the ring buffer; `SANE_LOG_LEVEL` respected.\n\n## Dependencies\n{{SN-TEL-003}} (redaction), {{SN-FND-005}} (flavours and --dart-define matrix).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] docs/architecture/overview.md section 8.2 updated if the sink contract changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-TEL-005",
+    "title": "Capture sanitised crash records from every Dart error entrypoint",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-STORAGE-1",
+      "MASVS-CODE-3",
+      "ASVS-V16",
+      "OWASP-A09",
+      "TM-I-05",
+      "TM-P-06",
+      "CWE-532",
+      "CWE-209"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-003",
+      "SN-TEL-004"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nADR-0011 decision 2 rules out third-party crash SDKs as the *capture* mechanism: 'crash capture uses our own handlers (`FlutterError.onError`, `PlatformDispatcher.instance.onError`, per-isolate error listeners) feeding a sanitised crash record'. docs/architecture/overview.md section 8.1 says the same thing from the error-handling side: those three hooks plus `Isolate.current.addErrorListener` funnel into the sanitised crash recorder. Capturing locally and sanitising before any backend sees the data is what lets a crash backend (decided in {{SN-TEL-011}}, wired in {{SN-TEL-012}}) receive **only** the redacted payload, and what keeps crash reporting honest with the Play Data Safety declaration (opt-in crash reports, nothing else).\nThis issue builds the recorder and its local pending queue; nothing is transmitted here. It implements `PRD-TEL-002` (crash reports MUST scrub file paths, note titles and tokens) and ADR-0011 decision 6.\n\n## Scope\n**In:** installing `FlutterError.onError`, `PlatformDispatcher.instance.onError`, `runZonedGuarded` and `Isolate.current.addErrorListener` in the app bootstrap; building a `CrashRecord` from exception type, sanitised stack, app version, flavour, OS major version, device class, ink tier and the rotating install token; a bounded on-device pending queue; reporting through `Result`/`Failure` codes rather than raw exception strings.\n**Out:** native (Swift/Kotlin) crash capture and upload ({{SN-TEL-012}} after the {{SN-TEL-011}} decision), symbolication ({{SN-TEL-014}}), the consent toggle ({{SN-PRV-009}}).\n\n## Acceptance criteria\n- [ ] All four Dart error entrypoints are installed at bootstrap; a thrown error in a widget build, in an async gap, in a spawned isolate and in a platform-dispatcher callback each produce exactly one `CrashRecord`.\n- [ ] The record contains: exception runtime type, `Failure` machine code where the error is a `Failure`, symbol-only stack frames, app version, flavour, OS major version, device class, ink tier, install token. Nothing else.\n- [ ] Exception **messages** are dropped unless the exception is a `Failure` with an allow-listed machine code — a test throws `StateError('note text: Riya chemistry notes')` and asserts the note text never appears.\n- [ ] Stack frames are stripped of absolute file paths and user home directories; only package-relative paths or obfuscated symbols survive.\n- [ ] Records are queued locally (max 20, oldest evicted), stored in app-private storage with platform data protection, and are **never** transmitted while consent is off — with consent off the queue accepts records but a network interceptor test sees zero requests.\n- [ ] Disabling telemetry purges the queue via {{SN-TEL-007}} within 100 ms.\n- [ ] The recorder itself never throws; a failure inside it is swallowed and counted, and it never blocks app startup by more than 5 ms.\n- [ ] In release the app still shows a user-safe error UI (localised message key), never a raw exception string (ASVS V16, CWE-209).\n\n## Technical notes\nLive in `app/lib/telemetry/crash_recorder.dart` (needs Flutter, so not `sane_core`); build the record through {{SN-TEL-003}}'s serialiser, and attach the last N ring-buffer entries from {{SN-TEL-004}} as redacted breadcrumbs. Queue storage uses the app-private directory with iOS Data Protection (complete-until-first-unlock) and Android FBE defaults, excluded from OS backups per `PRD-LEAK-005`. Release builds run `--obfuscate --split-debug-info`, so stacks are obfuscated by construction; keep the build-id so {{SN-TEL-014}} can symbolicate. Wire bootstrap per ADR-0003 composition-root guidance.\n\n## Security & privacy\nThreats: TM-I-05 (content/keys/PII in crash payloads), TM-P-06 (collection the user did not expect). Controls: MASVS-PRIVACY-2, MASVS-STORAGE-1 (queue at rest), MASVS-CODE-3, ASVS V16, OWASP-A09, CWE-532, CWE-209 (error message exposure). Fail-closed: if serialisation of a record fails, drop the record rather than fall back to `toString()`. The queue must be small and purgeable so a user who never opts in accumulates nothing meaningful.\n\n## UX notes\nCrash reporting is invisible until the user opts in ({{SN-PRV-009}}, Settings > Privacy & export, design/Sane Notes.dc.html). After a crash the app must return to a calm state using `sane_ui` error components in all **17 looks plus light/dark** — never a red Flutter error box in release. The user-safe error surface needs Semantics labels, 44pt/48dp actions and >= 4.5:1 contrast (docs/design/accessibility.md), and the message must be localisable (no English-only exception text).\n\n## Test plan\n- Unit: `app/test/telemetry/crash_recorder_test.dart` — record shape; message dropping; path stripping; queue cap and eviction; recorder never throws.\n- Widget: `app/test/telemetry/crash_error_ui_test.dart` — release-mode error UI shows a localised user-safe message.\n- Integration: `app/integration_test/crash_capture_test.dart` — errors from widget build, async gap, isolate and platform dispatcher are each captured once, and zero network requests occur with consent off.\n\n## Dependencies\n{{SN-TEL-003}} (serialiser), {{SN-TEL-004}} (breadcrumbs). Soft, may land after: {{SN-TEL-009}} (install token — until then records are ungrouped) and {{SN-TEL-007}} (purge API — until then the queue is cleared manually).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit/widget/integration, security scans)\n- [ ] ADR-0011 decision 2 and 6 behaviour matches the implementation; docs/architecture/overview.md section 8.1 updated if hooks changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-TEL-006",
+    "title": "Aggregate usage and performance metrics on-device into coarse buckets",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy",
+      "perf"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-3",
+      "MASVS-STORAGE-1",
+      "ASVS-V14",
+      "TM-P-01",
+      "TM-P-04",
+      "TM-I-05",
+      "CWE-359"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-002",
+      "SN-TEL-003",
+      "SN-CORE-004"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design",
+      "innovation"
+    ],
+    "body": "## Context\nADR-0011 decision 3 requires **on-device aggregation first**: after opt-in the app may collect aggregate, content-free counters and performance traces, aggregated locally into coarse buckets, and may transmit only summaries — 'never per-event streams, never timestamps precise enough to reconstruct activity'. `PRD-TEL-002` says the same in normative form: aggregated on-device first (counts/histograms, not raw events). This is what makes the telemetry design genuinely different from an analytics SDK: even after a user opts in, the raw event stream never exists outside the device, so there is nothing to subpoena, leak or correlate.\nThis issue builds the aggregator: a per-window store of counters and histograms defined by the catalogue ({{SN-TEL-002}}), rolled up per ISO week, with cardinality caps so a bug cannot turn it into an event log. It feeds {{SN-TEL-012}} (crash/metric upload) and {{SN-TEL-013}} (field performance metrics), and is purged by {{SN-TEL-007}}.\n\n## Scope\n**In:** `TelemetryAggregator` in `packages/sane_core/lib/src/telemetry/`; counter and histogram accumulation against catalogue bucket boundaries; ISO-week rollup windows; a persisted summary (via a repository interface implemented on the storage isolate); cardinality and size caps; `snapshot()` and `purge()` APIs; deterministic bucketing tests.\n**Out:** the transport ({{SN-TEL-012}}), perf metric sourcing from the harness ({{SN-TEL-013}}, {{SN-PERF-002}}), the consent gate ({{SN-PRV-009}}), and any server-side rollup.\n\n## Acceptance criteria\n- [ ] Recording an event increments a counter or a histogram bucket only; no per-event row is ever stored (a test records 100,000 events and asserts stored rows <= the catalogue's bucket count).\n- [ ] Windows are ISO weeks; the summary carries the week label and no finer time field.\n- [ ] Bucketing is deterministic and matches the catalogue boundaries exactly, including edge values on boundaries (inclusive-lower, exclusive-upper, documented).\n- [ ] Total persisted telemetry state stays under 64 KB and under a fixed row cap; exceeding either drops new *series* (not silently reallocating) and records a drop counter.\n- [ ] Aggregation runs off the UI isolate (storage isolate or `Isolate.run`) and never on the draw hot path (docs/architecture/overview.md section 6 and CLAUDE.md section 8).\n- [ ] With consent off, recording is a no-op that allocates nothing — asserted by a test, so an un-opted-in user pays zero cost.\n- [ ] `purge()` removes all windows and counters and is idempotent; a snapshot taken earlier is unaffected.\n- [ ] Aggregates older than the catalogue retention window (default 8 weeks) are dropped automatically on the next write.\n\n## Technical notes\nPure Dart in `sane_core`; persistence goes through a `TelemetryStore` repository interface implemented in `app/` over drift (`PRD-STOR-001`) so `sane_core` keeps no I/O. Run writes on the storage isolate (docs/architecture/overview.md section 6). Values arriving from the perf harness use the B1-B10 names from docs/platform/performance-budgets.md section 1 so {{SN-TEL-013}} can attach field data to the same budgets CI gates on ({{SN-PERF-003}}). Keep the API `Result`-returning and immutable-value-object based (CLAUDE.md section 6); no mutable global singleton — expose via a Riverpod provider in `app/`.\n\n## Security & privacy\nThreats: TM-P-01 (linkability — defeated by removing per-event timing and ids), TM-P-04 (detectability — coarse weekly windows hide activity shape), TM-I-05 (content leakage — impossible because only catalogue-defined numeric buckets are stored), TM-P-03 (non-repudiation harm — no attributable action log). Controls: MASVS-PRIVACY-2/3, MASVS-STORAGE-1 (the persisted summary sits in the app-private encrypted DB), ASVS V14, CWE-359. Fail-closed: an unknown series name is dropped by the serialiser before it reaches the aggregator.\n\n## UX notes\nNo direct UI. The aggregate categories are exactly what the 'what we collect' screen lists verbatim ({{SN-PRV-009}}, Settings > Privacy & export in design/Sane Notes.dc.html and docs/design/screens-and-flows.md section 12), so bucket labels must be human-readable ('opened in under 1 second'), not raw ranges, when surfaced. None beyond baseline otherwise.\n\n## Test plan\n- Unit: `packages/sane_core/test/telemetry/telemetry_aggregator_test.dart` — counter/histogram maths, boundary values, week rollup, retention drop, caps, `purge()` idempotence, no-op when disabled.\n- Unit: `packages/sane_core/test/telemetry/aggregator_cardinality_test.dart` — 100,000 events produce bounded storage.\n- Integration: `app/integration_test/telemetry_aggregation_test.dart` — aggregation happens off the UI isolate and does not add a frame over 16.7 ms while writing.\n\n## Dependencies\n{{SN-TEL-002}} (catalogue and buckets), {{SN-TEL-003}} (serialiser), {{SN-CORE-004}} (drift persistence for the summary store).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit/integration, security scans)\n- [ ] ADR-0011 decision 3 reflected exactly; catalogue retention windows documented in docs/security/telemetry-catalogue.md\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-TEL-007",
+    "title": "Implement the telemetry kill switch, queue purge and send state machine",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-3",
+      "MASVS-NETWORK-1",
+      "ASVS-V14",
+      "OWASP-A09",
+      "TM-P-06",
+      "TM-P-07",
+      "CWE-359"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-004",
+      "SN-TEL-005",
+      "SN-TEL-006",
+      "SN-PRV-009"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nADR-0011 decision 8 requires 'a single Settings toggle turns everything off and purges any queued data', and verify item 7 is a kill-switch test proving exactly that. `PRD-TEL-003` adds the legal framing: consent must be withdrawable at any time, withdrawal must stop collection immediately (India DPDP requires withdrawal to be as easy as granting), and the app should offer to delete already-sent aggregates where feasible. `PRD-DEL-003` extends this to account deletion — opt-in telemetry aggregates are deleted where feasible. `PRD-PRIV-005` and ADR-0011 decision 7 add the age gate: below the threshold, telemetry and crash reporting stay off and unofferable.\nThis issue owns the state machine and the purge API behind those promises; the toggle UI and the 'what we collect' copy belong to {{SN-PRV-009}}, which calls into this.\n\n## Scope\n**In:** a `TelemetryController` state machine (`disabled` -> `enabled` -> `queued` -> `sending` -> `sent`/`failed`) in `app/lib/telemetry/`; the `purgeAll()` API that clears the ring buffer ({{SN-TEL-004}}), the crash queue ({{SN-TEL-005}}) and the aggregates ({{SN-TEL-006}}); age-gate suppression; offline queue TTL and size caps; exponential backoff; the default-off resolution from `SANE_TELEMETRY_DEFAULT`; a deletion request hook for {{SN-PRV-006}} account deletion.\n**Out:** the toggle and 'what we collect' screen ({{SN-PRV-009}}), the actual HTTP transport ({{SN-TEL-012}}), the zero-egress CI gate ({{SN-TEL-010}}).\n\n## Acceptance criteria\n- [ ] Initial state is `disabled` on dev, beta and release regardless of build (reads `SANE_TELEMETRY_DEFAULT`, which is `false` everywhere per docs/architecture/overview.md section 7.1); a corrupt or missing stored preference resolves to `disabled`.\n- [ ] Flipping the kill switch off moves to `disabled`, cancels any in-flight send, and completes `purgeAll()` within 100 ms; a follow-up assertion finds zero queued crash records, zero aggregate rows and an empty ring buffer.\n- [ ] After a purge, a subsequent opt-in starts from empty — no pre-consent data is ever sent retroactively.\n- [ ] While `disabled`, every record/aggregate call is a no-op and no network client is constructed at all (not merely unused).\n- [ ] Below the age threshold the controller reports `unofferable`; the toggle cannot be enabled programmatically, and a test asserts an attempt fails closed.\n- [ ] Queued items expire after 14 days or 200 KB, whichever first; expiry drops oldest-first and is recorded as a content-free counter.\n- [ ] Send failures back off exponentially (1 min, 2, 4, ... capped at 6 h) and never retry more than 5 times before dropping.\n- [ ] Account deletion ({{SN-PRV-006}}) triggers `purgeAll()` plus a best-effort server-side delete request, and reports partial completion honestly to the caller.\n\n## Technical notes\nRiverpod `Notifier` in `app/lib/telemetry/telemetry_controller.dart`; consent truth comes from `ConsentController` ({{SN-PRV-003}}/{{SN-PRV-009}}) — this controller subscribes, it does not own consent. State is an immutable sealed union (Dart 3 `sealed class` + `switch`) per CLAUDE.md section 6, and all operations return `Result<Unit, TelemetryFailure>`. The purge must be transactional across the three stores so a crash mid-purge cannot leave orphan records; run store deletes on the storage isolate. Implements ADR-0011 decisions 1, 7, 8 and verify item 7.\n\n## Security & privacy\nThreats: TM-P-06 (unawareness), TM-P-07 (GDPR/DPDP/COPPA non-compliance — consent withdrawal and minor protection are legal obligations, docs/security/controls-matrix.md section 7), TM-I-05 (residual queued data). Controls: MASVS-PRIVACY-1 (consent management), MASVS-PRIVACY-3 (retention and user control), MASVS-NETWORK-1 (no client constructed while disabled), ASVS V14, OWASP-A09, CWE-359. Fail-closed default: anything ambiguous resolves to `disabled`.\n\n## UX notes\nThe visible control is the telemetry toggle in Settings > Privacy & export ({{SN-PRV-009}}, design/Sane Notes.dc.html, docs/design/screens-and-flows.md section 12). This issue must expose the states that screen renders: off ('Telemetry is off. Nothing is collected.'), on, queued-offline ('Waiting for a connection'), and unofferable (control hidden entirely below the age gate). States render in all **17 looks plus light/dark** with `sane_ui` tokens, Semantics labels, 44pt/48dp targets, >= 4.5:1 contrast, keyboard reachable on web (docs/design/accessibility.md).\n\n## Test plan\n- Unit: `app/test/telemetry/telemetry_controller_test.dart` — default disabled; corrupt pref fails closed; state transitions; backoff schedule; TTL and size expiry; unofferable below age gate.\n- Unit: `app/test/telemetry/telemetry_purge_test.dart` — purge clears all three stores; transactional under simulated mid-purge failure.\n- Integration: `app/integration_test/telemetry_kill_switch_test.dart` — opt in, generate data, kill switch, assert zero residue and zero further egress (ADR-0011 verify item 7).\n\n## Dependencies\n{{SN-TEL-004}}, {{SN-TEL-005}}, {{SN-TEL-006}} (the three stores it purges), {{SN-PRV-009}} (consent authority it subscribes to).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit/integration, security scans)\n- [ ] ADR-0011 verify item 7 covered; docs/security/controls-matrix.md consent/retention rows updated\n- [ ] Reviewed against docs/security/secure-coding-checklist.md by a CODEOWNER"
+  },
+  {
+    "key": "SN-TEL-008",
+    "title": "Export a redacted diagnostics bundle for support from Settings",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "telemetry",
+      "privacy",
+      "settings"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-3",
+      "MASVS-PLATFORM-3",
+      "MASVS-STORAGE-1",
+      "ASVS-V14",
+      "TM-I-05",
+      "TM-R-03",
+      "CWE-532",
+      "CWE-359"
+    ],
+    "parent": "SN-TEL-001",
+    "depends_on": [
+      "SN-TEL-003",
+      "SN-TEL-004"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design",
+      "innovation"
+    ],
+    "body": "## Context\nBecause Sane Notes ships no always-on analytics, debugging a user's problem depends on the user handing us something — and ADR-0011 decision 5 defines exactly what: Settings > 'Export diagnostics' produces a **redacted** bundle from the in-memory ring-buffer log (levels, event names, sanitised fields, device model, OS, app version, flavour) that the user **reviews and shares manually**. It is never uploaded automatically. ADR-0011 verify item 4 requires a property-based test proving the exporter never emits note text, ink coordinates, keys, tokens, file paths, email or phone. This is also the concrete answer to TM-R-03 (the user cannot otherwise prove what left the device): here they see the entire payload before it moves.\nThe surface lives in Settings > Privacy & export alongside 'Export everything' (docs/design/screens-and-flows.md section 12, `PRD-SET-018`), and complements the privacy dashboard ({{SN-PRV-002}}).\n\n## Scope\n**In:** bundle assembly (ring-buffer snapshot from {{SN-TEL-004}}, device class, OS version, app version, flavour, enabled feature flags, aggregate summary if telemetry is on); a **preview screen** showing the exact bundle text before sharing; JSON + a human-readable text rendering inside a single file; the OS share/save sheet hand-off; size cap and truncation; the Settings row and its copy.\n**Out:** any automatic upload (forbidden), crash-report transport ({{SN-TEL-012}}), the 'Export everything' notebook archive (`PRD-BKP-001`, library/sharing area).\n\n## Acceptance criteria\n- [ ] 'Export diagnostics' appears in Settings > Privacy & export and is available on **all** flavours, with telemetry on or off (it is user-driven, not consent-gated).\n- [ ] The preview screen shows the complete bundle content, scrollable, before any share action; the user must tap Share explicitly; Cancel discards.\n- [ ] The bundle contains only: log records (level, sequence, ISO-week time, event name, redacted fields), device class, OS major version, app version + build, flavour, locale, ink tier, non-secret feature flags, and optional aggregate summary.\n- [ ] Property test over the hostile corpus: no note text, ink coordinates, keys, tokens, recovery codes, cloud file paths, email or phone appears in a generated bundle (ADR-0011 verify item 4).\n- [ ] Bundle is capped at 1 MB; beyond that the oldest records are dropped and the bundle states how many were omitted.\n- [ ] Empty state: with an empty buffer the screen says 'Nothing to report yet' and the Share action is disabled (not hidden).\n- [ ] Error state: if assembly fails, a user-safe message appears and nothing partial is shared; offline has no effect (the flow is entirely local).\n- [ ] The bundle is written to a temporary file that is deleted after the share sheet closes; it is never placed in a user-visible cloud-synced directory by default.\n\n## Technical notes\nAssembly is pure Dart in `packages/sane_core/lib/src/telemetry/diagnostics_bundle.dart` (testable headlessly); the screen and share sheet live in `app/lib/settings/privacy/diagnostics_export/` using `share_plus`-style platform hand-off through the existing plugin layer (CLAUDE.md section 3 — plugins are leaves). Everything passes through {{SN-TEL-003}}'s redactor a second time at assembly, defence in depth. Run assembly in `Isolate.run` to keep the UI isolate free (docs/architecture/overview.md section 6). Implements ADR-0011 decision 5 and `PRD-TEL-003`'s transparency intent.\n\n## Security & privacy\nThreats: TM-I-05 (diagnostics leakage — the entire point of the redaction pass), TM-R-03 (user cannot verify what leaves), TM-P-05 (disclosure if a bundle is over-shared). Controls: MASVS-PRIVACY-2 (transparency), MASVS-PRIVACY-3 (user control), MASVS-PLATFORM-3 (the temp file must not linger in a shared/backed-up location and the preview must respect the locked-profile screenshot rules, `PRD-LEAK-001`), MASVS-STORAGE-1, ASVS V14, CWE-532, CWE-359. The share copy must warn once, plainly, that the user is about to send this file to a person.\n\n## UX notes\nDesign: Settings screen, **Privacy & export** tab (design/Sane Notes.dc.html; docs/design/screens-and-flows.md section 12) — a row under 'Export everything' with a one-line description in the same voice ('A technical summary you can send us. No note content, ever.'). Preview uses monospace body text in a scrollable card; all **17 looks plus light/dark** must render it legibly (frosted panels when a wallpaper is set, `PRD-SET-021`). a11y: Semantics label on the row and the Share action, 44pt/48dp targets, contrast >= 4.5:1, keyboard reachable and focus-trapped preview on web, and the preview text must respect Dynamic Type (docs/design/accessibility.md).\n\n## Test plan\n- Unit: `packages/sane_core/test/telemetry/diagnostics_bundle_test.dart` — content shape, 1 MB cap and omission note, empty bundle.\n- Property: `packages/sane_core/test/telemetry/diagnostics_bundle_redaction_test.dart` — hostile corpus never leaks (ADR-0011 verify item 4).\n- Widget + golden: `app/test/settings/diagnostics_export_test.dart` and goldens per look in `app/test/golden/diagnostics_export_<look>.png` — preview, empty state, error state, share disabled/enabled.\n- Manual: export on iPad, Android tablet and Chrome; confirm the temp file is removed afterwards.\n\n## Dependencies\n{{SN-TEL-003}} (redaction), {{SN-TEL-004}} (ring buffer), {{SN-SET-001}} (Settings host screen).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit/widget/golden, security scans)\n- [ ] ADR-0011 decision 5 and verify item 4 satisfied; docs/design/screens-and-flows.md section 12 updated with the new row\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

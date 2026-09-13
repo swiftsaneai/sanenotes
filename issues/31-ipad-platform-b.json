@@ -4,15 +4,26 @@
     "title": "Make Sane Notes pages Quick-Note-linkable via NSUserActivity",
     "type": "feature",
     "priority": "p3",
-    "platforms": ["ipad"],
-    "areas": ["notifications"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "notifications"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "S",
     "sdlc": "implementation",
-    "security": ["MASVS-PRIVACY-1"],
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-LIB-002"],
-    "labels_extra": ["agent-ready", "good first issue"],
+    "depends_on": [
+      "SN-LIB-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
     "body": "## Context\nQuick Note is a system feature (swipe up from the bottom-right corner with the Pencil, or Control Center) that can link back to app content. Sane Notes content SHOULD be Quick-Note-linkable via `NSUserActivity` so a Quick Note can deep-link back to a page (docs/platform/ipad.md §7). The exact mechanism is general-knowledge and marked (verify against current API) in the doc, so this issue must confirm the API before shipping.\n\n## Scope\n**In:** advertise a current-page `NSUserActivity` (with a stable identifier and title) while a page is open, so Quick Note can capture a link to it; handle the inbound activity to deep-link back into the exact page (view/confirm, never auto-mutate); verify the current API surface and record findings.\n**Out:** Universal Links from the web ({{SN-IPAD-020}}); App Intents/Spotlight ({{SN-IPAD-015}}).\n\n## Acceptance criteria\n- [ ] While a page is open the app advertises an `NSUserActivity` identifying that page; opening the Quick Note link navigates back to that exact page.\n- [ ] The inbound activity lands in a view context and never mutates the note on open (docs/security/secure-coding-checklist.md deep-link rule).\n- [ ] A page that no longer exists resolves to a safe not-found state, not a crash.\n- [ ] Locked notes are not deep-linked into without passing the lock.\n- [ ] The verify note in docs/platform/ipad.md §7 is resolved (API confirmed or fallback documented).\n\n## Technical notes\n`NSUserActivity` advertised from the note scene; handle via the app's activity-continuation path (ADR-0003 routing with go_router). Reference docs/platform/ipad.md §7 (Quick Note, verify). Page identity comes from the document model in `sane_core` and the library ({{SN-LIB-002}}).\n\n## Security & privacy\nAn `NSUserActivity` and its title may be indexed by the OS: do not put note body content in the activity, only an opaque page id + user-facing title (MASVS-PRIVACY-1). Inbound links are untrusted — validate the id and land in view/confirm. A locked note requires unlock first.\n\n## UX notes\nDeep-link landing follows docs/design/screens-and-flows.md navigation; no new chrome. Ensure the reopened page announces itself to VoiceOver. Not-found state uses the standard empty/error pattern (both light/dark).\n\n## Test plan\nUnit: `app/test/integration/quick_note_activity_test.dart` (advertises id, resolves inbound, not-found safe, lock respected). Integration: `app/integration_test/quick_note_link_test.dart` via `patrol` on an iPad (manual Quick Note capture).\n\n## Dependencies\n{{SN-LIB-002}} library home / note identity.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md §7 verify note resolved\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -20,15 +31,28 @@
     "title": "Expose App Intents, Shortcuts, Siri phrases and Spotlight for notes",
     "type": "feature",
     "priority": "p2",
-    "platforms": ["ipad", "ios-phone"],
-    "areas": ["notifications"],
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "notifications"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "L",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-1", "MASVS-PRIVACY-1"],
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PRIVACY-1"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-CORE-002", "SN-LIB-002"],
-    "labels_extra": ["agent-ready"],
+    "depends_on": [
+      "SN-CORE-002",
+      "SN-LIB-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
     "body": "## Context\nQuick-capture parity with Apple Notes needs App Intents: expose Create note, Append to today's note, Search notes and Start recording, plus the Note type as an `AppEntity` with an `EntityQuery` so Spotlight and Shortcuts can find notes, and `AppShortcut`s with Siri phrases (docs/platform/ipad.md §7). This is core to quick capture and also backs the interactive widgets and ControlWidget.\n\n## Scope\n**In:** `AppIntent`s for Create note / Append to today's note / Search notes / Start recording; a Note `AppEntity` + `EntityQuery`; `AppShortcut`s with Siri phrases; Spotlight discoverability via the entity query. Intents run against the local document model and honour guest mode.\n**Out:** the widgets/ControlWidget that invoke these intents ({{SN-IPAD-016}}, {{SN-IPAD-017}}); Live Activity ({{SN-IPAD-018}}).\n\n## Acceptance criteria\n- [ ] \"Create note\", \"Append to today's note\", \"Search notes\" and \"Start recording\" work from Shortcuts and Siri, creating/appending/searching/recording against local storage.\n- [ ] Notes surface in Spotlight via the `AppEntity` `EntityQuery`; tapping a result opens that note (view/confirm, no auto-mutation).\n- [ ] Intents work with no account (guest mode) and no network; nothing is sent off device.\n- [ ] A destructive intent (append) requires a resolved, unambiguous target and never edits a locked note without unlock.\n- [ ] Spotlight-indexed content excludes locked-note bodies.\n\n## Technical notes\nSwift App Intents (`AppIntent`, `AppEntity`, `EntityQuery`, `AppShortcut`) in `app/`; bridge to Dart via the app's intent handler (ADR-0003). \"Start recording\" drives the audio recorder ({{SN-AUD-002}}). Note identity/model from `sane_core` ({{SN-CORE-002}}) and library ({{SN-LIB-002}}). Reference docs/platform/ipad.md §3/§7.\n\n## Security & privacy\nApp Intents are entry points and their parameters are untrusted input — validate/resolve before acting (MASVS-PLATFORM-1). Spotlight indexing MUST NOT expose locked-note content or full bodies (index title/opaque id only) (MASVS-PRIVACY-1). No tokens/content logged; a link lands in view/confirm, never auto-mutates (secure-coding-checklist deep-link rule).\n\n## UX notes\nSiri phrases and Shortcuts tiles follow docs/design/screens-and-flows.md tone; the target-disambiguation and record-started states use standard confirm patterns (both light/dark). Ensure VoiceOver reads intent results; provide non-Siri equivalents (all reachable from the app UI).\n\n## Test plan\nUnit: `app/test/intents/app_intents_test.dart` (each intent against a fake store, guest mode, lock respected, no egress). Integration: `app/integration_test/shortcuts_spotlight_test.dart` via `patrol` (run intents, Spotlight result opens note).\n\n## Dependencies\n{{SN-CORE-002}} document model entities; {{SN-LIB-002}} library; audio recorder {{SN-AUD-002}} for Start recording.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -36,15 +60,28 @@
     "title": "Build WidgetKit home-screen widgets for recent notes and quick capture",
     "type": "feature",
     "priority": "p2",
-    "platforms": ["ipad", "ios-phone"],
-    "areas": ["notifications"],
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "notifications"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "implementation",
-    "security": ["MASVS-STORAGE-1", "MASVS-PRIVACY-2"],
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-CORE-004", "SN-LIB-002"],
-    "labels_extra": ["agent-ready"],
+    "depends_on": [
+      "SN-CORE-004",
+      "SN-LIB-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
     "body": "## Context\nHome Screen widgets are a quick-capture and recall surface; iPad supports up to `systemExtraLarge`. Sane Notes should ship recent-notes widgets and an interactive quick-capture button backed by an `AppIntent` (docs/platform/ipad.md §7). Widgets read a shared App Group container and MUST never leak private note content.\n\n## Scope\n**In:** `systemSmall`..`systemExtraLarge` WidgetKit widgets showing recent notes (title + thumbnail) and a quick-capture button that runs the Create-note `AppIntent` ({{SN-IPAD-015}}); a shared App Group data path the widget reads; timeline refresh.\n**Out:** ControlWidget ({{SN-IPAD-017}}); Live Activity ({{SN-IPAD-018}}); the intents themselves ({{SN-IPAD-015}}).\n\n## Acceptance criteria\n- [ ] Each widget size renders recent-note titles/thumbnails from the shared container and updates on a reasonable timeline.\n- [ ] The interactive quick-capture button creates a new note via the `AppIntent` (iOS 17+ interactive widgets).\n- [ ] Locked or hidden notes never appear in a widget (no title, no thumbnail).\n- [ ] The widget renders correctly in light + dark and across widget tint modes; no note body text is shown, only titles the user chose.\n- [ ] Widget shows a friendly empty state when there are no notes.\n\n## Technical notes\nWidgetKit in Swift (`Widget`, `AppIntentConfiguration`); the app writes a minimal recents manifest (titles, opaque ids, thumbnail refs) to the App Group container from `sane_core` storage ({{SN-CORE-004}}); the widget reads that, never the encrypted note store directly. Interactive button uses the Create-note intent ({{SN-IPAD-015}}). Reference docs/platform/ipad.md §7.\n\n## Security & privacy\nThe App Group container is at-rest data outside the main app sandbox — store only non-sensitive metadata (title + opaque id + thumbnail), never note bodies, keys or tokens, and apply file protection (MASVS-STORAGE-1). Widgets render on the Home/Lock Screen so MUST exclude locked-note content and any body text (MASVS-PRIVACY-2). No PII in the manifest.\n\n## UX notes\nWidget layouts per design/Sane Notes.dc.html widget specs and docs/design/screens-and-flows.md; support all widget tint/appearance modes and both light/dark (golden per size). Titles use the look's typography tokens; thumbnails have alt semantics; the empty state matches the standard pattern. 44 pt tap target on the capture button.\n\n## Test plan\nUnit: `app/test/widgets/recents_manifest_test.dart` (manifest excludes locked/hidden, only metadata). Golden: `app/test/golden/home_widgets_test.dart` (each size x light/dark/tint). Integration: `app/integration_test/widget_quick_capture_test.dart` via `patrol` (button creates a note).\n\n## Dependencies\n{{SN-CORE-004}} storage; {{SN-LIB-002}} library recents; {{SN-IPAD-015}} Create-note intent.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -52,15 +89,26 @@
     "title": "Add a ControlWidget for Control Center and Lock Screen quick capture",
     "type": "feature",
     "priority": "p3",
-    "platforms": ["ipad", "ios-phone"],
-    "areas": ["notifications"],
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "notifications"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "S",
     "sdlc": "implementation",
-    "security": ["MASVS-PRIVACY-2"],
+    "security": [
+      "MASVS-PRIVACY-2"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-IPAD-015"],
-    "labels_extra": ["agent-ready"],
+    "depends_on": [
+      "SN-IPAD-015"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
     "body": "## Context\niOS 18 lets apps ship `ControlWidget`s for Control Center, the Lock Screen and (where present) the Action Button. Sane Notes should offer \"New note\" / \"New voice note\" controls for instant capture (docs/platform/ipad.md §7). These invoke the App Intents from {{SN-IPAD-015}}.\n\n## Scope\n**In:** a `ControlWidget` with \"New note\" and \"New voice note\" controls that run the Create-note and Start-recording App Intents; correct behaviour from the Lock Screen (launch/authenticate as needed).\n**Out:** Home Screen widgets ({{SN-IPAD-016}}); the intents ({{SN-IPAD-015}}); Live Activity ({{SN-IPAD-018}}).\n\n## Acceptance criteria\n- [ ] \"New note\" and \"New voice note\" controls appear in Control Center and are addable to the Lock Screen / Action Button.\n- [ ] Tapping a control runs the corresponding App Intent; from the Lock Screen it launches and, for protected content, requires device auth.\n- [ ] Controls render correctly in light + dark.\n- [ ] No note content or private data is shown on the control face (label + icon only).\n\n## Technical notes\nSwift `ControlWidget` invoking the Create-note / Start-recording intents ({{SN-IPAD-015}}); \"New voice note\" drives the audio recorder ({{SN-AUD-002}} via that intent). Reference docs/platform/ipad.md §7. Keep the control face static (no data binding).\n\n## Security & privacy\nControls live on the Lock Screen, so the face MUST show only a label/icon, never note content (MASVS-PRIVACY-2). Starting capture from the Lock Screen respects device authentication for protected content. No tokens/content logged.\n\n## UX notes\nControl label/icon per design/Sane Notes.dc.html iconography and docs/design/screens-and-flows.md; render both light/dark. Provide accessible labels; the same actions are reachable in-app (non-control alternative).\n\n## Test plan\nUnit: `app/test/widgets/control_widget_test.dart` (controls map to intents, static face). Integration: `app/integration_test/control_center_capture_test.dart` via `patrol` (control runs intent).\n\n## Dependencies\n{{SN-IPAD-015}} App Intents (Create note / Start recording).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -68,15 +116,27 @@
     "title": "Show a Live Activity for in-progress recording, transcription and export",
     "type": "feature",
     "priority": "p3",
-    "platforms": ["ipad", "ios-phone"],
-    "areas": ["notifications", "audio"],
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "notifications",
+      "audio"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "implementation",
-    "security": ["MASVS-PRIVACY-2"],
+    "security": [
+      "MASVS-PRIVACY-2"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-AUD-002"],
-    "labels_extra": ["agent-ready"],
+    "depends_on": [
+      "SN-AUD-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
     "body": "## Context\nLive Activities (ActivityKit, iPadOS 16.1+) are marked low priority in docs/platform/ipad.md §7 and used only for long-running progress: transcription, export and sync, and most usefully audio recording. A recording Live Activity keeps the user oriented (elapsed time, stop control) while they work in other apps.\n\n## Scope\n**In:** a Live Activity for an active recording (elapsed time + stop control), reused for long transcription/export/sync progress; start/update/end lifecycle tied to the audio recorder and long tasks; Dynamic Island + Lock Screen presentation.\n**Out:** the audio recorder itself ({{SN-AUD-002}}); ControlWidget ({{SN-IPAD-017}}).\n\n## Acceptance criteria\n- [ ] Starting a recording starts a Live Activity showing elapsed time and a stop control; stopping recording ends it.\n- [ ] Long transcription/export/sync tasks reuse the same Live Activity with a progress indication and end on completion/failure.\n- [ ] The activity survives app background and updates while backgrounded (recording continues per docs/roadmap.md M3 exit criteria).\n- [ ] The activity face shows no note content (only status, timer, progress).\n- [ ] Renders correctly in light + dark and on Dynamic Island where present.\n\n## Technical notes\nSwift ActivityKit; the recorder ({{SN-AUD-002}}, ADR-0015) drives updates; export/sync tasks push progress. Keep updates off the UI isolate. Reference docs/platform/ipad.md §7 (Live Activities, low priority). Do not block the ink loop.\n\n## Security & privacy\nLive Activities render on the Lock Screen — the face MUST carry only status/timer/progress, never note titles or content (MASVS-PRIVACY-2). No tokens/content logged. Ending on failure must not surface error text containing content.\n\n## UX notes\nActivity + Dynamic Island layouts per design/Sane Notes.dc.html and docs/design/screens-and-flows.md; both light/dark. Accessible labels for timer/stop; a non-Live-Activity path (in-app recording bar) always exists. Respect reduced-motion for progress animation.\n\n## Test plan\nUnit: `app/test/audio/recording_activity_test.dart` (start/update/end lifecycle, no content on face). Integration: `app/integration_test/live_activity_recording_test.dart` via `patrol` (record, background, stop).\n\n## Dependencies\n{{SN-AUD-002}} audio recorder service.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
   },
   {
@@ -84,15 +144,30 @@
     "title": "Integrate Files app document browsing and open-in-place for .sanenote",
     "type": "feature",
     "priority": "p2",
-    "platforms": ["ipad", "ios-phone"],
-    "areas": ["sharing-export", "storage"],
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "sharing-export",
+      "storage"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-1", "MASVS-STORAGE-2", "CWE-22", "CWE-400"],
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-STORAGE-2",
+      "CWE-22",
+      "CWE-400"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-CORE-005"],
-    "labels_extra": ["agent-ready"],
+    "depends_on": [
+      "SN-CORE-005"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
     "body": "## Context\niPad users expect to browse, open and manage their documents in the Files app. Sane Notes should register the `.sanenote` bundle as a document type and support coordinated open-in-place with autosave and conflict handling via `UIDocument`/`NSFileCoordinator`/`NSFilePresenter` (docs/platform/ipad.md §3/§6). Imports of file content are untrusted and MUST be hardened (CLAUDE.md §7.8).\n\n## Scope\n**In:** declare the `.sanenote` UTI/document type and register with the Files app / Document Browser; open-in-place with coordinated read/write and autosave; conflict detection via `NSFileVersion`; import a `.sanenote` into a new isolated notebook with resource caps and path confinement.\n**Out:** iCloud Drive sync internals ({{SN-SYNC-003}}); the file-format writer/reader itself ({{SN-CORE-005}}); competitor-format import (SN-SHR area).\n\n## Acceptance criteria\n- [ ] A `.sanenote` file opens from the Files app into Sane Notes; edits autosave with coordinated writes; conflicts surface via `NSFileVersion`.\n- [ ] A malformed/hostile `.sanenote` fails CLOSED into a user-safe error, parsed off the UI isolate, resource-capped (no zip/decompression bomb), path-confined (no traversal), imported into a NEW isolated notebook (docs/security/secure-coding-checklist.md §1).\n- [ ] Opening does not auto-mutate existing notebooks; import is explicit.\n- [ ] Files-app metadata (name/dates) uses required-reason-API-compliant access (see {{SN-IPAD-021}}).\n\n## Technical notes\n`UIDocument` + `NSFileCoordinator`/`NSFilePresenter` in `sane_cloud_drive`/app; `.sanenote` reader/writer from {{SN-CORE-005}}; parse off the UI isolate on a one-shot `Isolate.run` (CLAUDE.md §8). Reference docs/platform/ipad.md §3 (Local docs + autosave). Canonicalise/confine every path from file content.\n\n## Security & privacy\nUntrusted input: validate type/MIME/size/schema before use; cap resources before decode (CWE-400); canonicalise and confine paths from bundle content (CWE-22); import into a new isolated notebook (MASVS-STORAGE-2, MASVS-PLATFORM-1). Fail closed. No content/tokens logged; parser fuzz corpus added.\n\n## UX notes\nFiles browsing/open/import flows per docs/design/screens-and-flows.md; import-confirm and error states in all 17 looks + light/dark. Accessible labels on the import sheet; 44 pt targets; the not-found/corrupt state uses the standard error pattern.\n\n## Test plan\nUnit/abuse: `packages/sane_core/test/sanenote_import_fuzz_test.dart` (malformed/bomb/traversal fail closed, new-notebook isolation). Integration: `app/integration_test/files_open_in_place_test.dart` via `patrol` (open from Files, edit, conflict).\n\n## Dependencies\n{{SN-CORE-005}} .sanenote file-format writer/reader.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; threat model updated for the Files import boundary; CODEOWNERS review"
   },
   {
@@ -100,15 +175,31 @@
     "title": "Handle Universal Links and associated domains landing in view or confirm",
     "type": "security",
     "priority": "p1",
-    "platforms": ["ipad", "ios-phone"],
-    "areas": ["security", "sharing-export"],
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "security",
+      "sharing-export"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "implementation",
-    "security": ["MASVS-PLATFORM-3", "MASVS-CODE-4", "CWE-601", "OWASP-A01"],
+    "security": [
+      "MASVS-PLATFORM-3",
+      "MASVS-CODE-4",
+      "CWE-601",
+      "OWASP-A01"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-LIB-002"],
-    "labels_extra": ["agent-ready", "needs-credentials"],
+    "depends_on": [
+      "SN-LIB-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "needs-credentials"
+    ],
     "body": "## Context\nDeep links are a classic mobile vuln class: only verified deep links (Universal Links) may be honoured, and a link MUST land in a view/confirm context and never auto-mutate state (CLAUDE.md §7.8; docs/platform/ipad.md §8; ADR-0012 security impact, MASVS-PLATFORM). This issue implements Universal Links for opening a shared note/page on iPad/iPhone with a verified associated domain.\n\n## Scope\n**In:** associated-domains entitlement + `apple-app-site-association` wiring; handle inbound Universal Links to open a note/page in a view/confirm screen; reject unverified/custom-scheme links; keep any share key in the URL fragment (never sent to a server); a not-found/permission-denied safe state.\n**Out:** the share-link creation/roles semantics (SN-SHR area, M6); Quick Note linking ({{SN-IPAD-014}}); Files import ({{SN-IPAD-019}}).\n\n## Acceptance criteria\n- [ ] A verified Universal Link opens the target note/page in a view/confirm screen; it never auto-mutates or auto-accepts anything (abuse test: a forged link cannot change state).\n- [ ] Custom-scheme / unverified links are ignored (no implicit trust of incoming URLs).\n- [ ] Any share key stays in the URL fragment and is never logged or transmitted to a Sane Notes service.\n- [ ] An invalid/expired/unauthorized link lands in a safe error, not a crash or an open redirect (CWE-601).\n- [ ] A locked note requires unlock before the linked content is shown.\n\n## Technical notes\nAssociated Domains entitlement; `NSUserActivity` continuation for `applinks:`; validate the URL host/path/signature before acting (ADR-0012). Routing via go_router (ADR-0003). The associated domain, Apple Team ID and AASA hosting are maintainer-supplied (needs-credentials) and injected via CI, never committed. Reference docs/platform/ipad.md §8, docs/security/secure-coding-checklist.md deep-link rule.\n\n## Security & privacy\nVerified links only (MASVS-PLATFORM-3); treat every inbound URL as untrusted input and validate before use (MASVS-CODE-4); no open redirect (CWE-601); land in view/confirm, never auto-mutate (OWASP-A01 broken access control). Share key in the fragment only; no content/tokens/paths in logs.\n\n## UX notes\nLink-landing view/confirm screen per docs/design/screens-and-flows.md sharing flows; render in all 17 looks + light/dark. Accessible confirm dialog (Semantics, 44 pt, contrast); the error/expired state uses the standard pattern; a locked target shows the unlock gate.\n\n## Test plan\nUnit/abuse: `app/test/security/universal_link_test.dart` (forged/unverified link cannot mutate; fragment key never logged; not-found safe). Integration: `app/integration_test/universal_link_open_test.dart` via `patrol` (verified link opens confirm screen).\n\n## Dependencies\n{{SN-LIB-002}} library / note identity; share-link semantics from {{SN-SHR-001}} (referenced, lands M6).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; threat model updated for the deep-link boundary\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review (deep-link handler is security-critical)"
   },
   {
@@ -116,15 +207,30 @@
     "title": "Ship the privacy manifest and audit required-reason APIs across plugins",
     "type": "security",
     "priority": "p0",
-    "platforms": ["ipad", "ios-phone"],
-    "areas": ["privacy", "release"],
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "privacy",
+      "release"
+    ],
     "milestone": "M7 Beta Hardening & Security Audit",
     "size": "M",
     "sdlc": "release",
-    "security": ["MASVS-PRIVACY-1", "MASVS-PRIVACY-2", "MASVS-PRIVACY-3", "MASVS-PRIVACY-4"],
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-3",
+      "MASVS-PRIVACY-4"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-FND-002"],
-    "labels_extra": ["agent-ready"],
+    "depends_on": [
+      "SN-FND-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
     "body": "## Context\nApple has required a privacy manifest (`PrivacyInfo.xcprivacy`) since May 1, 2024, and the app is not submittable without it (docs/platform/ipad.md §9). The manifest must declare no tracking, the collected data types (aim: none except opt-in crash reports), and the required-reason API reasons, and EVERY Flutter plugin that touches a required-reason API MUST ship its own signed manifest. This is a p0 release gate matching the zero-knowledge posture (decision 8).\n\n## Scope\n**In:** author the app's `PrivacyInfo.xcprivacy` (`NSPrivacyTracking=false`, `NSPrivacyCollectedDataTypes` = none except opt-in crash reports, `NSPrivacyAccessedAPITypes` with approved reason codes for UserDefaults, file-timestamp and disk-space APIs); audit every plugin dependency for its own manifest; a CI check that fails if a required manifest is missing or declares tracking.\n**Out:** the App Store Connect nutrition label + submission ({{SN-IPAD-023}}); encryption export compliance ({{SN-IPAD-023}}).\n\n## Acceptance criteria\n- [ ] The app manifest declares `NSPrivacyTracking=false`, data types = none (except opt-in crash reports), and required-reason codes for User defaults / File timestamp / Disk space APIs (docs/platform/ipad.md §9).\n- [ ] Every bundled plugin touching a required-reason API ships its own signed privacy manifest; the audit list is recorded.\n- [ ] A CI gate fails the build if any required manifest is missing or any manifest declares tracking or an undeclared data type.\n- [ ] The manifest matches the App Store privacy nutrition label (\"Data Not Collected\" except opt-in crash reports).\n\n## Technical notes\nAdd `PrivacyInfo.xcprivacy` to the iOS runner; enumerate plugins from `pubspec` and verify each `.xcprivacy`. Wire the check into `.github/workflows/devsecops.yml` (ADR referenced from docs/security/devsecops-pipeline.md). Reference docs/platform/ipad.md §9 and decision 8. Telemetry is opt-in (ADR-0011); crash reports are the only declared collection.\n\n## Security & privacy\nDirectly implements privacy-by-design and the store privacy posture (MASVS-PRIVACY-1..4): no tracking, minimal declared collection, accurate required-reason declarations. Ensures no plugin silently accesses fingerprinting-prone APIs without a declared reason. No secrets in manifests.\n\n## UX notes\nNone beyond baseline (no user-facing UI): baseline privacy rules apply — no content/tokens logged, telemetry off by default with the opt-in surfaced in the privacy dashboard (docs/design/screens-and-flows.md settings). Document the declared data types for the in-app privacy dashboard.\n\n## Test plan\nCI/unit: `tools/scripts/verify_privacy_manifests.mjs` (asserts app + every required plugin manifest present, tracking=false). Manual: validate against Xcode's privacy report on a release-candidate archive.\n\n## Dependencies\n{{SN-FND-002}} monorepo scaffold (plugins present to audit).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md §9 kept current; controls matrix updated\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS (security) review"
   },
   {
@@ -132,30 +238,57 @@
     "title": "Confirm the PencilKit interop boundary and benchmark PKCanvasView latency",
     "type": "spike",
     "priority": "p2",
-    "platforms": ["ipad"],
-    "areas": ["ink", "compat"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "ink",
+      "compat"
+    ],
     "milestone": "M1 Ink Editor Alpha",
     "size": "S",
     "sdlc": "design",
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-INK-009"],
-    "labels_extra": ["agent-ready", "good first issue"],
-    "body": "## Context\ndocs/platform/ipad.md §4 states PencilKit is NOT the primary canvas — Sane Notes needs proprietary brushes, custom blending, huge documents and one cross-platform render pipeline, so it MUST use the custom Metal path, not `PKCanvasView`. PencilKit MAY be used only for the system-quality Scribble tool and as a reference implementation to benchmark against. This spike confirms that interop boundary and produces the benchmark reference number for the M0/M1 latency work (ADR-0001/ADR-0008 context).\n\n## Scope\n**In:** measure `PKCanvasView` pen-to-pixel latency on the Tier 1 reference iPads as the vendor baseline; confirm and document where PencilKit is/ isn't used (Scribble only; benchmark reference); record the interop boundary as an addendum to docs/platform/ipad.md §4 and note it against ADR-0008.\n**Out:** building the custom Metal surface ({{SN-INK-006}}); the go/no-go latency spike itself ({{SN-INK-009}}); Scribble implementation ({{SN-IPAD-008}}).\n\n## Acceptance criteria\n- [ ] A written note records `PKCanvasView` measured pen-to-pixel latency on the M-series ProMotion iPad Pro and iPad Air, as the reference to beat/meet.\n- [ ] The interop boundary is confirmed and documented: PencilKit used only for Scribble + benchmarking, custom Metal path for the canvas (docs/platform/ipad.md §4).\n- [ ] The outcome is linked from ADR-0008 and docs/platform/ipad.md §4; no production dependency on `PKCanvasView` for the canvas is introduced.\n\n## Technical notes\nReuse the `tools/perf_harness` capture from {{SN-INK-009}}; compare against the decision-7 <= 16 ms ProMotion budget (docs/platform/performance-budgets.md). Reference docs/platform/ipad.md §4/§10 (L6) and ADR-0001 exit criterion. Throwaway benchmark code only.\n\n## Security & privacy\nNone beyond baseline: benchmark only; no note content used; nothing logged from the draw loop; no tokens.\n\n## UX notes\nNo shipped UI. Document that the system Scribble tool (the only PencilKit use) matches docs/design/screens-and-flows.md text-entry behaviour; the custom canvas keeps the design-system look across all 17 looks.\n\n## Test plan\nManual/benchmark: harness run captured in the spike note; no automated tests for a throwaway spike. Attach the latency table to the ADR addendum.\n\n## Dependencies\n{{SN-INK-009}} pen-to-pixel latency measurement spike.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated: docs/platform/ipad.md §4 addendum + ADR-0008 note recorded\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
+    "depends_on": [
+      "SN-INK-009"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\ndocs/platform/ipad.md §4 states PencilKit is NOT the primary canvas — Sane Notes needs proprietary brushes, custom blending, huge documents and one cross-platform render pipeline, so it MUST use the custom Metal path, not `PKCanvasView`. PencilKit MAY be used only for the system-quality Scribble tool and as a reference implementation to benchmark against. This spike confirms that interop boundary and produces the benchmark reference number for the M0/M1 latency work (ADR-0001/ADR-0008 context).\n\n## Scope\n**In:** measure `PKCanvasView` pen-to-pixel latency on the Tier 1 reference iPads as the vendor baseline; confirm and document where PencilKit is/ isn't used (Scribble only; benchmark reference); record the interop boundary as an addendum to docs/platform/ipad.md §4 and note it against ADR-0008.\n**Out:** building the custom Metal surface ({{SN-INK-006}}); the go/no-go latency spike itself ({{SN-INK-009}}); Scribble implementation ({{SN-IPAD-008}}).\n\n## Acceptance criteria\n- [ ] A written note records `PKCanvasView` measured pen-to-pixel latency on the M-series ProMotion iPad Pro and iPad Air, as the reference to beat/meet.\n- [ ] The interop boundary is confirmed and documented: PencilKit used only for Scribble + benchmarking, custom Metal path for the canvas (docs/platform/ipad.md §4).\n- [ ] The outcome is linked from ADR-0008 and docs/platform/ipad.md §4; no production dependency on `PKCanvasView` for the canvas is introduced.\n\n## Technical notes\nReuse the `tools/perf_harness` capture from {{SN-INK-009}}; compare against the decision-7 <= 16 ms ProMotion budget (docs/platform/performance-budgets.md). Reference docs/platform/ipad.md §4/§10 (L6) and ADR-0001 exit criterion. Throwaway benchmark code only.\n\n## Security & privacy\nNone beyond baseline: benchmark only; no note content used; nothing logged from the draw loop; no tokens (MASVS-PRIVACY-1).\n\n## UX notes\nNo shipped UI. Document that the system Scribble tool (the only PencilKit use) matches docs/design/screens-and-flows.md text-entry behaviour; the custom canvas keeps the design-system look across all 17 looks.\n\n## Test plan\nManual/benchmark: harness run captured in the spike note; no automated tests for a throwaway spike. Attach the latency table to the ADR addendum.\n\n## Dependencies\n{{SN-INK-009}} pen-to-pixel latency measurement spike.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated: docs/platform/ipad.md §4 addendum + ADR-0008 note recorded\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ]
   },
   {
     "key": "SN-IPAD-023",
     "title": "Reach App Store Connect readiness: nutrition label, export compliance, metadata",
     "type": "task",
     "priority": "p1",
-    "platforms": ["ipad", "ios-phone"],
-    "areas": ["release", "privacy"],
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "release",
+      "privacy"
+    ],
     "milestone": "M8 Launch & Growth",
     "size": "M",
     "sdlc": "release",
-    "security": ["MASVS-PRIVACY-3", "MASVS-RESILIENCE-1"],
+    "security": [
+      "MASVS-PRIVACY-3",
+      "MASVS-RESILIENCE-1"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-IPAD-021"],
-    "labels_extra": ["needs-credentials", "agent-ready"],
+    "depends_on": [
+      "SN-IPAD-021"
+    ],
+    "labels_extra": [
+      "needs-credentials",
+      "agent-ready"
+    ],
     "body": "## Context\nBefore submission Sane Notes must satisfy the App Store review gates in docs/platform/ipad.md §9: an accurate privacy nutrition label matching the manifest, encryption export compliance for the non-exempt E2EE crypto, the Sign in with Apple presence requirement (Guideline 4.8) if social login is offered, and iPad multitasking / pointer / keyboard expectations. This assembles the store metadata and compliance declarations for M8 launch.\n\n## Scope\n**In:** App Store Connect privacy nutrition label (\"Data Not Collected\" except opt-in crash reports) matching {{SN-IPAD-021}}; `ITSAppUsesNonExemptEncryption` + the annual self-classification / French declaration (verify current requirement); confirm Sign in with Apple is present when social login is offered (Guideline 4.8) — the identity area owns the implementation (SN-AUTH Sign in with Apple); store listing metadata, screenshots and multitasking/orientation compliance checklist.\n**Out:** the privacy manifest itself ({{SN-IPAD-021}}); TestFlight pipeline ({{SN-IPAD-024}}); the Sign in with Apple implementation (identity area).\n\n## Acceptance criteria\n- [ ] The App Store Connect nutrition label exactly matches the `PrivacyInfo.xcprivacy` manifest (no discrepancy).\n- [ ] `ITSAppUsesNonExemptEncryption` is set and the export-compliance declaration is filed/verified per the current requirement (docs/platform/ipad.md §9).\n- [ ] Sign in with Apple presence is verified when any social login is offered (Guideline 4.8); a checklist item links the identity-area implementation.\n- [ ] The multitasking/orientation/pointer/keyboard compliance checklist passes (no locked orientation, no opt-out of resizability).\n- [ ] Store account, Apple Developer team and signing identities are supplied via maintainer credentials (needs-credentials), never committed.\n\n## Technical notes\nApp Store Connect metadata + Info.plist `ITSAppUsesNonExemptEncryption`; reference docs/platform/ipad.md §9 and decision 8. Depends on the manifest ({{SN-IPAD-021}}). Sign in with Apple is implemented in the identity area (SN-AUTH Sign in with Apple) and only referenced here as a review gate. Maintainer supplies the App Store Connect account + team.\n\n## Security & privacy\nAccurate store privacy declarations reflecting the zero-knowledge reality (MASVS-PRIVACY-3). Export-compliance declaration for the non-exempt AEAD crypto. No secrets committed; signing identities via CI (MASVS-RESILIENCE-1). Baseline: no content/tokens in any submitted artefact or log.\n\n## UX notes\nStore screenshots must reflect the real design across looks (design/Sane Notes.dc.html); the watermarked placeholder Sage art is NOT releasable (CLAUDE.md §9), so screenshots must not embed it. Nutrition label copy matches the in-app privacy dashboard (docs/design/screens-and-flows.md).\n\n## Test plan\nManual checklist: `docs/platform/ipad.md` §9 release-gate table validated on a release candidate; verify label-vs-manifest parity with a script `tools/scripts/verify_label_matches_manifest.mjs`. No automated store submission.\n\n## Dependencies\n{{SN-IPAD-021}} privacy manifest; identity-area Sign in with Apple (referenced, not blocking this metadata task).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md §9 kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS (security/release) review"
   },
   {
@@ -163,15 +296,30 @@
     "title": "Stand up the TestFlight beta pipeline for signed iPad builds",
     "type": "infra",
     "priority": "p1",
-    "platforms": ["ipad", "ios-phone"],
-    "areas": ["ci-cd", "release"],
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "ci-cd",
+      "release"
+    ],
     "milestone": "M7 Beta Hardening & Security Audit",
     "size": "M",
     "sdlc": "release",
-    "security": ["MASVS-RESILIENCE-1", "MASVS-CODE-2"],
+    "security": [
+      "MASVS-RESILIENCE-1",
+      "MASVS-CODE-2"
+    ],
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-FND-003", "SN-IPAD-021"],
-    "labels_extra": ["needs-credentials", "agent-ready"],
+    "depends_on": [
+      "SN-FND-003",
+      "SN-IPAD-021"
+    ],
+    "labels_extra": [
+      "needs-credentials",
+      "agent-ready"
+    ],
     "body": "## Context\nBeta hardening (M7) needs a repeatable, signed path to put iPad builds in front of testers via TestFlight. This automates archive -> sign -> upload -> group distribution and plugs into the DevSecOps pipeline so every beta carries an SBOM and provenance (docs/security/devsecops-pipeline.md; docs/roadmap.md M7). Signing keys, the Apple Developer team and the App Store Connect API key are maintainer-supplied (needs-credentials).\n\n## Scope\n**In:** a CI workflow that builds the release/beta flavour (`--dart-define` matrix, {{SN-FND-005}} flavours), archives via `xcodebuild`, signs with the Apple Developer identity from CI secrets, and uploads to TestFlight with tester groups; attach SBOM + provenance; require the privacy manifest gate ({{SN-IPAD-021}}) to pass first.\n**Out:** the App Store production submission/metadata ({{SN-IPAD-023}}); the base CI workflow ({{SN-FND-003}}).\n\n## Acceptance criteria\n- [ ] A tagged beta build archives, signs and uploads to TestFlight automatically; testers in the configured groups receive it.\n- [ ] The build fails if the privacy-manifest gate ({{SN-IPAD-021}}) or any security scan fails.\n- [ ] Signing identities and the App Store Connect API key come only from CI secrets — nothing committed (gitleaks/trufflehog clean).\n- [ ] Each beta artefact has an attached SBOM (CycloneDX+SPDX) and provenance (docs/roadmap.md M8 targets, applied from M7 betas).\n- [ ] The auth-bypass release-mode test passes so no dev bypass ships in a beta.\n\n## Technical notes\n`fastlane`/`xcodebuild` in `.github/workflows/`; consume the build flavours from {{SN-FND-005}} and the base CI from {{SN-FND-003}}. Reference docs/security/devsecops-pipeline.md (SBOM/provenance/SLSA) and CLAUDE.md §7.5 (auth bypass impossible in release). Store credentials in CI secrets only.\n\n## Security & privacy\nSupply-chain integrity: signed builds, SBOM + provenance per beta (MASVS-CODE-2, SLSA target). Release hardening: no secrets committed, dev auth-bypass proven unreachable (MASVS-RESILIENCE-1, CLAUDE.md §7.5). No content/tokens in build logs; credentials injected, never printed.\n\n## UX notes\nNone beyond baseline (no user-facing UI). Baseline privacy: build logs never contain content/tokens/keys; the beta build must not embed the watermarked Sage placeholder in a public-facing way (CLAUDE.md §9 — betas are internal/tester-only and tagged not-releasable until original art exists).\n\n## Test plan\nCI dry-run on a branch: `.github/workflows/testflight.yml` builds + signs a beta to a staging lane; assert the manifest gate and auth-bypass test block a bad build. Manual: confirm a build appears in TestFlight for a test group.\n\n## Dependencies\n{{SN-FND-003}} Flutter CI workflow; {{SN-IPAD-021}} privacy manifest; build flavours {{SN-FND-005}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/security/devsecops-pipeline.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS (CI/release) review"
   },
   {
@@ -179,14 +327,27 @@
     "title": "Validate iPad pen-to-pixel latency, fps and battery on the Tier 1 device lab",
     "type": "test",
     "priority": "p1",
-    "platforms": ["ipad"],
-    "areas": ["perf", "compat", "qa"],
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "perf",
+      "compat",
+      "qa"
+    ],
     "milestone": "M5 Phones & Platform Parity",
     "size": "M",
     "sdlc": "verification",
     "parent": "SN-IPAD-001",
-    "depends_on": ["SN-INK-006"],
-    "labels_extra": ["agent-ready"],
-    "body": "## Context\niPad is the reference surface for the <= 16 ms pen-to-pixel budget (decision 7) and its budgets are release-blocking on the Tier 1 device lab (docs/platform/compatibility-matrix.md §7; docs/platform/ipad.md §11). This issue wires the iPad device-lab slots (M-series ProMotion iPad Pro + iPad Air, each with Apple Pencil Pro and Pencil 2) into the CI perf gate and validates latency, fps/jank, cold start and battery on real Pencil hardware, extending the harness from the perf area's SN-PERF-002 (latency measurement harness) to full Pencil-Pro coverage.\n\n## Scope\n**In:** device-lab configs for iPad-Pro-ProMotion and iPad-Air in `tools/device_lab`; run `tools/perf_harness` for pen-down->pixel (<= 16 ms ProMotion), >= 60 fps floor / 120 fps where available, no frame > 16.7 ms while writing, cold start < 1.5 s, and the 2-hour-writing <= 12% battery soak on iPad Pro; gate a regression as release-blocking.\n**Out:** the SN-PERF-002 harness itself; the native Metal surface ({{SN-INK-006}}); Android/web perf (their areas).\n\n## Acceptance criteria\n- [ ] Pen-down->pixel <= 16 ms on the ProMotion iPad Pro and within the non-ProMotion floor on iPad Air, measured on real Pencil hardware (Simulator MUST NOT be the latency gate, docs/platform/ipad.md §11).\n- [ ] >= 60 fps floor, 120 fps where the display allows, and no frame > 16.7 ms while writing.\n- [ ] Cold start < 1.5 s on iPad; a 2-hour writing session consumes <= 12% battery on iPad Pro (soak).\n- [ ] A latency/fps regression on a Tier 1 iPad blocks the release (CI gate).\n- [ ] Both Apple Pencil Pro and Pencil 2 paths are exercised.\n\n## Technical notes\nExtend `tools/perf_harness` + `tools/device_lab` (ADR references docs/platform/performance-budgets.md B1-B5). Depends on the Metal front-buffer surface ({{SN-INK-006}}). Use Instruments (time-profiler / Metal system trace) for diagnosis (docs/platform/ipad.md §11). The draw loop logs nothing in profile/release.\n\n## Security & privacy\nNone beyond baseline: measurement only; no note content used; the draw loop logs nothing in profile/release; no tokens. Ensure the harness uses synthetic strokes, not user content.\n\n## UX notes\nNone beyond baseline (no shipped UI). The gate protects the felt quality that the design targets across all 17 looks; golden ink rendering is validated separately in the ink area.\n\n## Test plan\nPerf: `tools/perf_harness` scenarios `ipad_latency`, `ipad_fps_jank`, `ipad_cold_start`, `ipad_battery_soak` run on the two Tier 1 iPad slots in CI; thresholds from docs/platform/performance-budgets.md. Manual: Instruments Metal system trace attached for any regression.\n\n## Dependencies\n{{SN-INK-006}} iPadOS Metal low-latency surface; SN-PERF-002 latency measurement harness (well-known perf-area key, created by the perf writer).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/performance-budgets.md + docs/platform/ipad.md §11 kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed"
+    "depends_on": [
+      "SN-INK-006"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\niPad is the reference surface for the <= 16 ms pen-to-pixel budget (decision 7) and its budgets are release-blocking on the Tier 1 device lab (docs/platform/compatibility-matrix.md §7; docs/platform/ipad.md §11). This issue wires the iPad device-lab slots (M-series ProMotion iPad Pro + iPad Air, each with Apple Pencil Pro and Pencil 2) into the CI perf gate and validates latency, fps/jank, cold start and battery on real Pencil hardware, extending the harness from the perf area's SN-PERF-002 (latency measurement harness) to full Pencil-Pro coverage.\n\n## Scope\n**In:** device-lab configs for iPad-Pro-ProMotion and iPad-Air in `tools/device_lab`; run `tools/perf_harness` for pen-down->pixel (<= 16 ms ProMotion), >= 60 fps floor / 120 fps where available, no frame > 16.7 ms while writing, cold start < 1.5 s, and the 2-hour-writing <= 12% battery soak on iPad Pro; gate a regression as release-blocking.\n**Out:** the SN-PERF-002 harness itself; the native Metal surface ({{SN-INK-006}}); Android/web perf (their areas).\n\n## Acceptance criteria\n- [ ] Pen-down->pixel <= 16 ms on the ProMotion iPad Pro and within the non-ProMotion floor on iPad Air, measured on real Pencil hardware (Simulator MUST NOT be the latency gate, docs/platform/ipad.md §11).\n- [ ] >= 60 fps floor, 120 fps where the display allows, and no frame > 16.7 ms while writing.\n- [ ] Cold start < 1.5 s on iPad; a 2-hour writing session consumes <= 12% battery on iPad Pro (soak).\n- [ ] A latency/fps regression on a Tier 1 iPad blocks the release (CI gate).\n- [ ] Both Apple Pencil Pro and Pencil 2 paths are exercised.\n\n## Technical notes\nExtend `tools/perf_harness` + `tools/device_lab` (ADR references docs/platform/performance-budgets.md B1-B5). Depends on the Metal front-buffer surface ({{SN-INK-006}}). Use Instruments (time-profiler / Metal system trace) for diagnosis (docs/platform/ipad.md §11). The draw loop logs nothing in profile/release.\n\n## Security & privacy\nNone beyond baseline: measurement only; no note content used; the draw loop logs nothing in profile/release; no tokens. Ensure the harness uses synthetic strokes, not user content (MASVS-PRIVACY-1).\n\n## UX notes\nNone beyond baseline (no shipped UI). The gate protects the felt quality that the design targets across all 17 looks; golden ink rendering is validated separately in the ink area.\n\n## Test plan\nPerf: `tools/perf_harness` scenarios `ipad_latency`, `ipad_fps_jank`, `ipad_cold_start`, `ipad_battery_soak` run on the two Tier 1 iPad slots in CI; thresholds from docs/platform/performance-budgets.md. Manual: Instruments Metal system trace attached for any regression.\n\n## Dependencies\n{{SN-INK-006}} iPadOS Metal low-latency surface; SN-PERF-002 latency measurement harness (well-known perf-area key, created by the perf writer).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner; CodeQL over Swift plugin code)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/performance-budgets.md + docs/platform/ipad.md §11 kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; CODEOWNERS review where a plugin/entitlement changed",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ]
   }
 ]
