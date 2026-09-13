@@ -26,7 +26,10 @@ const REQUIRED_SECTIONS = [
 function slugify(s) { return s.toLowerCase().replace(/\s+/g, '-'); }
 
 const args = new Set(process.argv.slice(2));
-const files = readdirSync(ISSUES_DIR).filter(f => f.endsWith('.json') && !['labels.json', 'milestones.json', '.published.json'].includes(f)).sort();
+// Issue files only: skip config files and any dotfile (state/ledger files are not issue arrays).
+const files = readdirSync(ISSUES_DIR)
+  .filter(f => f.endsWith('.json') && !f.startsWith('.') && !['labels.json', 'milestones.json'].includes(f))
+  .sort();
 const errors = [];
 const warnings = [];
 const all = [];

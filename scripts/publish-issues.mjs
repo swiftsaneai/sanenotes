@@ -21,7 +21,6 @@ import { spawnSync } from 'node:child_process';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ISSUES_DIR = join(ROOT, 'issues');
 const REPO = process.env.REPO || 'swiftsaneai/sanenotes';
-const PACE_MS = Number(process.env.PACE_MS || 7500);
 const argv = process.argv.slice(2);
 const flag = n => argv.includes(n);
 const opt = n => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : undefined; };
@@ -34,17 +33,58 @@ function gh(args, input) {
   const r = spawnSync('gh', args, { input, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   return { ok: r.status === 0, out: r.stdout, err: r.stderr, status: r.status };
 }
-async function api(method, path, body, { retries = 6 } = {}) {
+// Rolling-budget pacing.
+//
+// GitHub's binding secondary limit is ~500 CONTENT-CREATING requests per rolling hour (an issue
+// POST and a sub-issue-link POST each cost one). It is a BUDGET, not a speed limit — which is why
+// reactive "slow down when refused" pacing fails: by the time you are refused the hour's budget is
+// already spent, and no amount of slowing down buys back a slot. Sprinting early just means
+// stalling later, at a worse moment.
+//
+// So we spend the budget deliberately: keep a timestamp per content-creating request and, once
+// BUDGET_MAX have been spent inside the window, wait exactly until the oldest one ages out. The
+// ledger is persisted, because this script is restarted (crash, OOM, edits) and an in-memory
+// counter would forget what the previous run already spent and immediately overrun.
+const BUDGET_MAX = Number(process.env.BUDGET_MAX || 460); // headroom under the ~500 ceiling
+const BUDGET_WINDOW = 3600_000;
+const BUDGET_FILE = join(ROOT, '.rate-budget.json'); // NOT in issues/ — the validator scans that dir
+const pace = { ms: Number(process.env.PACE_MS || 7200), hits: 0 };
+let stamps = [];
+try { stamps = JSON.parse(readFileSync(BUDGET_FILE, 'utf8')); } catch { stamps = []; }
+
+function prune() { const cut = Date.now() - BUDGET_WINDOW; stamps = stamps.filter(t => t > cut); }
+async function takeSlot() {
+  prune();
+  if (stamps.length >= BUDGET_MAX) {
+    const wait = stamps[0] + BUDGET_WINDOW - Date.now() + 1500;
+    console.log(`  hourly budget spent (${stamps.length}/${BUDGET_MAX}); waiting ${Math.round(wait / 1000)}s for a slot ...`);
+    await sleep(Math.max(wait, 1000));
+    return takeSlot();
+  }
+  stamps.push(Date.now());
+  try { writeFileSync(BUDGET_FILE, JSON.stringify(stamps)); } catch {}
+}
+function penalise() { pace.hits++; prune(); stamps.push(...Array(15).fill(Date.now())); console.log(`  refused — charging 15 slots against the budget (spent ${stamps.length}/${BUDGET_MAX})`); }
+
+async function api(method, path, body, { retries = 8 } = {}) {
   for (let attempt = 0; ; attempt++) {
     const args = ['api', '--method', method, path, '-H', 'Accept: application/vnd.github+json', '-H', 'X-GitHub-Api-Version: 2022-11-28'];
     if (body !== undefined) args.push('--input', '-');
+    if (method !== 'GET') await takeSlot();
     const r = gh(args, body !== undefined ? JSON.stringify(body) : undefined);
     if (r.ok) return r.out ? JSON.parse(r.out) : null;
     const msg = (r.err || '') + (r.out || '');
     const rateLimited = /rate limit|abuse|secondary|429|403/i.test(msg);
     if (rateLimited && attempt < retries) {
-      const wait = Math.min(15 * 60_000, 60_000 * 2 ** attempt);
-      console.log(`  rate limited; waiting ${Math.round(wait / 1000)}s ...`);
+      penalise();
+      // A *secondary* block sends no Retry-After and lasts ~20 minutes. Retrying sooner keeps the
+      // block alive, so wait it out properly rather than probing every 45s.
+      const secondary = /secondary rate limit|temporarily blocked from content creation/i.test(msg);
+      const ra = /retry-after:\s*(\d+)/i.exec(msg);
+      const wait = ra ? (Number(ra[1]) + 5) * 1000
+        : secondary ? 21 * 60_000
+        : Math.min(5 * 60_000, 60_000 * 2 ** attempt);
+      console.log(`  ${secondary ? 'SECONDARY BLOCK' : 'rate limited'} (hit #${pace.hits}); waiting ${Math.round(wait / 60000)}m ...`);
       await sleep(wait); continue;
     }
     throw new Error(`gh api ${method} ${path} failed: ${msg.slice(0, 500)}`);
@@ -157,6 +197,7 @@ function renderBody(i, numberOf) {
 
   // Create
   let created = 0, skipped = 0, updated = 0, mismatches = 0;
+  let inlineParent = process.env.INLINE_PARENT !== '0', inlineVerified = false;
   for (const i of issues) {
     const labels = labelsFor(i);
     const body = renderBody(i, numberOf);
@@ -171,22 +212,45 @@ function renderBody(i, numberOf) {
           && (live.milestone ? live.milestone.number : null) === (milestoneNumber.get(i.milestone) ?? null);
         if (same) { skipped++; continue; }
         await api('PATCH', `repos/${REPO}/issues/${state[i.key].number}`, { title: i.title, body, labels, milestone: milestoneNumber.get(i.milestone) });
-        updated++; await sleep(PACE_MS / 2);
+        updated++; await sleep(pace.ms / 2);
       } else skipped++;
       continue;
     }
     if (DRY) { console.log(`#${predicted.get(i.key)} [${i.priority}] ${i.key}  ${i.title}  {${labels.length} labels} parent=${i.parent || '-'}`); created++; continue; }
-    const r = await api('POST', `repos/${REPO}/issues`, { title: i.title, body, labels, milestone: milestoneNumber.get(i.milestone) });
+    // Attach the parent on the CREATE call: one content-generating request instead of two, which
+    // halves the cost of every child issue. Verified once at runtime — if GitHub silently ignores
+    // the field we fall back to the explicit sub_issues call for the rest of the run.
+    const wantParent = i.parent && state[i.parent];
+    const payload = { title: i.title, body, labels, milestone: milestoneNumber.get(i.milestone) };
+    if (wantParent && inlineParent) payload.parent_issue_id = state[i.parent].id;
+    let r;
+    try { r = await api('POST', `repos/${REPO}/issues`, payload); }
+    catch (e) {
+      if (!payload.parent_issue_id) throw e;
+      console.log('  parent_issue_id rejected on create; falling back to explicit sub-issue links');
+      inlineParent = false; delete payload.parent_issue_id;
+      r = await api('POST', `repos/${REPO}/issues`, payload);
+    }
     state[i.key] = { number: r.number, id: r.id }; saveState();
     if (r.number !== predicted.get(i.key)) { mismatches++; console.log(`  ! predicted #${predicted.get(i.key)} but got #${r.number} — cross-refs will be fixed in the repair pass`); }
     created++;
-    console.log(`#${r.number} ${i.key} ${i.title}`);
-    if (i.parent && state[i.parent]) {
+    console.log(`#${r.number} ${i.key} ${i.title}${payload.parent_issue_id ? ' (linked inline)' : ''}`);
+
+    if (wantParent && inlineParent && !inlineVerified) {
+      // One-time proof that the inline link really took effect; a GET is free of the content limit.
+      const kids = await api('GET', `repos/${REPO}/issues/${state[i.parent].number}/sub_issues?per_page=100`);
+      inlineVerified = true;
+      if (!Array.isArray(kids) || !kids.some(k => k.number === r.number)) {
+        console.log('  inline parent did NOT take effect — reverting to explicit sub-issue links');
+        inlineParent = false;
+      } else console.log('  inline parent link verified — halving requests per issue');
+    }
+    if (wantParent && !inlineParent) {
       try { await api('POST', `repos/${REPO}/issues/${state[i.parent].number}/sub_issues`, { sub_issue_id: r.id }); }
       catch (e) { console.log(`  (sub-issue link failed: ${e.message.slice(0, 120)})`); }
-      await sleep(PACE_MS / 2);
+      await sleep(pace.ms / 2);
     }
-    await sleep(PACE_MS);
+    await sleep(pace.ms);
   }
 
   // Repair pass: rewrite only the bodies whose rendered form actually changed (predicted number
@@ -199,7 +263,7 @@ function renderBody(i, numberOf) {
       const live = await api('GET', `repos/${REPO}/issues/${state[i.key].number}`);
       if ((live.body || '').trim() === want.trim()) continue;
       await api('PATCH', `repos/${REPO}/issues/${state[i.key].number}`, { body: want });
-      repaired++; await sleep(PACE_MS / 2);
+      repaired++; await sleep(pace.ms / 2);
     }
     console.log(`Repaired ${repaired} bodies`);
   }
