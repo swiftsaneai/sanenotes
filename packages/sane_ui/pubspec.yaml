@@ -1,0 +1,13 @@
+name: sane_ui
+description: Sane Notes theme tokens and reusable presentation primitives.
+publish_to: none
+version: 0.1.0
+environment:
+  sdk: ^3.11.0
+resolution: workspace
+dependencies:
+  flutter:
+    sdk: flutter
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

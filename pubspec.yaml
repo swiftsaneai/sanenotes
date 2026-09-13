@@ -1,0 +1,29 @@
+name: sanenotes_workspace
+publish_to: none
+environment:
+  sdk: ^3.13.0
+workspace:
+  - app
+  - packages/sane_core
+  - packages/sane_ui
+dev_dependencies:
+  melos: ^7.0.0
+  very_good_analysis: ^11.0.0
+melos:
+  scripts:
+    analyze: dart analyze --fatal-infos
+    format: dart format --output=none --set-exit-if-changed app/lib app/test packages
+    test:
+      run: flutter test
+      exec:
+        concurrency: 1
+      packageFilters:
+        flutter: true
+        dirExists: test
+    test:core:
+      run: dart test
+      exec:
+        concurrency: 1
+      packageFilters:
+        flutter: false
+        dirExists: test

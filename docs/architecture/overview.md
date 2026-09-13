@@ -661,3 +661,7 @@ decision, keep the decision and record the risk here and in the relevant ADR.
 | Design/theme a screen | [`docs/design/design-system.md`](../design/design-system.md), [`docs/design/screens-and-flows.md`](../design/screens-and-flows.md) |
 | File work for the backlog | [`issues/SCHEMA.md`](../../issues/SCHEMA.md) |
 | Cite the underlying research | `research/*.md` (committed under `docs/research/sources/`) |
+
+## Implementation status — local Markdown slice
+
+[ADR-0017](../adr/0017-local-markdown-first-slice.md) records the first runnable application and its explicit differences from the long-term architecture above. `sane_core` owns local draft values/contracts, `sane_ui` owns presentation, and `app/data` implements the repository with Drift. Native database work runs through Drift's background executor; web uses a local WASM worker. No sync, CRDT, cloud traffic, or application-level encryption is implemented by this slice.

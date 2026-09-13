@@ -1,0 +1,9 @@
+name: sane_core
+description: Immutable local note values and repository contracts.
+publish_to: none
+version: 0.1.0
+environment:
+  sdk: ^3.11.0
+resolution: workspace
+dev_dependencies:
+  test: ^1.25.0
