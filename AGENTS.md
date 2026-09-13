@@ -8,7 +8,7 @@ Sane Notes: a **pen-first, privacy-first, local-first** Flutter/Dart 3 note-taki
 Android tablets, Web (PWA), iPhone and Android phones — **one codebase, five surfaces**. UX first,
 then security first. Notes live on the device; **no Sane Notes server ever stores note content**;
 optional sync goes to the user's own iCloud Drive / Google Drive, end-to-end encrypted. Status:
-**pre-alpha, planning complete** — `docs/` + issue tracker exist; `app/`/`packages/` not built yet.
+**pre-alpha, local Markdown preview implemented** — `app/`, `sane_core`, and `sane_ui` exist; the broader roadmap remains open. See `docs/implementation/session-review.md` before starting work.
 
 ## Locked decisions (never silently contradict — full text: CLAUDE.md §2, overview.md App. A)
 Flutter+Dart 3 single codebase + native Swift/Kotlin plugins · monorepo (`app/`, `packages/`,

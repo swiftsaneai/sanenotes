@@ -15,8 +15,7 @@ tablets, Web (PWA), iPhone and Android phones** — one Flutter/Dart 3 codebase,
 Goal: the best note-taking UX in the world — **UX first, then security first**. Notes live on the
 device; **no Sane Notes server ever stores note content**; optional sync goes to the *user's own*
 iCloud Drive / Google Drive, end-to-end encrypted with keys we never hold. Persona: students first
-("Riya", B.Tech Physics), then professionals. Mascot: "Sane Sage". Status: **pre-alpha, planning
-complete** — `docs/` and the issue tracker exist; `app/` and `packages/` are not built yet.
+("Riya", B.Tech Physics), then professionals. Mascot: "Sane Sage". Status: **pre-alpha, local Markdown preview implemented** — `app/`, `sane_core`, and `sane_ui` exist. The ink, CRDT, sync and other roadmap packages remain planned. Read `docs/implementation/session-review.md` for verified scope.
 
 ---
 
@@ -67,8 +66,8 @@ relevant doc/ADR. Full text: project brief + `docs/architecture/overview.md` App
 
 ```
 sanenotes/
-├── app/            Flutter app — ONE codebase, adaptive layouts, composition root  [not built yet]
-├── packages/       Reusable libs (pure Dart unless noted); no UI-shell logic       [not built yet]
+├── app/            Flutter app — ONE codebase, adaptive layouts, composition root  [local Markdown preview]
+├── packages/       Reusable libs (pure Dart unless noted); no UI-shell logic       [core + ui implemented; others planned]
 │   ├── sane_core     document model + CRDT + Result/Failure + repository interfaces [pure Dart]
 │   ├── sane_ink      stroke capture/smooth/streamline/predict/geometry/serialise    [pure Dart]
 │   ├── sane_render   tessellation & painting into dart:ui Canvas; tile/Picture cache [Flutter]
@@ -290,8 +289,7 @@ Full detail + the reviewer fast-pass: `docs/security/secure-coding-checklist.md`
   `scripts/publish-issues.mjs` (idempotent, resumable, paces to GitHub rate limits; `./scripts/publish.sh`
   wraps validate+push+publish). `scripts/render-issues.mjs` renders them to `docs/backlog/`. Requires
   Node 22 + authenticated `gh`. **Always run `node scripts/validate-issues.mjs` after editing any
-  `issues/*.json`.** Note: as of now only `labels.json` + `milestones.json` exist — the `SN-*.json`
-  issue files are authored per the schema as work is scoped.
+  `issues/*.json`.** The `SN-*.json` files currently contain 1,200 issue specifications. They are planned scope, not an implementation completion ledger.
 
 ---
 
