@@ -1,0 +1,288 @@
+[
+  {
+    "key": "SN-SRCH-010",
+    "title": "Integrate background handwriting recognition into the search index",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "search",
+      "ocr-hwr",
+      "privacy"
+    ],
+    "milestone": "M3 Audio & Recognition",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-NETWORK-1",
+      "MASVS-STORAGE-1",
+      "CWE-532"
+    ],
+    "parent": "SN-SRCH-001",
+    "depends_on": [
+      "SN-SRCH-004",
+      "SN-HWR-001"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\n\nThe headline differentiator: **handwriting is searched, on-device and free** — Notability's most-resented paywall becomes our wedge (PRD-LB-300; positioning §1.3). Background handwriting recognition runs continuously and **non-destructively** (never alters ink) to feed the search index (PRD-LB-260/300; ADR-0016 §\"Non-destructive recognition\"). This issue is the **integration**: it consumes recognised text + per-word on-page quads/stroke ids from the recognition engine (SN-HWR-001, ML Kit Digital Ink by default) and turns them into `SearchIndexRow`s (`source: handwriting`) via the pipeline ({{SN-SRCH-004}}), preserving locality so results deep-link to the exact strokes ({{SN-SRCH-009}}).\n\nRecognition itself (engine choice, language packs, accuracy, correction UX) lives in SN-HWR-001; this issue only wires its output into search and guarantees the privacy posture (on by default, on-device, controllable via the settings toggle).\n\n## Scope\n**In:** the handwriting extractor (recognised word → `SearchIndexRow{source:handwriting, quads, strokeIds, lang}`), hooking recognition-complete events into the incremental pipeline, honouring the per-notebook recognition language and the \"On-device handwriting recognition\" settings toggle, and re-indexing on ink edits.\n\n**Out:** the recognition engine + language packs + convert-to-text UX (SN-HWR-001), the FTS store ({{SN-SRCH-002}}), ranking ({{SN-SRCH-003}}), and the deep-link renderer ({{SN-SRCH-009}}).\n\n## Acceptance criteria\n- [ ] Writing a word by hand makes it findable in global search within the recognition+debounce window, with a result that deep-links to those strokes.\n- [ ] Recognition runs on a background isolate and **never destroys ink**; disabling the \"On-device handwriting recognition\" toggle (settings) stops indexing new handwriting and (per privacy dashboard) can clear the handwriting rows.\n- [ ] No handwriting recognition triggers any network egress (airplane-mode test passes); recognised text is stored only locally (MASVS-NETWORK-1, MASVS-PRIVACY-1).\n- [ ] Each handwriting row carries on-page quads + stroke ids so {{SN-SRCH-009}} can highlight the exact strokes.\n- [ ] Recognition language is the notebook default (device locale) and covers the broadest available set on every platform (no iOS-vs-Android disparity shipped) — verified against SN-HWR-001's language list.\n- [ ] Editing/erasing ink re-indexes just that page's handwriting rows.\n\n## Technical notes\n`packages/sane_search/lib/src/extractors/handwriting_extractor.dart`, registered with {{SN-SRCH-004}}. Consume the `sane_ml` recognition adapter interface (from SN-HWR-001 / ADR-0016); the app wires recognition-complete → pipeline via a Riverpod provider (no package-to-package import). Map recogniser word boxes to page-space quads and to the stroke ids they cover. Respect the `onDevice` pref (`docs/design/screens-and-flows.md` §12 Privacy). Reference ADR-0016 §5 (background recognition) and PRD-LB-300/303.\n\n## Security & privacy\nRecognised handwriting is note content: on-device only, never logged, no egress; on by default but user-controllable and clearable (MASVS-PRIVACY-1, MASVS-NETWORK-1, MASVS-STORAGE-1, CWE-532; privacy dashboard PRD-LB-370). The \"runs on your device\" guarantee is a headline privacy claim — any future cloud recognition would need a per-request opt-in banner (out of scope here). Locked notebooks are excluded ({{SN-SRCH-015}}).\n\n## UX notes\nNo new screen; surfaces through search results (handwriting cards) and the settings \"On-device handwriting recognition\" toggle copy (\"Your ink never leaves the device to become searchable\", `docs/design/screens-and-flows.md` §12). The scribble preview is {{SN-SRCH-013}}. Recognised text also backs OCR alt-text for a11y ({{SN-SRCH-017}}).\n\n## Test plan\nUnit: `packages/sane_search/test/extractors/handwriting_extractor_test.dart` (word→row mapping, quad/stroke locality, lang tagging) with a faked recognition adapter. Integration: `app/integration_test/handwriting_search_test.dart` (write → find → deep-link to strokes) and an airplane-mode no-egress assertion. Non-destructive: assert ink strokes unchanged after recognition.\n\n## Dependencies\n{{SN-SRCH-004}} (pipeline), SN-HWR-001 (recognition engine + language + settings toggle).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner).\n- [ ] Docs/ADR updated if behaviour or architecture changed (ADR-0016 on-device ML/search, `docs/architecture/document-model.md`, controls-matrix if a control mapping changed).\n- [ ] Reviewed against `docs/security/secure-coding-checklist.md`; Security & privacy section IDs verified; no note content, query text, or ink coordinates in logs (object ids as opaque short hashes)."
+  },
+  {
+    "key": "SN-SRCH-011",
+    "title": "Index PDF text layers and OCR imported PDFs and images for search",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "search",
+      "pdf"
+    ],
+    "milestone": "M3 Audio & Recognition",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-1",
+      "OWASP-A03",
+      "CWE-20",
+      "CWE-532"
+    ],
+    "parent": "SN-SRCH-001",
+    "depends_on": [
+      "SN-SRCH-004",
+      "SN-PDF-002",
+      "SN-HWR-001"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\n\nPDF content must be searchable, and Sane Notes goes further than Goodnotes by **OCR-ing imports that lack a text layer** (PRD-LB-260, PRD-LB-305 — explicitly beating Goodnotes, which does not OCR imports and only searches pre-OCR'd PDFs). This issue feeds PDF text into the index: on first open, extract the PDF's text layer with page-relative quads (via the PDF engine SN-PDF-002 / pdfrx text-with-bounds); for text-layerless PDFs and imported images, run OCR (Apple Vision / ML Kit / Tesseract via SN-HWR-001) and index the recognised text with quads. Rows carry locality so results highlight the exact quad ({{SN-SRCH-009}}).\n\nAll PDF/image parsing is untrusted input handled off the UI isolate with resource caps (CLAUDE.md §7.8). Extraction/OCR is one-time per document (cached) and incremental via the pipeline ({{SN-SRCH-004}}).\n\n## Scope\n**In:** a PDF-text extractor (text + quads, per page), an OCR extractor for text-layerless PDFs and imported images (recognised text + quads), `source: pdf` rows with locality, caching so re-open does not re-extract, and resource-capped off-isolate parsing.\n\n**Out:** the PDF render/text engine and OCR engines themselves (SN-PDF-002, SN-HWR-001), the store/pipeline ({{SN-SRCH-002}}/{{SN-SRCH-004}}), and the highlight renderer ({{SN-SRCH-009}}).\n\n## Acceptance criteria\n- [ ] Opening a text-layer PDF indexes its text with per-page quads; searching a phrase returns a result that deep-links to and highlights the exact quad.\n- [ ] Importing a scanned/text-layerless PDF or an image OCRs it on a background isolate and indexes the recognised text (PRD-LB-305), also with quads.\n- [ ] Extraction/OCR is cached per document (content-addressed): re-opening does not re-run; a hostile/malformed PDF fails **closed** into a safe error, parsed off the UI isolate, resource-capped (no decompression bomb), path-confined (secure-coding checklist §1).\n- [ ] A 600-page PDF indexes without blocking the UI and within the memory cap (LRU); scrolling stays at 60 fps during background indexing.\n- [ ] PDF text indexing performs no network egress; OCR runs on-device by default.\n- [ ] Deleting/removing a PDF page removes its `pdf` rows.\n\n## Technical notes\n`packages/sane_search/lib/src/extractors/pdf_extractor.dart` + `ocr_extractor.dart`, registered with {{SN-SRCH-004}}. Use SN-PDF-002 (pdfrx text-with-bounds / `syncfusion_flutter_pdf` per PRD-LB-131) for text+quads; use the `sane_ml` OCR adapter (SN-HWR-001) for image/text-layerless PDFs (Apple Vision / ML Kit / Tesseract.js per ADR-0016). Parse off-isolate with a bounded LRU (PRD-LB-135). Quads in PDF points, page-relative (PRD-LB-136). Cache keyed by PDF blob hash.\n\n## Security & privacy\nUntrusted PDF/image bytes: validate type/size, cap resources before decode, parse off the UI isolate, confine any embedded path (OWASP-A03, CWE-20; CLAUDE.md §7.8). Extracted/OCR'd text is note content — stored locally, never logged, no egress (MASVS-STORAGE-1, MASVS-PRIVACY-1, CWE-532). Feeds the parser-fuzzing corpus at verification.\n\n## UX notes\nNo new screen; results appear as PDF-text cards on the Search screen (`docs/design/screens-and-flows.md` §11) and deep-link with quad highlight ({{SN-SRCH-009}}). Long imports show the shared indexing progress affordance (PRD-LB-361). PDFs keep original colours; highlight must read on them.\n\n## Test plan\nUnit: `packages/sane_search/test/extractors/pdf_extractor_test.dart` (text+quads, cache hit), `.../ocr_extractor_test.dart` (image/text-layerless path with a faked OCR adapter). Security: `packages/sane_search/test/pdf_extract_fuzz_test.dart` (malformed PDF fails closed, resource-capped). Integration: `app/integration_test/pdf_search_test.dart`.\n\n## Dependencies\n{{SN-SRCH-004}} (pipeline), SN-PDF-002 (PDF render/text engine), SN-HWR-001 (OCR engines).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner).\n- [ ] Docs/ADR updated if behaviour or architecture changed (ADR-0016 on-device ML/search, `docs/architecture/document-model.md`, controls-matrix if a control mapping changed).\n- [ ] Reviewed against `docs/security/secure-coding-checklist.md`; Security & privacy section IDs verified; no note content, query text, or ink coordinates in logs (object ids as opaque short hashes)."
+  },
+  {
+    "key": "SN-SRCH-012",
+    "title": "Index audio transcripts and surface timestamped audio search results",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "search",
+      "audio"
+    ],
+    "milestone": "M3 Audio & Recognition",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-NETWORK-1",
+      "MASVS-STORAGE-1",
+      "CWE-532"
+    ],
+    "parent": "SN-SRCH-001",
+    "depends_on": [
+      "SN-SRCH-004",
+      "SN-AUD-002",
+      "SN-HWR-001"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nLecture audio is searchable too: on-device transcripts (PRD-LB-221/222) must be indexed so a query can find \"the moment the lecturer said X\" and jump to it. PRD-LB-223 requires transcript text to be searchable and PRD-LB-260 lists transcripts as an index source; the design result types include \"Audio · mm:ss\" (`docs/design/screens-and-flows.md` §11). This issue indexes transcript words (`source: transcript`) with their audio timestamps + `sessionId`, so a result card reads \"Audio · mm:ss\" and tapping it opens the notebook and seeks audio to that moment (and, via the audio↔ink sync, highlights the ink written then).\n\nTranscription itself (WhisperKit / whisper.cpp / SpeechAnalyzer, on-device by default) is owned by SN-HWR-001/SN-AUD-002; this issue consumes the word-timestamped transcript and wires it into search.\n\n## Scope\n**In:** the transcript extractor (transcript word → `SearchIndexRow{source:transcript, sessionId, tStartMs, pageIndex, lang}`), the \"Audio · mm:ss\" result payload, seeking audio to `tStartMs` on result tap, re-indexing when a transcript is (re)generated/edited, and honouring the on-device-by-default posture.\n\n**Out:** transcription engines (SN-HWR-001), the recorder/playback (SN-AUD-002), the audio↔ink sync highlight (owned by SN-AUD), and the FTS store/pipeline.\n\n## Acceptance criteria\n- [ ] Searching a word spoken in a lecture returns an \"Audio · mm:ss\" result; tapping it opens the notebook and seeks audio playback to that timestamp.\n- [ ] Transcript rows carry `sessionId` + `tStartMs` + `pageIndex` so the result timestamp is correct even for a recording that spans multiple pages (PRD-LB-220).\n- [ ] Transcripts are indexed on-device by default with no network egress; any cloud transcription is a separate per-request opt-in (out of scope) and never silently indexed remotely.\n- [ ] (Re)generating or editing a transcript re-indexes just that session's rows; deleting a recording removes them.\n- [ ] Transcript search respects the Audio filter on the search screen and is excluded from other filters appropriately.\n- [ ] Airplane-mode: recording → on-device transcript → transcript search all work.\n\n## Technical notes\n`packages/sane_search/lib/src/extractors/transcript_extractor.dart`, registered with {{SN-SRCH-004}}. Consume `Transcript{words[]{text,tStartMs,tEndMs,conf}}` (PRD-02 §2 model) from the audio/recognition layer (SN-AUD-002 / SN-HWR-001 via `sane_ml`). Result payload includes `sessionId`+`tStartMs`; the app-level open action ({{SN-SRCH-009}}) delegates the actual seek to the audio player (SN-AUD-002). Reference ADR-0015 (audio) + ADR-0016 (transcription) and PRD-LB-221/222/223.\n\n## Security & privacy\nTranscripts are note content — indexed and stored on device, never logged, no egress by default (MASVS-PRIVACY-1, MASVS-NETWORK-1, MASVS-STORAGE-1, CWE-532). The on-device default is a privacy guarantee; recording consent + indicators are handled by the audio area. Locked notebooks excluded ({{SN-SRCH-015}}).\n\n## UX notes\nSurfaces as the \"Audio · mm:ss\" result card in `docs/design/screens-and-flows.md` §11; the Audio filter chip narrows to these. Tapping should feel like \"jump to the moment it was said\". Snippet shows surrounding transcript words with the match `<mark>`-highlighted. All looks + dark inherited from the screen.\n\n## Test plan\nUnit: `packages/sane_search/test/extractors/transcript_extractor_test.dart` (word→row with timestamp/session/page, re-index on regen, delete cleanup) with a faked transcript source. Integration: `app/integration_test/audio_search_test.dart` (record → transcribe on-device → search → tap seeks audio). No-egress airplane-mode assertion.\n\n## Dependencies\n{{SN-SRCH-004}} (pipeline), SN-AUD-002 (recorder/playback + seek), SN-HWR-001 (on-device transcription).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner).\n- [ ] Docs/ADR updated if behaviour or architecture changed (ADR-0016 on-device ML/search, `docs/architecture/document-model.md`, controls-matrix if a control mapping changed).\n- [ ] Reviewed against `docs/security/secure-coding-checklist.md`; Security & privacy section IDs verified; no note content, query text, or ink coordinates in logs (object ids as opaque short hashes)."
+  },
+  {
+    "key": "SN-SRCH-013",
+    "title": "Render the handwriting scribble preview in search result cards",
+    "type": "design",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "search",
+      "design-system"
+    ],
+    "milestone": "M3 Audio & Recognition",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-3",
+      "CWE-532"
+    ],
+    "parent": "SN-SRCH-006",
+    "depends_on": [
+      "SN-SRCH-006",
+      "SN-SRCH-010"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nFor handwriting results, the design shows a **rendered ink-scribble preview** of the matched strokes inside the result card, not just text (PRD-LB-262; `docs/design/screens-and-flows.md` §11 \"for handwriting a rendered ink-scribble preview\"). This makes a handwriting hit instantly recognisable — you see your own writing. This issue renders that preview: given the matched stroke ids/quads (from {{SN-SRCH-010}}), paint a small, cropped, theme-aware thumbnail of those strokes into the card from {{SN-SRCH-006}}.\n\nIt is a focused painting task: crop to the match bounds with padding, scale to the card preview box, paint via the shared ink renderer, and cache. It must render across all 17 looks + dark and carry OCR alt-text for a11y.\n\n## Scope\n**In:** the scribble-preview widget (crop matched strokes → mini `CustomPainter`/cached `Picture` → card slot), bounds cropping with padding, disk/mem caching keyed by (docId,page,matchId), reduced-motion/static rendering, and OCR-backed Semantics alt-text.\n\n**Out:** stroke capture/geometry (SN-INK area), recognition ({{SN-SRCH-010}}), and the card layout itself ({{SN-SRCH-006}}).\n\n## Acceptance criteria\n- [ ] A handwriting result card shows a cropped thumbnail of exactly the matched strokes (with small padding), scaled to the card preview box, not the whole page.\n- [ ] The preview paints via the shared ink renderer so it matches on-canvas ink; it renders correctly in all 17 looks + light/dark (golden-tested).\n- [ ] Previews are cached (mem + disk) and generated off the UI isolate; scrolling a list of handwriting results stays at 60 fps.\n- [ ] Each preview has a Semantics label = the recognised text of the match (\"handwritten: <text>\") so screen readers get OCR alt-text (PRD-LB-370).\n- [ ] Respects reduced-motion (no animation) and never blocks the card's text from rendering (async placeholder while painting).\n\n## Technical notes\nWidget in `app/lib/search/widgets/scribble_preview.dart`; reuse the `sane_render` ink painter to draw stroke geometry cropped to match bounds. Stroke ids/quads come from the handwriting index rows ({{SN-SRCH-010}}). Cache like notebook thumbnails (PRD-LB-042 pattern; off-isolate generation, disk cache). Use `sane_ui` tokens for the frame/background. Reference `docs/design/screens-and-flows.md` §11.\n\n## Security & privacy\nThe preview is note content shown only in-app to the authenticated local user; the cache is part of the encrypted local store and never logged or exported unexpectedly (MASVS-PRIVACY-3, CWE-532). Alt-text exposes recognised text to accessibility services intentionally (a11y), consistent with on-device recognition. No network.\n\n## UX notes\nMatch the design result card: type icon, title, \"Page N · Handwriting\", the scribble preview, snippet, timestamp (`docs/design/screens-and-flows.md` §11). The preview is a small rounded thumbnail; ink colour is the original stroke colour, framed on a token background that works in every look + dark. Placeholder shimmer while painting.\n\n## Test plan\nGolden: `app/test/search/goldens/scribble_preview_<look>_<mode>.png` across all 17 looks + dark, with a fixed stroke fixture. Widget: `app/test/search/scribble_preview_test.dart` (crop bounds, cache hit, alt-text label, async placeholder).\n\n## Dependencies\n{{SN-SRCH-006}} (result card slot), {{SN-SRCH-010}} (matched stroke ids/quads).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner).\n- [ ] Docs/ADR updated if behaviour or architecture changed (ADR-0016 on-device ML/search, `docs/architecture/document-model.md`, controls-matrix if a control mapping changed).\n- [ ] Reviewed against `docs/security/secure-coding-checklist.md`; Security & privacy section IDs verified; no note content, query text, or ink coordinates in logs (object ids as opaque short hashes)."
+  },
+  {
+    "key": "SN-SRCH-014",
+    "title": "Implement saved smart collections from search filters",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "search",
+      "library"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "OWASP-A01",
+      "CWE-532"
+    ],
+    "parent": "SN-SRCH-001",
+    "depends_on": [
+      "SN-SRCH-002",
+      "SN-SRCH-006",
+      "SN-LIB-001"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nPower users want to save a search as a living view. PRD-LB-038 requires users to **save a filter as a smart collection** (subject + tags + type filters + date range) that appears as a pinnable sidebar entry and re-evaluates live (`research/notability.md` saved smart searches). This turns search from a one-shot into an organising tool. This issue defines the `SmartCollection` entity, the \"save current search as collection\" action, its sidebar entry, and live re-evaluation against the index/library.\n\nSmart collections are per-profile CRDT metadata (like other library entities, PRD-LB-002) so they sync without a server. They land in M4 alongside the tag/filter maturity and sync foundation.\n\n## Scope\n**In:** the `SmartCollection{id,name,query?,subjectIds,tagIds,sourceFilters,dateRange,pinned}` entity + repository, a \"Save as smart collection\" action from the search screen, a pinnable sidebar entry that opens a live-re-evaluated result list, and edit/rename/delete/reorder.\n\n**Out:** the FTS query engine ({{SN-SRCH-002}}), the base search screen ({{SN-SRCH-006}}), and generic library folders/tags (SN-LIB-001).\n\n## Acceptance criteria\n- [ ] From a search with active filters, \"Save as smart collection\" creates a named collection capturing the query + subject/tag/source/date filters.\n- [ ] The collection appears as a sidebar entry; opening it re-runs the query live so newly-matching notebooks/pages appear without manual refresh.\n- [ ] Collections can be pinned/unpinned, renamed, reordered, and deleted; state is per-profile and switches with the active profile (PRD-LB-350).\n- [ ] A collection is a CRDT object (LWW scalars, add-wins sets for id lists) so it merges across devices (PRD-LB-002/002).\n- [ ] Empty collection shows a helpful empty state; a collection whose tags/subjects were deleted degrades gracefully (ignores dangling ids).\n- [ ] Sidebar entry + editor render in all 17 looks + dark, with Semantics labels and 44pt/48dp targets.\n\n## Technical notes\nEntity + repo in `sane_core`/library model (per `docs/product/prd-02-library-documents-audio-search.md` §2 pattern); re-evaluation calls `sane_search` ({{SN-SRCH-002}}) plus a library metadata query for subject/tag/date. Sidebar entry via the library shell (SN-LIB-001/002) and go_router. Coordinate in `app/` via Riverpod. Reference PRD-LB-038 and CRDT semantics in `docs/architecture/document-model.md`.\n\n## Security & privacy\nCollection definitions and their evaluated content are per-profile; scoping prevents cross-profile leakage (OWASP-A01, MASVS-PRIVACY-2). Definitions are metadata stored in the encrypted local store; no query text or results logged (MASVS-STORAGE-1, CWE-532). Riding the op-log, they are E2E-encrypted when synced (inherits SN-CRY/SN-SYNC). No new network call of its own.\n\n## UX notes\nSidebar smart-collection entries sit with Library nav (`docs/design/screens-and-flows.md` §2); the save action is a control on the search screen (§11). Pinned collections show first. Use `sane_ui` tokens across all 17 looks + dark. Provide clear \"0 matches yet\" empty states.\n\n## Test plan\nUnit: `packages/sane_core/test/smart_collection_test.dart` (CRDT merge, dangling-id tolerance). Widget: `app/test/search/smart_collection_test.dart` (save, live re-eval, pin/rename/delete, per-profile switch). Golden: sidebar entry + editor across a look subset.\n\n## Dependencies\n{{SN-SRCH-002}} (query), {{SN-SRCH-006}} (save action), SN-LIB-001 (subjects/tags/library shell).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner).\n- [ ] Docs/ADR updated if behaviour or architecture changed (ADR-0016 on-device ML/search, `docs/architecture/document-model.md`, controls-matrix if a control mapping changed).\n- [ ] Reviewed against `docs/security/secure-coding-checklist.md`; Security & privacy section IDs verified; no note content, query text, or ink coordinates in logs (object ids as opaque short hashes)."
+  },
+  {
+    "key": "SN-SRCH-015",
+    "title": "Encrypt the search index at rest and exclude locked notebooks from results",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "search",
+      "security",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-STORAGE-2",
+      "MASVS-CRYPTO-1",
+      "MASVS-CRYPTO-2",
+      "OWASP-A01",
+      "OWASP-A02",
+      "CWE-312",
+      "CWE-922",
+      "ASVS-V8"
+    ],
+    "parent": "SN-SRCH-001",
+    "depends_on": [
+      "SN-SRCH-002",
+      "SN-CRY-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nThe search index is a plaintext mirror of everything the user ever wrote, typed, imported or recorded — so it is one of the most sensitive stores in the app. Locked decision 3 and CLAUDE.md §7 require note content to be encrypted at rest; PRD-LOCK-006 requires **locked notebooks to be excluded from search/preview** and their content ciphertext-at-rest. This issue makes the index encrypted at rest with the rest of the local store (SQLCipher-style DB encryption keyed via `sane_secure_store`) and enforces that **locked notebooks are excluded from all search results and index reads** while locked.\n\nWithout this, a device-level compromise or a locked-notebook bypass would leak everything through search. It lands in M4 when the key hierarchy (SN-CRY-002) and lock features exist.\n\n## Scope\n**In:** at-rest encryption of the FTS/index tables (via the encrypted `drift`/SQLCipher store keyed from `sane_secure_store`), excluding locked-notebook rows from every query path, redacting/omitting locked content from snippets/previews, and a re-index/purge hook when a notebook is locked/unlocked.\n\n**Out:** the key hierarchy + Keychain/Keystore storage (SN-CRY-002), the lock UI/biometric gate (PRD-LOCK-005, identity area), and the FTS store schema ({{SN-SRCH-002}}).\n\n## Acceptance criteria\n- [ ] The index DB is encrypted at rest with an approved AEAD/DB-encryption scheme keyed from `sane_secure_store`; the key never touches disk/logs/backups (CLAUDE.md §7.7).\n- [ ] A locked notebook returns **zero** search results and zero snippet/preview content while locked — verified by a negative test that a known phrase in a locked notebook is unfindable.\n- [ ] Unlocking makes its content searchable again; locking purges or gates its rows so they cannot leak via a stale query.\n- [ ] Inspecting the raw index DB file (without keys) yields no plaintext note content (CWE-312/CWE-922); AEAD tags are verified and reads fail closed on tamper.\n- [ ] No regression to the < 300 ms first-results budget from encryption (measured in {{SN-SRCH-016}}).\n- [ ] Backups/exports never include the plaintext index.\n\n## Technical notes\nUse the encrypted local DB from SN-CORE-004 + SN-CRY-002 (`sane_secure_store` for the DB key; approved crypto only — CLAUDE.md §7.7). Add a `locked` predicate to every query in {{SN-SRCH-002}} that joins against the notebook lock state (PRD-LOCK-005/006). On lock, either delete-and-reindex-on-unlock or gate by predicate; document the chosen approach in an ADR update. Reference `docs/architecture/crypto.md`, ADR-0007, and PRD-LOCK-006.\n\n## Security & privacy\nCore mitigations: encrypt the most sensitive derived store at rest (MASVS-STORAGE-1/2, MASVS-CRYPTO-1/2, CWE-312, CWE-922, ASVS V8); enforce access control so locked content is never returned (OWASP-A01); fail closed on AEAD tag mismatch (OWASP-A02). Threat rows: device theft, forensic image, locked-notebook bypass — track in `docs/security/threat-model.md` and the controls matrix. CODEOWNERS review required (security-critical path).\n\n## UX notes\nNone beyond baseline — behaviour is invisible except that locked notebooks simply do not appear in results (aligns with the lock feature's expectation). Ensure the \"no results\" case for a locked-but-matching query is indistinguishable from a genuine no-match (do not hint that hidden matches exist). Baseline: no content/keys logged.\n\n## Test plan\nSecurity tests: `app/test/security/search_index_encryption_test.dart` (raw DB has no plaintext; key from secure store; fail-closed on tamper), `app/test/security/locked_notebook_search_exclusion_test.dart` (locked phrase unfindable; unlock restores; lock purges). Perf regression check in {{SN-SRCH-016}}.\n\n## Dependencies\n{{SN-SRCH-002}} (query paths to gate), SN-CRY-002 (key hierarchy + secure store).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner).\n- [ ] Docs/ADR updated if behaviour or architecture changed (ADR-0016 on-device ML/search, `docs/architecture/document-model.md`, controls-matrix if a control mapping changed).\n- [ ] Reviewed against `docs/security/secure-coding-checklist.md`; Security & privacy section IDs verified; no note content, query text, or ink coordinates in logs (object ids as opaque short hashes)."
+  },
+  {
+    "key": "SN-SRCH-016",
+    "title": "Add the search performance harness and CI budget gates",
+    "type": "test",
+    "priority": "p2",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "search",
+      "perf"
+    ],
+    "milestone": "M3 Audio & Recognition",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "CWE-532"
+    ],
+    "parent": "SN-SRCH-001",
+    "depends_on": [
+      "SN-SRCH-004",
+      "SN-PERF-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nSearch has hard performance targets: **first on-device FTS results < 300 ms over a typical library** (PRD-LB §15, marked verify), indexing that **never blocks a frame while writing** (PRD-LB-360/361; CLAUDE.md §8), and no regression from index encryption ({{SN-SRCH-015}}). Budgets that are not measured are not real, so this issue builds a search-specific perf harness and wires it into CI as a gate, using the shared latency measurement harness (SN-PERF-002).\n\nIt generates representative corpora (e.g. 500 notebooks / 10k pages / mixed sources), measures query latency percentiles and index throughput, and fails CI on regression — matching the roadmap's \"a regression does not merge\" stance.\n\n## Scope\n**In:** a synthetic corpus generator, query-latency benchmarks (p50/p95 first-results), index-throughput + incremental-update benchmarks, a \"no frame > 16.7 ms during background indexing\" soak assertion, and a CI job that gates on the budgets.\n\n**Out:** the shared device-lab/latency harness itself (SN-PERF-002/004) and the features being measured.\n\n## Acceptance criteria\n- [ ] A reproducible corpus generator produces a \"typical\" and a \"large\" library fixture with all six index sources.\n- [ ] Query benchmark asserts p95 first-results < 300 ms on the reference target for the typical library; the number is recorded to de-verify PRD-LB §15.\n- [ ] An indexing soak (continuous writes) asserts no frame > 16.7 ms attributable to indexing (profile trace captured as a CI artifact).\n- [ ] Index throughput (rows/sec) and incremental re-index latency are tracked over time; a configurable regression threshold fails the CI job.\n- [ ] The encryption path ({{SN-SRCH-015}}) is included so its overhead is bounded and measured.\n- [ ] The harness logs only timings/aggregates — never query text or note content.\n\n## Technical notes\nAdd `tools/perf_harness/search/` benchmarks and a `packages/sane_search/benchmark/` entry using the shared harness from SN-PERF-002; wire a CI job in `.github/workflows/` (perf gate, per `docs/security/devsecops-pipeline.md` and `docs/platform/performance-budgets.md`). Corpus generator in `tools/`. Reference PRD-LB §15 targets and CLAUDE.md §8.\n\n## Security & privacy\nNone beyond baseline. The harness must synthesise or hash any content and log only timing aggregates — never real query text, snippets, or note content (CWE-532). No network.\n\n## UX notes\nNone beyond baseline — this is CI/tooling with no user surface. Baseline: no content in logs/artifacts (only timings and profile traces).\n\n## Test plan\nThe harness *is* the test: `tools/perf_harness/search/query_latency_bench.dart`, `.../index_throughput_bench.dart`, and `app/integration_test/search_index_soak_test.dart` (frame-time soak). CI job runs them and compares against recorded budgets; self-test that the gate fails on an injected regression.\n\n## Dependencies\n{{SN-SRCH-004}} (pipeline to measure), SN-PERF-002 (shared latency harness).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner).\n- [ ] Docs/ADR updated if behaviour or architecture changed (ADR-0016 on-device ML/search, `docs/architecture/document-model.md`, controls-matrix if a control mapping changed).\n- [ ] Reviewed against `docs/security/secure-coding-checklist.md`; Security & privacy section IDs verified; no note content, query text, or ink coordinates in logs (object ids as opaque short hashes)."
+  },
+  {
+    "key": "SN-SRCH-017",
+    "title": "Make search accessible and internationalised (labels, alt-text, RTL, tokenizers)",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "search",
+      "a11y",
+      "i18n"
+    ],
+    "milestone": "M3 Audio & Recognition",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-3",
+      "MASVS-PLATFORM-2",
+      "CWE-532"
+    ],
+    "parent": "SN-SRCH-001",
+    "depends_on": [
+      "SN-SRCH-006",
+      "SN-A11Y-001",
+      "SN-I18N-001"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nSearch must be usable by everyone and in every supported language. Locked decision 10 mandates WCAG 2.2 AA, VoiceOver/TalkBack for all chrome, and **OCR alt-text for handwritten content** (PRD-LB-370); PRD-LB-371 requires language pickers to expose the full on-device set and correct RTL (Arabic) layouts. English-only tokenisation also silently breaks handwriting/typed search for CJK and Indic scripts — Sane Notes ships Hindi + major Indian languages, so the FTS tokenizer must handle them. This issue closes the a11y + i18n gaps across the search surfaces built in {{SN-SRCH-006}}/{{SN-SRCH-008}}.\n\nIt layers on the shared a11y (SN-A11Y-001) and i18n (SN-I18N-001) foundations, applying them specifically to search chrome, result cards, and the tokenizer configuration in {{SN-SRCH-002}}.\n\n## Scope\n**In:** Semantics labels + focus order for the search field/chips/result cards + in-note find, OCR alt-text on handwriting results and scribble previews, RTL layout correctness for search + in-note find, tokenizer/analyzer selection per script (CJK bigram/ICU, Indic segmentation) wired to the row `lang`, and localised copy for all search strings.\n\n**Out:** the base screens ({{SN-SRCH-006}}/{{SN-SRCH-008}}), the app-wide a11y/i18n infra (SN-A11Y-001/SN-I18N-001), and recognition language packs (SN-HWR-001).\n\n## Acceptance criteria\n- [ ] Every search control has a Semantics label; VoiceOver/TalkBack can search, switch filters, move through results, and open a result without sight.\n- [ ] Handwriting result cards and scribble previews expose their recognised text as alt-text (\"handwritten: <text>\") (PRD-LB-370).\n- [ ] Arabic (RTL) renders the search screen and in-note find correctly (mirrored layout, correct text direction, aligned chips).\n- [ ] Searching CJK and Indic (e.g. Hindi/Devanagari) handwriting and typed text returns correct matches — the tokenizer segments these scripts rather than treating a line as one token.\n- [ ] All search strings (placeholder, count line, empty state, filters) are localised and pass with pseudo-loc (no truncation/overlap) across looks.\n- [ ] Contrast ≥ 4.5:1 for text and ≥ 3:1 for the match highlight in all 17 looks + dark; targets ≥ 44pt/48dp; keyboard-reachable on web.\n\n## Technical notes\nScreen a11y in `app/lib/search/`; add per-script FTS5 tokenizers in `packages/sane_search` (unicode61 baseline + an ICU/bigram path selected by row `lang` from {{SN-SRCH-002}}). Localised strings via the app ARB/l10n pipeline (SN-I18N-001). Alt-text sourced from recognised text ({{SN-SRCH-010}}). Reference `docs/design/accessibility.md`, Locked decision 10, PRD-LB-370/371, and ADR-0016 (ML Kit 300+ languages / 25+ scripts).\n\n## Security & privacy\nAlt-text intentionally exposes recognised note content to accessibility services for the local user (MASVS-PLATFORM-2) — consistent with on-device recognition; nothing is logged or sent (MASVS-PRIVACY-3, CWE-532). No network.\n\n## UX notes\nApplies to the design **Search** screen and the in-note find bar (`docs/design/screens-and-flows.md` §11, §7). Follow `docs/design/accessibility.md`; verify with the 17 looks in both light + dark and with RTL. Respect Dynamic Type / readable-font settings.\n\n## Test plan\nWidget/a11y: `app/test/search/search_a11y_test.dart` (Semantics labels, focus order, alt-text, target sizes, contrast). i18n: `packages/sane_search/test/tokenizer_i18n_test.dart` (CJK/Indic segmentation matches), `app/test/search/search_rtl_test.dart` (Arabic layout). Golden: search screen in Arabic + a CJK locale.\n\n## Dependencies\n{{SN-SRCH-006}} (search screen), {{SN-SRCH-008}} (in-note find), SN-A11Y-001, SN-I18N-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner).\n- [ ] Docs/ADR updated if behaviour or architecture changed (ADR-0016 on-device ML/search, `docs/architecture/document-model.md`, controls-matrix if a control mapping changed).\n- [ ] Reviewed against `docs/security/secure-coding-checklist.md`; Security & privacy section IDs verified; no note content, query text, or ink coordinates in logs (object ids as opaque short hashes)."
+  },
+  {
+    "key": "SN-SRCH-018",
+    "title": "Build the derived backlink index by inverting Link objects",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "search"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "OWASP-A01",
+      "CWE-532"
+    ],
+    "parent": "SN-SRCH-001",
+    "depends_on": [
+      "SN-SRCH-002",
+      "SN-CORE-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nThe document model deliberately stores links one-directional and derives backlinks: \"Backlinks are **DERIVED**: never stored as their own edges. An index (`sane_search`) scans Link objects and inverts them\" (`docs/architecture/document-model.md` §\"Link / Backlink\"). This keeps the CRDT free of the \"dangling edge on concurrent delete\" bug class — a link to a tombstoned target renders as broken and filterable. This issue builds that inverted index in `sane_search`, so backlinks & the note graph (PRD-04 §6, roadmap M6) can query \"what links here\" efficiently.\n\nIt is the search-area data structure only; the backlinks UI / graph view lives in the editor/study areas and consumes this index.\n\n## Scope\n**In:** an inverted-link index (target → sources) built from Link objects via the incremental pipeline, a `backlinksOf(targetId)` query, tombstone-aware filtering (broken links flagged, not crashing), and incremental updates as links are added/removed.\n\n**Out:** the backlink/graph UI (editor/study areas), Link object creation (editor/PDF excerpt-to-note SN-* areas), and full-text search ({{SN-SRCH-002}}).\n\n## Acceptance criteria\n- [ ] Creating a Link from A→B makes B queryable for its backlink from A via `backlinksOf(B)`; removing the link removes the backlink.\n- [ ] A link whose target is tombstoned is returned flagged as broken (filterable), never as a crash or dangling reference.\n- [ ] The index updates incrementally through the pipeline ({{SN-SRCH-004}}); no full rescan on each edit.\n- [ ] Backlinks are per-profile and never cross profiles.\n- [ ] `backlinksOf` returns in well under a frame for a notebook with thousands of links (indexed lookup, not a scan).\n- [ ] Public API returns `Result<List<Backlink>, Failure>`; pure Dart, no `package:flutter`.\n\n## Technical notes\n`packages/sane_search/lib/src/backlink_index.dart`, fed by the pipeline ({{SN-SRCH-004}}) observing Link object ops from `sane_core` (SN-CORE-002). Store as an indexed table (targetId → sourceIds) in the same DB. Tombstone-awareness reads the folded CRDT state (`docs/architecture/document-model.md` §Deletion/tombstones). Coordination to surface backlinks in UI is done in the consuming area via a Riverpod provider. Reference the Link/Backlink model section and PRD-04 §6.\n\n## Security & privacy\nBacklink data is note-structure content — on device only, per-profile scoped, never logged (MASVS-PRIVACY-1, OWASP-A01, CWE-532). Broken/tombstoned targets are filtered so a deleted note is not leaked via a dangling backlink. No network. Rides the encrypted store + op-log (E2E-encrypted on sync).\n\n## UX notes\nNone beyond baseline — no direct UI; it powers backlinks/graph surfaces owned elsewhere (PRD-04 §6). Baseline: no content logging; ids as opaque hashes.\n\n## Test plan\nUnit: `packages/sane_search/test/backlink_index_test.dart` (invert add/remove, tombstone flagging, per-profile isolation, incremental update, indexed lookup perf). Integration: `app/integration_test/backlinks_test.dart` (create link → backlink appears → delete target → flagged broken).\n\n## Dependencies\n{{SN-SRCH-002}} (shared DB/store), SN-CORE-002 (Link objects + op-log), {{SN-SRCH-004}} (incremental pipeline).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner).\n- [ ] Docs/ADR updated if behaviour or architecture changed (ADR-0016 on-device ML/search, `docs/architecture/document-model.md`, controls-matrix if a control mapping changed).\n- [ ] Reviewed against `docs/security/secure-coding-checklist.md`; Security & privacy section IDs verified; no note content, query text, or ink coordinates in logs (object ids as opaque short hashes)."
+  }
+]

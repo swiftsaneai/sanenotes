@@ -1,0 +1,262 @@
+[
+ {
+  "key": "SN-HWR-015",
+  "parent": "SN-HWR-001",
+  "title": "Implement worked step-by-step math solving (Pro-gated)",
+  "type": "feature",
+  "priority": "p2",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "text"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "L",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-117",
+   "CWE-400"
+  ],
+  "depends_on": [
+   "SN-HWR-014",
+   "SN-BILL-001"
+  ],
+  "labels_extra": [
+   "agent-ready",
+   "innovation"
+  ],
+  "body": "## Context\nThe mock's \"Solve math\" returns a canned string (screens Open Q8); PRD-LB-307 requires a real, Pro-gated solver that writes a **worked, step-by-step** solution under the ink, with live variable substitution where supported, covering arithmetic, algebra (linear/quadratic/cubic/quartic, systems), factorisation/expansion, trig, calculus (limits/derivatives/integrals), and matrices — and it must surface confidence and an error/low-confidence state, never a silent canned answer. It builds on the recognised expression/LaTeX from {{SN-HWR-014}} and produces steps via an on-device computer-algebra approach by default (ADR-0016 decision 6–7: on-device first, cloud only per-request opt-in). Free users hit the Upgrade overlay (PRD-ED-112, PRD-02 §14).\n\n## Scope\n**In:** a solver taking recognised LaTeX/expression → a structured, ordered list of solution steps + final result; coverage of the listed domains; confidence + explicit error/low-confidence state; \"write the worked solution under the ink\" rendering hand-off; Pro gate + Upgrade overlay; optional cloud escalation for hard cases via {{SN-HWR-019}}.\n**Out:** the recognition/LaTeX step ({{SN-HWR-014}}); equation graphing (backlog PRD-CO-163); the render widget details (editor).\n\n## Acceptance criteria\n- [ ] Solving a quadratic returns ordered, human-readable steps and the correct roots; a definite integral returns steps and the correct value — validated against a fixture suite across all listed domains.\n- [ ] Unsupported or ambiguous input shows an explicit low-confidence/error state (\"Couldn't solve this reliably\") — never a fabricated or silently-wrong answer.\n- [ ] Free users see the Upgrade overlay; Pro users get the solution; entitlement via {{SN-BILL-001}}.\n- [ ] Solving runs off the UI isolate and is on-device by default; any cloud solve requires the per-request banner ({{SN-HWR-019}}).\n- [ ] The worked solution is inserted as editable content beneath the source ink, which is preserved.\n\n## Technical notes\n`packages/sane_ml/lib/src/math/solver.dart` — a symbolic engine (CAS) evaluating the recognised expression from {{SN-HWR-014}}; bound recursion/step counts (CWE-400). Steps rendered by the editor target (PRD-ED-112). Free/Pro via `sane_billing` ({{SN-BILL-001}}). **Engine choice** is an on-device CAS by default with a documented cloud-LLM/Mathpix escalation for hard cases (ADR-0016 decision 7); record any library in the SBOM. Cover the domains in PRD-LB-307.\n\n## Security & privacy\nOn-device by default (MASVS-PRIVACY-1); cloud solve only per-request with the banner (OWASP-A03). Expressions/solutions are note content: local, E2E-encryptable, never logged (MASVS-STORAGE-1, CWE-117). Bound solver work to avoid CPU exhaustion on adversarial input (CWE-400). Never present a fabricated answer as authoritative.\n\n## UX notes\nSelection bar \"Solve math\" (design/Sane Notes.dc.html §7.4; §14 Upgrade overlay for Free). States: solving / worked-solution / low-confidence-error / Free-upgrade. `sane_ui` tokens across all looks + dark; steps are selectable text. A11y: steps are real text (screen-reader-readable), not an image; controls labelled.\n\n## Test plan\n`packages/sane_ml/test/math_solver_test.dart` (per-domain fixtures: algebra/trig/calculus/matrices; correct results + step ordering; error state), `app/test/editor/solve_math_gate_test.dart` (Free overlay, Pro path), golden of a worked solution across looks.\n\n## Dependencies\nSN-HWR-014 (recognised expression/LaTeX), SN-BILL-001 (Pro gate). Cloud escalation {{SN-HWR-019}}; render PRD-ED-112.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-016",
+  "parent": "SN-HWR-001",
+  "title": "Add a custom recognition dictionary (per-profile, language-scoped)",
+  "type": "feature",
+  "priority": "p2",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "settings"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-PRIVACY-4",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-117"
+  ],
+  "depends_on": [
+   "SN-HWR-003",
+   "SN-HWR-008"
+  ],
+  "labels_extra": [
+   "agent-ready",
+   "good first issue"
+  ],
+  "body": "## Context\nRecognition accuracy improves and false spell-flags drop when users can add their own words and abbreviations — names, jargon, course codes. PRD-LB-386 requires a **custom recognition dictionary**: per-profile and language-scoped, à la Goodnotes Personal Dictionary and Nebo custom dictionary. The dictionary feeds the recognizer as context ({{SN-HWR-003}} pre-context / MyScript lexicon) and suppresses spellcheck false positives ({{SN-HWR-017}}); it is also populated by \"report mis-recognition\" corrections from {{SN-HWR-008}}. Everything stays on-device (decision 6).\n\n## Scope\n**In:** a `CustomDictionary` store (per-profile, per-language) in `sane_core`/drift; add/edit/delete entries; import corrections from {{SN-HWR-008}}; feed entries as recognition context/lexicon; a Settings → Recognition dictionary screen; export/clear.\n**Out:** spellcheck itself ({{SN-HWR-017}}); the recognizer internals ({{SN-HWR-003}}); sync of the dictionary (rides normal CRDT sync, {{SN-SYNC-001}}).\n\n## Acceptance criteria\n- [ ] Adding a word to the dictionary makes the recognizer prefer it on the fixture set (measurable improvement) and stops spellcheck flagging it.\n- [ ] Entries are per-profile and language-scoped; switching profile/notebook language shows the correct set.\n- [ ] Corrections reported via {{SN-HWR-008}} appear as suggested dictionary additions.\n- [ ] The Settings screen supports add/edit/delete/clear; entries persist and survive restart; no network call is made.\n- [ ] Dictionary content is deletable (data-minimisation) and never logged.\n\n## Technical notes\n`packages/sane_ml` dictionary model + `sane_core`/drift persistence (per-profile isolation, PRD-LB-350). Fed into {{SN-HWR-003}} via `RecognitionContext`/pre-context and, for MyScript, its lexicon API. Settings screen in `app/` with `sane_ui`. PRD-LB-386. Good first issue: self-contained CRUD + wiring.\n\n## Security & privacy\nDictionary is note-adjacent personal data: on-device only (MASVS-PRIVACY-1), erasable (MASVS-PRIVACY-4), local + E2E-encryptable on sync (MASVS-STORAGE-1), never logged (CWE-117). No cloud path (OWASP-A03).\n\n## UX notes\nSettings → Recognition dictionary (docs/design/screens-and-flows.md §12 recognition settings). Add/edit sheet; suggested additions from corrections; empty state \"Add words we should always recognise\". `sane_ui` tokens across all 17 looks + dark; 44pt/48dp targets; VoiceOver/TalkBack labels; keyboard-reachable on web.\n\n## Test plan\n`packages/sane_ml/test/custom_dictionary_test.dart` (CRUD, per-profile/language scoping, correction import), `app/test/settings/dictionary_screen_test.dart` (widget), golden across looks.\n\n## Dependencies\nSN-HWR-003 (recognizer context), SN-HWR-008 (correction pairs).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-017",
+  "parent": "SN-HWR-001",
+  "title": "Add handwriting spellcheck that preserves the writer's style",
+  "type": "feature",
+  "priority": "p3",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "a11y"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-117"
+  ],
+  "depends_on": [
+   "SN-HWR-006",
+   "SN-HWR-016"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nSane Notes flags likely misspellings **in ink** and, on tap, corrects them **while preserving the writer's handwriting style** — PRD-LB-387 (Goodnotes Spellcheck; Apple Smart Script correct-spelling; Samsung spell/grammar). It uses the recognised text from background recognition ({{SN-HWR-006}}) to detect misspellings, honours the custom dictionary ({{SN-HWR-016}}) to avoid false positives, and applies style-preserving glyph correction via the refine backing ({{SN-HWR-013}}). It is per-notebook language, disable-able, and on-device by default (decision 6).\n\n## Scope\n**In:** misspelling detection over recognised handwriting (per-notebook language); an unobtrusive in-ink flag (non-colour-only); a correction affordance that rewrites the word preserving the writer's style (via {{SN-HWR-013}} glyph synthesis/reflow); dictionary-aware suppression ({{SN-HWR-016}}); a per-notebook enable/disable toggle.\n**Out:** typed-text spellcheck (OS-provided); grammar suggestions (future); the recognition engine ({{SN-HWR-003}}).\n\n## Acceptance criteria\n- [ ] A misspelled handwritten word is flagged with a non-colour-only cue; a word in the custom dictionary is never flagged.\n- [ ] Tapping the flag offers correction(s); accepting rewrites the ink preserving the writer's style; a single Undo restores the original ink.\n- [ ] Spellcheck honours the per-notebook recognition language and can be disabled per notebook; off by default where it risks false positives during dense writing.\n- [ ] Detection runs off the UI isolate; it never blocks writing.\n- [ ] Entirely on-device; no network path.\n\n## Technical notes\n`packages/sane_ml` spellcheck over {{SN-HWR-006}} recognised text; correction rendering via {{SN-HWR-013}} style-preserving transform; suppression from {{SN-HWR-016}}. Per-notebook language + toggle in settings. PRD-LB-387; cross-refs Apple Smart Script, Samsung, Goodnotes.\n\n## Security & privacy\nOn-device (MASVS-PRIVACY-1); recognised text and corrections are note content — local + E2E-encryptable, never logged (MASVS-STORAGE-1, CWE-117). No cloud path (OWASP-A03). Original ink always recoverable via Undo.\n\n## UX notes\nIn-ink flag + correction sheet (docs/design/screens-and-flows.md §12 recognition; PRD-ED-187 clean-up family). Non-colour-only cue; corrections keep handwriting style. `sane_ui` tokens across all looks + dark; Reduce Motion respected. A11y (mandatory): flags and corrections are labelled, keyboard-operable, never colour-only; correcting also improves OCR alt-text.\n\n## Test plan\n`packages/sane_ml/test/handwriting_spellcheck_test.dart` (detection, dictionary suppression, per-language, undo-restores-ink), golden `app/test/golden/spellcheck_flag_*` across looks.\n\n## Dependencies\nSN-HWR-006 (recognised text), SN-HWR-016 (dictionary suppression). Correction rendering {{SN-HWR-013}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-018",
+  "parent": "SN-HWR-001",
+  "title": "Surface data detectors over recognised handwriting and text",
+  "type": "feature",
+  "priority": "p3",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "text"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-PLATFORM-3",
+   "OWASP-A03",
+   "OWASP-A01",
+   "CWE-601",
+   "CWE-117"
+  ],
+  "depends_on": [
+   "SN-HWR-006"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nRecognised handwriting and typed text should surface actionable phone numbers, emails, URLs and dates — tap to call/mail/open/schedule — on-device, à la Samsung Action icons (PRD-LB-388). Detection runs over the recognised-text output of background recognition ({{SN-HWR-006}}); URLs are sanitised per PRD-ED-108 and a tap lands in a view/confirm context, never auto-acting, per the app's deep-link/egress safety rules (CLAUDE.md §7.8). This is a MAY-level convenience that must not become an exfiltration or open-redirect vector.\n\n## Scope\n**In:** on-device detectors for phone/email/URL/date over recognised + typed text; a subtle action affordance on the detected span; safe actions (call/mail/open-in-browser/create-reminder) each requiring an explicit tap and confirmation; URL sanitisation; a per-notebook toggle.\n**Out:** the recognition itself ({{SN-HWR-006}}); reminders/calendar integration internals ({{SN-NOTF-001}}); web clipper (PRD-LB-390).\n\n## Acceptance criteria\n- [ ] A handwritten phone number/email/URL/date is detected and offers the matching action; tapping requires a confirm and never auto-executes.\n- [ ] A malicious or obfuscated URL is sanitised and shown in full before the user confirms opening; no auto-navigation, no beacon.\n- [ ] Detection is on-device with no network call; the feature is per-notebook toggleable and off where it causes noise.\n- [ ] Detected spans are labelled for screen readers and keyboard-operable.\n- [ ] No detected value is logged.\n\n## Technical notes\n`packages/sane_ml` detectors over {{SN-HWR-006}} text (regex + locale-aware date parsing); URL sanitisation shared with PRD-ED-108; actions dispatched through safe intent handlers (view/confirm) in `app/`. Reminder creation defers to {{SN-NOTF-001}}. PRD-LB-388; Samsung Action icons.\n\n## Security & privacy\nDetection on-device only (MASVS-PRIVACY-1); a tap lands in view/confirm and never auto-mutates or auto-navigates (OWASP-A01, MASVS-PLATFORM-3). URLs sanitised to prevent open-redirect/scheme abuse (CWE-601). No network egress from detection (OWASP-A03); detected PII never logged (CWE-117).\n\n## UX notes\nSubtle underline/affordance on detected spans (docs/design/screens-and-flows.md §12; Samsung Action icons parity). Confirm sheet before any action; `sane_ui` tokens across all looks + dark. A11y: spans announce type + value; actions are labelled controls, keyboard-operable, never colour-only.\n\n## Test plan\n`packages/sane_ml/test/data_detectors_test.dart` (phone/email/URL/date detection, locale dates), `app/test/editor/data_detector_action_test.dart` (confirm-before-act, URL sanitisation, no auto-nav), abuse test for a hostile URL.\n\n## Dependencies\nSN-HWR-006 (recognised text). Actions/reminders via {{SN-NOTF-001}}; URL rules PRD-ED-108.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-019",
+  "parent": "SN-HWR-001",
+  "title": "Gate cloud recognition behind per-request opt-in with a leave-device banner",
+  "type": "security",
+  "priority": "p0",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "privacy"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-PRIVACY-2",
+   "MASVS-NETWORK-1",
+   "OWASP-A03",
+   "OWASP-A01",
+   "CWE-319",
+   "CWE-117",
+   "CWE-200"
+  ],
+  "depends_on": [
+   "SN-HWR-002"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nLocked decision 6 and docs/adr/0016-on-device-ml-and-ai.md decision 7 are absolute: any cloud recognition path (Mathpix, high-accuracy cloud OCR/translate, a large cloud LLM) is a **per-request opt-in — never a global always-on toggle, never a silent fallback — with a visible data-leaves-device banner stating exactly what is sent and to whom**. `SANE_AI_CLOUD_ENABLED` is a master gate (default false) and even when enabled each use still prompts. This is the single chokepoint every cloud-capable recognition adapter ({{SN-HWR-010}}, {{SN-HWR-014}}, {{SN-HWR-015}}, {{SN-HWR-022}}, web {{SN-HWR-005}}) must route through. Because a mistake here leaks note content off-device, this is p0/security-critical.\n\n## Scope\n**In:** a `CloudEscalation` gate that (1) checks the `SANE_AI_CLOUD_ENABLED` master flag, (2) requires an explicit per-request opt-in, (3) shows the data-leaves-device banner naming the service + the exact data + destination, (4) proceeds only on confirm, (5) enforces TLS + records the egress; a reusable banner/consent widget; a test asserting no cloud call fires without opt-in.\n**Out:** the individual cloud adapters' payload building (their own issues); the global privacy dashboard ({{SN-PRV-001}}); telemetry ({{SN-TEL-001}}).\n\n## Acceptance criteria\n- [ ] With `SANE_AI_CLOUD_ENABLED=false` (default) no cloud recognition path is reachable; the gate returns `unavailable` and offers on-device or nothing.\n- [ ] With the flag enabled, every cloud use still shows the banner (service + data + destination) and proceeds only on explicit confirm; declining does nothing.\n- [ ] A unit/integration test asserts **no cloud call fires without an explicit opt-in** (regression guard for decision 6).\n- [ ] The banner states exactly what leaves the device (e.g. \"This equation image is sent to Mathpix to recognise it\") and the request goes over TLS only.\n- [ ] The opt-in is per-request, not remembered as a global always-on setting.\n\n## Technical notes\n`packages/sane_ml/lib/src/cloud_escalation.dart` (gate + `Result`), banner widget in `sane_ui`/`app/`. Master flag via `--dart-define=SANE_AI_CLOUD_ENABLED` (overview §7.1). Every cloud adapter calls the gate before any network I/O; enforce TLS 1.2+ (and pinning for first-party endpoints). Mirror Apple Private Cloud Compute semantics for first-party escalation: ephemeral, per-request-scoped, no training (ADR-0016 decision 7). Register egress in the PR threat-model row (CLAUDE.md §7.4).\n\n## Security & privacy\nThe core privacy control (MASVS-PRIVACY-1/2, LINDDUN, decision 6). No silent cloud fallback (OWASP-A03); explicit consent before egress (OWASP-A01 broken access to the network boundary); TLS only, no cleartext (MASVS-NETWORK-1, CWE-319); the banner prevents unaware disclosure (CWE-200); never log the sent payload or tokens (CWE-117). New egress requires an ADR + threat-model row (CLAUDE.md §7.4).\n\n## UX notes\nThe data-leaves-device banner (docs/design/screens-and-flows.md §12 on-device recognition; ADR-0016 decision 7) — a modal/inline consent naming service + data + destination, with Send / Cancel. `sane_ui` tokens across all 17 looks + dark; 44pt/48dp targets; VoiceOver/TalkBack announce the disclosure; keyboard-reachable on web. Never dark-pattern the consent (Cancel is equal weight).\n\n## Test plan\n`packages/sane_ml/test/cloud_escalation_test.dart` (master-flag off = unreachable; on = prompts; decline = no-op), `app/integration_test/no_cloud_without_optin_test.dart` (asserts zero egress without opt-in), golden of the banner across looks.\n\n## Dependencies\nSN-HWR-002 (registry routes cloud engines through this gate). Used by {{SN-HWR-005}}/{{SN-HWR-010}}/{{SN-HWR-014}}/{{SN-HWR-015}}/{{SN-HWR-022}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-020",
+  "parent": "SN-HWR-001",
+  "title": "Build recognition accuracy evaluation datasets and test harness",
+  "type": "test",
+  "priority": "p2",
+  "platforms": [
+   "core"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "qa"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "verification",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-PRIVACY-3",
+   "OWASP-A03",
+   "CWE-117"
+  ],
+  "depends_on": [
+   "SN-HWR-003",
+   "SN-HWR-010",
+   "SN-HWR-012"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nRecognition quality is a headline promise (\"covers the broadest available set on every platform\", PRD-LB-303/371), so it must be measurable and regression-guarded, not vibes. ADR-0016 \"How to verify\" calls for provable on-device resolution and correct results; this issue builds the shared **accuracy evaluation datasets + harness** that every recognition adapter ({{SN-HWR-003}}, {{SN-HWR-010}}, {{SN-HWR-011}}, {{SN-HWR-012}}, {{SN-HWR-014}}) reports against, producing CER/WER for text, IoU/accuracy for shapes, and exact-match for math/LaTeX. It gives CI a threshold to fail on and a way to compare on-device vs cloud without shipping regressions or platform disparities.\n\n## Scope\n**In:** `tools/recognition_eval/` with curated, licence-clean datasets (multi-script handwriting samples, printed/scanned image OCR, shape samples, handwritten-math→LaTeX pairs); metrics (CER/WER, shape classification accuracy + fit error, math exact-match); a runner that evaluates any registered engine via the {{SN-HWR-002}} interfaces (real or mock); per-language and per-platform breakdown; CI thresholds.\n**Out:** the engines themselves; on-device-device-lab runs ({{SN-PERF-004}}); collecting user data for training (explicitly not done).\n\n## Acceptance criteria\n- [ ] Running the harness against the mock suite yields deterministic CER/WER, shape accuracy, and math exact-match numbers.\n- [ ] The harness evaluates any engine that implements the {{SN-HWR-002}} interfaces and reports per-language + per-platform breakdowns.\n- [ ] CI fails if a recognition change regresses a metric below its threshold on the fixture set.\n- [ ] Datasets are licence-clean and committed (or fetched from a pinned, integrity-checked source); no user note content is used.\n- [ ] A report artifact (CSV/JSON) is produced for each run.\n\n## Technical notes\n`tools/recognition_eval/` (Dart, headless) driving `packages/sane_ml` interfaces; metrics implemented in-tree. Fixtures under `tools/recognition_eval/data/` with provenance + licence recorded (ADR-0016 decision 9; SBOM). Wire a CI job to the DevSecOps pipeline ({{SN-CI-001}}). Uses `MockRecognizerSuite` ({{SN-HWR-002}}) for deterministic CI and optionally real engines in a device-lab job ({{SN-PERF-004}}).\n\n## Security & privacy\nEvaluation uses only licence-clean fixtures, never user note content (MASVS-PRIVACY-3 data-minimisation; decision: no training on user data). On-device evaluation, no egress (MASVS-PRIVACY-1, OWASP-A03). Report artifacts contain metrics only, no content, and are not logged with PII (CWE-117).\n\n## UX notes\nNone beyond baseline (developer tooling): no note content or tokens are logged; the report shows metrics only. No end-user UI.\n\n## Test plan\n`tools/recognition_eval/test/metrics_test.dart` (CER/WER/IoU/exact-match correctness), `tools/recognition_eval/test/runner_test.dart` (mock-engine end-to-end), and the CI threshold job wired in {{SN-CI-001}}.\n\n## Dependencies\nSN-HWR-003 / SN-HWR-010 / SN-HWR-012 (engines to evaluate). CI wiring {{SN-CI-001}}; device-lab {{SN-PERF-004}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-021",
+  "parent": "SN-HWR-006",
+  "title": "Provide OCR-backed alt-text and accessibility for handwritten content",
+  "type": "task",
+  "priority": "p1",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "a11y"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "S",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-117"
+  ],
+  "depends_on": [
+   "SN-HWR-006",
+   "SN-HWR-010"
+  ],
+  "labels_extra": [
+   "agent-ready",
+   "good first issue"
+  ],
+  "body": "## Context\nAccessibility is a locked decision (10): handwritten and scanned content must be readable by screen readers via OCR-backed alt-text (PRD-LB-370; CLAUDE.md §9). Recognised text from background handwriting recognition ({{SN-HWR-006}}) and image/PDF OCR ({{SN-HWR-010}}/{{SN-HWR-011}}) already exists; this issue exposes it as `Semantics` descriptions on the corresponding on-page objects so VoiceOver/TalkBack read \"handwritten: <recognised text>\" and image/scan alt-text reflects OCR output. It is a small, high-value wiring task that turns recognition into a first-class a11y feature.\n\n## Scope\n**In:** `Semantics` labels on ink regions (from the {{SN-HWR-006}} stroke↔text map), images, and PDF pages using recognised text; a graceful fallback label when recognition is unavailable/low-confidence; respecting the On-device recognition toggle; ensuring reading order is sensible.\n**Out:** the recognition itself ({{SN-HWR-006}}/{{SN-HWR-010}}); the broader a11y audit ({{SN-A11Y-001}}); convert-to-text ({{SN-HWR-007}}).\n\n## Acceptance criteria\n- [ ] VoiceOver/TalkBack read recognised handwriting on a page as text (\"handwritten: …\") in a sensible reading order.\n- [ ] An imported image/scan exposes OCR-derived alt-text; a PDF page exposes its recognised text to the screen reader.\n- [ ] When recognition is off/unavailable, a clear fallback label is used (never an empty or misleading label).\n- [ ] Labels update when recognition re-runs after edits.\n- [ ] No recognised text is logged.\n\n## Technical notes\n`app/` widget layer adds `Semantics(label: ...)` sourced from the {{SN-HWR-006}} map and {{SN-HWR-010}}/{{SN-HWR-011}} OCR rows; gate on the On-device recognition toggle. Follows docs/design/accessibility.md and PRD-LB-370. Small, self-contained (good first issue).\n\n## Security & privacy\nRecognised text used for labels is note content: on-device (MASVS-PRIVACY-1), local + E2E-encryptable (MASVS-STORAGE-1), never logged (CWE-117). No cloud path (OWASP-A03).\n\n## UX notes\nNo visible chrome change; screen-reader behaviour per docs/design/accessibility.md. Reading order top-to-bottom then z-order (PRD-ED reading order). Works across all looks + dark (semantics are theme-independent but verify contrast of any visible focus ring via `sane_ui`). A11y is the entire point: labels, 44pt/48dp focusable targets, correct roles.\n\n## Test plan\n`app/test/a11y/handwriting_semantics_test.dart` (Semantics labels present + correct text + reading order), `app/test/a11y/image_pdf_alt_text_test.dart`.\n\n## Dependencies\nSN-HWR-006 (stroke↔text map), SN-HWR-010 (image OCR). Part of {{SN-A11Y-001}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-022",
+  "parent": "SN-HWR-001",
+  "title": "Add whole-document translation for pages and PDFs",
+  "type": "feature",
+  "priority": "p2",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "i18n"
+  ],
+  "milestone": "M6 Collaboration, Sharing & Sage AI",
+  "size": "L",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-NETWORK-1",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-319",
+   "CWE-117"
+  ],
+  "depends_on": [
+   "SN-HWR-010",
+   "SN-HWR-019"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nUsers translate a whole page or PDF (typed + OCR'd text) into a chosen language, shown as an overlay or side view and **preserving the original** — PRD-LB-392 (Samsung PDF translation; Nebo). Per docs/adr/0016-on-device-ml-and-ai.md decision 3 the default engine is **Apple Translation / ML Kit Translation** on-device (50+ languages, pivots via English), with a cloud translate path only as an explicit per-request opt-in ({{SN-HWR-019}}). It builds on OCR ({{SN-HWR-010}}/{{SN-HWR-011}}) for image/scanned content and never mutates the source (note-content translation as a Sage feature is prd-04 PRD-CO-156). Scheduled M6 alongside the translation/Sage surface, but the recognition backing is reused from M3.\n\n## Scope\n**In:** the `Translator` capability over ML Kit / Apple Translation (on-device); whole-page and whole-PDF translation combining typed text + OCR text; an overlay/side-by-side presentation preserving the original; per-target-language selection; cloud translate behind the per-request banner ({{SN-HWR-019}}); on-demand language-pack download via {{SN-HWR-004}}.\n**Out:** note-content Sage translation (prd-04 PRD-CO-156); the OCR engines ({{SN-HWR-010}}/{{SN-HWR-011}}); UI framework of the side-view (editor/PDF viewer).\n\n## Acceptance criteria\n- [ ] Translating a page/PDF produces target-language text shown as an overlay or side view; the original is untouched and toggle-able.\n- [ ] Translation is on-device by default (ML Kit/Apple Translation); packs download via {{SN-HWR-004}}; airplane-mode works once packs are present.\n- [ ] Cloud translate is only used after the per-request banner ({{SN-HWR-019}}); never a silent fallback.\n- [ ] OCR'd (scanned) content is translatable via {{SN-HWR-010}}/{{SN-HWR-011}}; typed text is translated directly.\n- [ ] Translation runs off the UI isolate, is cancellable, and fails into a retryable state (PRD-LB-361).\n\n## Technical notes\n`packages/sane_ml` `Translator` over ML Kit Translation (pivots via English) / Apple Translation; combines typed text + OCR rows ({{SN-HWR-010}}/{{SN-HWR-011}}); packs via {{SN-HWR-004}}; cloud via {{SN-HWR-019}}. Presentation hand-off to the editor/PDF viewer. PRD-LB-392; cross-ref prd-04 §4 (PRD-CO-156). RTL targets (Arabic) render correctly (PRD-LB-371).\n\n## Security & privacy\nOn-device by default (MASVS-PRIVACY-1); cloud translate only per-request over TLS with the banner (MASVS-NETWORK-1, OWASP-A03, CWE-319). Translations are note content: local + E2E-encryptable, never logged (MASVS-STORAGE-1, CWE-117). Original preserved (integrity).\n\n## UX notes\nOverlay / side-by-side view (docs/design/screens-and-flows.md §12; Samsung PDF-translation parity) with a language picker and an original/translated toggle. RTL layouts correct for Arabic. `sane_ui` tokens across all 17 looks + dark; 44pt/48dp targets; VoiceOver/TalkBack labels; keyboard-reachable on web. Progress + cancel per PRD-LB-361.\n\n## Test plan\n`packages/sane_ml/test/translator_test.dart` (mock translate, typed+OCR combine, pack-missing), `app/test/editor/document_translation_test.dart` (overlay/side view, original preserved, cloud-opt-in gate), RTL golden.\n\n## Dependencies\nSN-HWR-010 (OCR), SN-HWR-019 (cloud gate). Packs {{SN-HWR-004}}; Sage translation prd-04 PRD-CO-156.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ }
+]

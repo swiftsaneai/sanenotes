@@ -1,0 +1,261 @@
+[
+  {
+    "key": "SN-SHR-013",
+    "title": "Implement the capability share-link model with the wrapped key in the URL fragment",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "security"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CRYPTO-1",
+      "MASVS-NETWORK-1",
+      "MASVS-PLATFORM-1",
+      "ASVS-V4",
+      "OWASP-A01",
+      "OWASP-A02",
+      "CWE-200",
+      "CWE-522"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-CRY-002",
+      "SN-SYNC-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nSane shares are **capability links**, not server ACLs: the link fragment carries the notebook id **and a wrapped content key** so a recipient can decrypt without any Sane server ever holding the key (PRD-CO-032; docs/architecture/file-format.md §6.2; \"share links carry noteId + wrapped content key in the URL fragment #…, never sent to any server\"). This is the zero-knowledge sharing wedge. The link field is `sane.app/n/<slug>-<shortid>` with the decryption key in the fragment `#k=…`; the slug/key carries >= 96 bits of entropy so brute-forcing is infeasible; and an inbound link lands in a **view/confirm** context and never auto-mutates (checklist §1.1). This issue owns minting the link and resolving it on the way back in.\n\n## Scope\n**In:** the `ShareLink` model (notebookId + wrapped content key + role + optional exp); minting a link (generate a per-share capability, wrap the content key for the link, build the URL with the key in the fragment); resolving an inbound link (parse the allow-listed route `/n/<slug>`, read the fragment key, land in a view/confirm reader, never auto-mutate); referrer stripping so the fragment never leaks; App Links / Universal Links verification config (via {{SN-NOTF-001}}).\n**Out:** the Share overlay UI ({{SN-SHR-014}}); role enforcement ({{SN-SHR-015}}); revocation/rotation ({{SN-SHR-017}}); expiry enforcement ({{SN-SHR-018}}).\n\n## Acceptance criteria\n- [ ] A minted link has the shape `sane.app/n/<slug>-<shortid>` with the wrapped key only in the `#k=…` fragment; the fragment is never placed in a query or path.\n- [ ] The slug/key has >= 96 bits of CSPRNG entropy; brute-forcing the slug is computationally infeasible (documented estimate).\n- [ ] Opening a link lands in a read-only view/confirm reader; it never auto-imports, auto-shares, auto-deletes, or sends anything to the network.\n- [ ] A server/relay access log never contains the fragment (verified by capture); `Referrer-Policy: no-referrer` is set on outbound navigations from the reader.\n- [ ] Only `https` `sane.app/n/…` routes resolve; unknown hosts/schemes/paths are rejected.\n- [ ] Guest recipients (no account) can open and read a link (PRD-CO-002).\n\n## Technical notes\nAdd `packages/sane_sync/lib/src/share/share_link.dart` (pure Dart, model + mint/resolve) using the envelope hierarchy from {{SN-CRY-002}} to wrap the content key for the link, and the op-log/segment access from {{SN-SYNC-002}}. Fragment parsing + allow-list routing in `app/lib/sharing/share_link_router.dart`; App Links/Universal Links + AASA/assetlinks config coordinated with {{SN-NOTF-001}} (docs/adr/0013-collaboration-transport.md; checklist §1.1). Implements PRD-CO-032/276.\n\n## Security & privacy\nThreats: TM-S-04 (link forgery), TM-I-09 (fragment leaking via referrer), TM-E-02 (intent redirection). Controls: capability keys never sent to a server (MASVS-NETWORK-1), CSPRNG high-entropy slug/key (MASVS-CRYPTO-1, CWE-522), allow-list routing + verified deep links (MASVS-PLATFORM-1), view/confirm-only landing (OWASP-A01), no fragment in logs (CWE-200, checklist §7). IDs: MASVS-CRYPTO-1, MASVS-NETWORK-1, MASVS-PLATFORM-1, ASVS-V4, OWASP-A01/A02, CWE-200/522.\n\n## UX notes\nThe link string is surfaced by the Share overlay ({{SN-SHR-014}}, design §10 read-only field + Copy link). The inbound reader is a clearly read-only view with an \"Open a copy / Join\" confirm action — never a silent mutation. All 17 looks + dark; a11y-labelled; keyboard-reachable on web.\n\n## Test plan\n`packages/sane_sync/test/share/share_link_test.dart` (fragment-only key, entropy, mint/resolve round-trip), `app/test/security/share_link_router_test.dart` (allow-list routing, no auto-mutate, unknown host rejected, referrer stripped, no fragment in logs).\n\n## Dependencies\n{{SN-CRY-002}} (key wrapping), {{SN-SYNC-002}} (op-log/segments). Coordinates with {{SN-NOTF-001}} (App Links/Universal Links) and {{SN-COL-001}} (room join reuses the link).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-014",
+    "title": "Build the Share overlay UI: link toggle, permission, people list, copy link, export",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "onboarding"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-PLATFORM-1",
+      "CWE-200"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-013"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe Share overlay is fully specified in the design (docs/design/screens-and-flows.md §10): title \"Share \"<notebook>\"\", an **Anyone with the link** toggle (`linkOn`), a **permission** segmented control (Can view / Can comment / Can edit), a read-only link field `sane.app/n/phy204-waves-8k2f` with **Copy link**, a **People** list (avatar, name, role) seeded Riya S. (you) — Owner / Kabir — Can edit / Ananya — Can comment, **Invite by email**, a Free footnote, and an **Export** row (PDF / Image / .sane). This issue builds that surface and wires it to the capability-link model, export writers, roles and invites owned by sibling issues.\n\n## Scope\n**In:** the Share overlay widget and its state (linkOn, perm, people, link string, copy); the Copy link action + toast; the Export row wiring to {{SN-SHR-003}}/{{SN-SHR-004}}/{{SN-SHR-008}}; the People list rendering; empty/loading/error states; adaptive layout for phone width and the `narrow` collapse.\n**Out:** the link/crypto model ({{SN-SHR-013}}); role capabilities ({{SN-SHR-015}}); invite + people management logic + the 3-person gate ({{SN-SHR-016}}); expiry control ({{SN-SHR-018}}); the default-posture flag ({{SN-SHR-020}}).\n\n## Acceptance criteria\n- [ ] The overlay matches design §10: link toggle, permission segmented control (default from {{SN-SHR-020}}), read-only link field + Copy link with the \"Link copied — anyone with it can …\" toast.\n- [ ] The People list renders avatar + name + role, marks the current user \"(you) — Owner\", and reflects live membership.\n- [ ] The Export row offers PDF / Image / .sane, each toasting per design and invoking the correct writer.\n- [ ] Turning the link toggle off calls into {{SN-SHR-017}} (revocation) and updates the field to a disabled state.\n- [ ] Fully usable at 320 CSS px and 200% text with no clipping (WCAG 1.4.10); overlays reflow on `narrow`.\n- [ ] Renders correctly in all 17 looks + light/dark; every control is `Semantics`-labelled, 44pt/48dp, keyboard-reachable on web with a visible focus ring.\n\n## Technical notes\nAdd `app/lib/sharing/share_overlay.dart` using `sane_ui` tokens/components only (no hardcoded colours; CLAUDE.md §9). State via Riverpod. The link string comes from {{SN-SHR-013}}; export actions call the export service ({{SN-SHR-002}}). Implements design §10 and PRD-CO-030/033 UI. Golden-test across looks.\n\n## Security & privacy\nThe overlay displays the link (with the fragment key) — do not log it or copy it to any telemetry (CWE-200, checklist §7). The copy action places the full capability URL on the clipboard only on the user's explicit tap (checklist §1.2). Baseline: no content/tokens in logs. IDs: MASVS-PRIVACY-2, MASVS-PLATFORM-1, CWE-200.\n\n## UX notes\nExact strings/roles/seed from design §10. Loading (resolving membership) shows skeleton rows; error shows a user-safe retry; empty People shows just \"(you) — Owner\". First-share shows the in-product default-posture note ({{SN-SHR-020}}). Golden tests per look + dark.\n\n## Test plan\n`app/test/sharing/share_overlay_test.dart` (widget: toggle, segmented default, copy toast, People rendering, export wiring, narrow reflow), `app/test/sharing/share_overlay_golden_test.dart` (17 looks + dark), a11y label/contrast assertions.\n\n## Dependencies\n{{SN-SHR-013}} (link model). Consumes {{SN-SHR-015}}/{{SN-SHR-016}}/{{SN-SHR-017}}/{{SN-SHR-018}}/{{SN-SHR-020}} and export writers {{SN-SHR-003}}/{{SN-SHR-004}}/{{SN-SHR-008}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-015",
+    "title": "Enforce share roles cryptographically: Owner, Can edit, Can comment, Can view",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "security"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CRYPTO-1",
+      "MASVS-AUTH-1",
+      "ASVS-V4",
+      "OWASP-A01",
+      "CWE-284",
+      "CWE-863"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-013",
+      "SN-CRY-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nA share role must be enforced both client-side (UI) and **cryptographically** so a modified client cannot exceed its grant: edit/comment keys are distinct from the view key (PRD-CO-031). Roles: **Owner** (full control incl. sharing, role changes, deletion, ownership transfer), **Can edit** (create/modify/delete objects + comment, but not manage sharing/delete the notebook), **Can comment** (read + create/resolve comments/reactions, no note-object edits), **Can view** (read-only incl. audio playback + export-to-self, no comment/edit). Because there is no authoritative server, the cryptographic key separation is what actually binds the role.\n\n## Scope\n**In:** the role capability model; deriving distinct view / comment / edit capability keys from the notebook items key ({{SN-CRY-002}}) so a viewer literally lacks the key to write; client-side gating of tools/menus per role (comment tools vs stroke tools vs sharing controls); ownership-transfer plumbing.\n**Out:** revocation/rotation on removal ({{SN-SHR-017}}); the invite/people management UI + gate ({{SN-SHR-016}}); comment objects themselves ({{SN-COL-001}}); the crypto primitives ({{SN-CRY-001}}).\n\n## Acceptance criteria\n- [ ] Each role is enforced client-side AND cryptographically: a \"Can view\" client cannot produce a valid encrypted edit op (it lacks the edit key), verified by test.\n- [ ] \"Can comment\" enables comment tools and disables stroke/edit tools; \"Can view\" has no comment composer.\n- [ ] Only Owner sees role-management and \"Stop sharing\"; \"Can edit\" cannot change others' roles.\n- [ ] Ownership transfer moves full control to another member and re-wraps keys accordingly.\n- [ ] A tampered client that flips its UI role still cannot decrypt/produce content beyond its cryptographic capability (defence-in-depth test).\n\n## Technical notes\nAdd `packages/sane_crypto`-adjacent capability derivation via HKDF sub-keys from the items key ({{SN-CRY-002}}: view/comment/edit context strings), consumed by `app/lib/sharing/roles.dart` for UI gating and by {{SN-SYNC-002}} for op signing/encryption. Implements PRD-CO-031 and docs/architecture/crypto.md (sub-key derivation). Aligns with docs/adr/0007-end-to-end-encryption-and-keys.md.\n\n## Security & privacy\nThreats: TM-E-01 (privilege escalation), TM-S-03 (peer spoofing). Controls: cryptographic capability separation (MASVS-CRYPTO-1, MASVS-AUTH-1), least-privilege authorization (ASVS-V4, OWASP-A01, CWE-284/863). A role change never re-encrypts note bytes, only re-wraps capability keys (envelope payoff). IDs: MASVS-CRYPTO-1, MASVS-AUTH-1, ASVS-V4, OWASP-A01, CWE-284, CWE-863.\n\n## UX notes\nRole labels + capabilities exactly per design §10 (Owner / Can edit / Can comment / Can view). Tool availability changes visibly by role (a viewer sees a read-only editor; a commenter sees the comment composer only). All 17 looks + dark; disabled tools are `Semantics`-labelled \"unavailable for your role\".\n\n## Test plan\n`packages/sane_crypto/test/share/role_capability_test.dart` (distinct keys, viewer cannot forge edit op), `app/test/sharing/roles_test.dart` (tool gating per role, owner-only controls, ownership transfer, tampered-UI defence-in-depth).\n\n## Dependencies\n{{SN-SHR-013}} (link/capability), {{SN-CRY-002}} (items key + sub-key derivation). Coordinates with {{SN-SYNC-002}} and {{SN-COL-001}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-016",
+    "title": "Implement invite-by-email, People management, and the Free 3-person gate",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "billing"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "ASVS-V4",
+      "OWASP-A01",
+      "CWE-200"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-014",
+      "SN-SHR-015",
+      "SN-BILL-001"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe Share overlay lets the Owner **Invite by email** at the current permission, deriving a display name/initials from the email and issuing that person their own wrapped key; the **People** list then lets the Owner change a member's role and remove them (PRD-CO-033/034; design §10 `sendInvite`, toast \"Invite sent to <email>\"). On **Free**, at `people.length >= 3` an invite MUST open the Upgrade overlay (toast \"Free plan: up to 3 people per notebook\"), never silently fail (PRD-CO-004/033; design §14). This resolves screens-and-flows Open Question #13: roles are editable and Owner is transferable.\n\n## Scope\n**In:** the invite flow (validate email, derive display name/initials, add member at current perm, mint + deliver their wrapped key via {{SN-SHR-015}}); the People-list management (promote/demote role, remove member); the Free 3-person gate routing to Upgrade; pending-invite state.\n**Out:** cryptographic revocation on removal ({{SN-SHR-017}}); the entitlement source ({{SN-BILL-001}}); notifications/mentions ({{SN-COL-001}}); the overlay chrome ({{SN-SHR-014}}).\n\n## Acceptance criteria\n- [ ] Inviting a valid email adds the person at the selected permission with a derived name/initials and a per-member wrapped key; toast \"Invite sent to <email>\".\n- [ ] On Free, the 3rd->4th invite opens the Upgrade overlay with toast \"Free plan: up to 3 people per notebook\"; on Pro it succeeds (design §14).\n- [ ] The Owner can promote/demote a member's role and remove a member; a removed member's removal triggers {{SN-SHR-017}}.\n- [ ] Only the Owner sees role-management + remove; non-owners see a read-only People list.\n- [ ] An invalid email is rejected inline with a user-safe message (no crash, no silent failure).\n\n## Technical notes\nAdd `app/lib/sharing/membership.dart` + `invite.dart`; membership is a CRDT object set (add-wins) in {{SN-SYNC-002}}, each member carrying a wrapped key from {{SN-SHR-015}}. The plan/entitlement check reads {{SN-BILL-001}} (fail-open to Free). Implements PRD-CO-033/034; design §10/§14.\n\n## Security & privacy\nMember emails are PII: never log them (checklist §7), display only derived initials/name where possible, and resolve mentions/invites against notebook membership only (no directory leakage; CWE-200). Authorization for role changes/removal is Owner-only (ASVS-V4, OWASP-A01). IDs: MASVS-PRIVACY-2, ASVS-V4, OWASP-A01, CWE-200.\n\n## UX notes\nInvite input + Invite button and the People list per design §10, including the Free footnote \"Free plan: up to 3 people per notebook. Pro removes the limit.\" Upgrade routing per §13. All 17 looks + dark; a11y-labelled; 44pt/48dp; keyboard-reachable.\n\n## Test plan\n`app/test/sharing/membership_test.dart` (invite adds member + wrapped key, name derivation, Free gate at 3, Pro unlimited, promote/demote/remove, owner-only gating, invalid email rejected), widget test for the gate routing to Upgrade.\n\n## Dependencies\n{{SN-SHR-014}} (overlay), {{SN-SHR-015}} (per-member keys/roles), {{SN-BILL-001}} (entitlement). Coordinates with {{SN-SHR-017}} (removal) and {{SN-SYNC-002}} (membership set).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-017",
+    "title": "Implement cryptographic revocation: rotate the content key and re-wrap on removal",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "security"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CRYPTO-1",
+      "MASVS-CRYPTO-2",
+      "ASVS-V4",
+      "ASVS-V6",
+      "OWASP-A01",
+      "OWASP-A02",
+      "CWE-284",
+      "CWE-522"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-015",
+      "SN-CRY-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nRevocation MUST be cryptographic, not cosmetic: removing a member, turning off the link, or \"Stop sharing\" MUST rotate the notebook content key and re-wrap it for the remaining members (PRD-CO-035; docs/architecture/file-format.md §6; docs/security/secure-coding-checklist.md §3.1 \"note revocation by content-key rotation\"). After revocation the removed member's client can no longer decrypt new segments. Content authored before revocation that the ex-member already downloaded cannot be un-seen — the UI MUST state this honestly. This is the guarantee that \"unshare\" actually means something in a zero-server design.\n\n## Scope\n**In:** the key-rotation + re-wrap flow triggered by member removal ({{SN-SHR-016}}), link toggle-off ({{SN-SHR-014}}), expiry ({{SN-SHR-018}}) and \"Stop sharing\"; issuing new wrapped items keys to remaining members; the honest \"already-downloaded content cannot be un-seen\" UI copy; a revocation regression test.\n**Out:** the underlying key hierarchy/rotation primitive in `sane_crypto` ({{SN-CRY-002}}); role derivation ({{SN-SHR-015}}); the collaboration transport that denies the ex-member's next sync ({{SN-COL-001}}).\n\n## Acceptance criteria\n- [ ] Removing a member rotates the content/items key and re-wraps it for all remaining members; the removed member's client cannot decrypt segments written after removal (verified end-to-end).\n- [ ] Turning off \"Anyone with the link\" invalidates the old link by rotating the key; re-opening the old link is denied.\n- [ ] \"Stop sharing\" rotates the key and revokes all non-owner access.\n- [ ] Rotation re-wraps keys only — it never re-encrypts existing note bytes (envelope payoff).\n- [ ] The UI states honestly that content the ex-member already downloaded cannot be retracted.\n- [ ] A regression test proves post-revocation decrypt failure for the removed identity.\n\n## Technical notes\nAdd `app/lib/sharing/revocation.dart` orchestrating the `sane_crypto` items-key rotation + re-wrap ({{SN-CRY-002}}) and writing the new wrapped keys into the membership object ({{SN-SYNC-002}}). Old segments stay under the old key (already seen); new segments use the rotated key. Implements PRD-CO-035; docs/architecture/crypto.md rotation, checklist §3.1.\n\n## Security & privacy\nThis is the confidentiality boundary of sharing. Threats: TM-S-03 (removed peer retaining access), TM-I-02 (key exposure). Controls: content-key rotation + re-wrap (MASVS-CRYPTO-1/2, ASVS-V6), least-privilege authorization for who may revoke — Owner only (ASVS-V4, OWASP-A01, CWE-284), no key material in logs (CWE-522, checklist §7). Fail-closed if rotation cannot complete (do not leave the old key valid silently). IDs: MASVS-CRYPTO-1, MASVS-CRYPTO-2, ASVS-V4, ASVS-V6, OWASP-A01/A02, CWE-284/522.\n\n## UX notes\nOn remove/stop-sharing, a confirm dialog states \"New activity will be hidden from them; anything already downloaded can't be taken back.\" Link toggle-off shows the field as disabled + \"Link turned off — the old link no longer opens this notebook.\" All 17 looks + dark; a11y-labelled destructive-action styling.\n\n## Test plan\n`app/test/security/revocation_test.dart` (post-removal decrypt fails, link toggle-off denies old link, re-wrap only — no note re-encrypt, fail-closed on partial rotation), integration test with two identities in `app/integration_test/share_revocation_test.dart`.\n\n## Dependencies\n{{SN-SHR-015}} (per-member keys/roles), {{SN-CRY-002}} (rotation primitive). Consumed by {{SN-SHR-014}}/{{SN-SHR-016}}/{{SN-SHR-018}}; coordinates with {{SN-COL-001}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-018",
+    "title": "Add expiring share links with an exp claim in the wrapped-key envelope",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "security"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CRYPTO-1",
+      "ASVS-V4",
+      "OWASP-A01",
+      "CWE-613"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-013",
+      "SN-SHR-017"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nA share link must support an optional expiry (Never / 24 h / 7 days / 30 days / custom date); at expiry the key is rotated so the link stops decrypting (PRD-CO-037). Because there is no authoritative server, expiry is enforced two ways: client-side on the sharer's devices at next sync (rotate the key), **and** by embedding an `exp` claim in the wrapped-key envelope that conformant clients refuse after. The UI MUST warn honestly that a malicious modified client cannot be forced to forget an already-downloaded key.\n\n## Scope\n**In:** the expiry option in the share model + overlay; embedding `exp` in the wrapped-key envelope; the sharer-side rotation at/after expiry (reusing {{SN-SHR-017}}); conformant-client refusal past `exp`; the \"Link expired\" state and the honest warning copy.\n**Out:** the base link model ({{SN-SHR-013}}); the rotation primitive ({{SN-SHR-017}}); link-activity view ({{SN-SHR-019}}).\n\n## Acceptance criteria\n- [ ] Setting a 24 h expiry: after 24 h a fresh client opening the link is denied; the sharer sees \"Link expired\".\n- [ ] The expiry options are Never / 24 h / 7 days / 30 days / custom date.\n- [ ] The wrapped-key envelope carries an `exp` claim; a conformant client refuses to use the key past `exp`.\n- [ ] At/after expiry the sharer's device rotates the key at next sync (reusing {{SN-SHR-017}}) so the link stops decrypting new content.\n- [ ] The UI warns that an already-downloaded key on a modified client cannot be force-forgotten.\n\n## Technical notes\nExtend `packages/sane_sync/lib/src/share/share_link.dart` ({{SN-SHR-013}}) with an `exp` field in the envelope, and schedule the sharer-side rotation via {{SN-SHR-017}}. Client refusal checks `exp` against the device clock (with skew tolerance) before decrypt. Implements PRD-CO-037.\n\n## Security & privacy\nThreats: TM-S-04 (stale link reuse). Controls: exp-bound capability (MASVS-CRYPTO-1, CWE-613 insufficient session/link expiration), authorization re-check (ASVS-V4, OWASP-A01), and the honest limitation disclosure (privacy-by-design). Enforce fail-closed: an unreadable/absent exp is treated as expired, not as \"never\". IDs: MASVS-CRYPTO-1, ASVS-V4, OWASP-A01, CWE-613.\n\n## UX notes\nAn \"Link expires\" picker in the Share overlay (Never default unless the posture flag says otherwise), an \"Expires in 23 h\" chip, and the \"Link expired — turn it back on to reshare\" state. Honest warning line near the picker. All 17 looks + dark; a11y-labelled; keyboard-reachable.\n\n## Test plan\n`packages/sane_sync/test/share/share_expiry_test.dart` (exp in envelope, conformant refusal past exp, absent-exp treated as expired), `app/test/sharing/expiry_flow_test.dart` (24 h denies fresh client, rotation scheduled, \"Link expired\" state).\n\n## Dependencies\n{{SN-SHR-013}} (link model), {{SN-SHR-017}} (rotation on expiry).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-019",
+    "title": "Add the link-activity view and scoped single-page or page-range shares",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "privacy"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-CRYPTO-1",
+      "ASVS-V4",
+      "CWE-200"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-013",
+      "SN-SHR-014"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nTwo refinements round out sharing. First, a **link-activity view** shows the Owner which invited people have accessed the notebook and which invites are pending; anonymous \"anyone with link\" opens may be counted only in aggregate and MUST NOT deanonymise viewers (PRD-CO-038). Second, sharing a **single page** or a **page range** (not just the whole notebook) produces a scoped capability that decrypts only those pages (PRD-CO-039) — a recipient of a single-page share cannot decrypt other pages. Both keep the zero-knowledge and privacy posture intact.\n\n## Scope\n**In:** the Owner-only link-activity list (invited-member last-seen + pending invites; anonymous opens aggregate-only); the scoped-share capability (wrap only the selected pages' keys) and its picker; enforcing that a scoped recipient cannot decrypt out-of-scope pages.\n**Out:** the base link/roles model ({{SN-SHR-013}}/{{SN-SHR-015}}); analytics/telemetry (none — computed locally); the overlay chrome ({{SN-SHR-014}}).\n\n## Acceptance criteria\n- [ ] The Owner sees invited-member last-seen and pending invites; no PII or identity is shown for anonymous \"anyone with link\" viewers (aggregate count only).\n- [ ] A single-page share yields a capability that decrypts only that page; the recipient cannot decrypt other pages (verified).\n- [ ] A page-range share decrypts only the range.\n- [ ] Activity data is computed on-device from local/sync data; nothing is uploaded to a Sane server.\n- [ ] Toggling scope from \"Whole notebook\" to \"This page\" updates the minted capability accordingly.\n\n## Technical notes\nExtend membership/activity in {{SN-SYNC-002}} (last-seen is derived from sync watermarks, not a tracking beacon) and the scoped-key wrapping in {{SN-SHR-013}}/{{SN-CRY-002}} (per-page items sub-keys). Add `app/lib/sharing/link_activity.dart` + a scope picker in the overlay. Implements PRD-CO-038/039.\n\n## Security & privacy\nThreats: TM-P-06/08 (viewer deanonymisation), TM-I-04 (over-broad key grant). Controls: aggregate-only anonymous counts (MASVS-PRIVACY-2, CWE-200), least-scope capability keys so a page share cannot read other pages (MASVS-CRYPTO-1, ASVS-V4). No new persistent identifier for viewers. IDs: MASVS-PRIVACY-2, MASVS-CRYPTO-1, ASVS-V4, CWE-200.\n\n## UX notes\nAn \"Activity\" section under the People list (Owner-only): \"Kabir — opened 2h ago\", \"Ananya — invite pending\", \"12 anonymous opens\". A scope segmented control (This page / Pages A-B / Whole notebook) near the link field. All 17 looks + dark; a11y-labelled; keyboard-reachable.\n\n## Test plan\n`app/test/sharing/link_activity_test.dart` (owner-only, anonymous aggregate-only, no PII), `packages/sane_sync/test/share/scoped_share_test.dart` (single-page/range capability cannot decrypt out-of-scope pages).\n\n## Dependencies\n{{SN-SHR-013}} (link model), {{SN-SHR-014}} (overlay). Coordinates with {{SN-CRY-002}} (per-page sub-keys) and {{SN-SYNC-002}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-020",
+    "title": "Add the default share-posture build-time flag (link-off/Can-view vs design default)",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "privacy",
+      "security"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "S",
+    "sdlc": "design",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "ASVS-V4",
+      "OWASP-A01",
+      "CWE-1188"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-014"
+    ],
+    "labels_extra": [
+      "needs-decision"
+    ],
+    "body": "## Context\nThe design default is link-**on** + \"Can edit\" (docs/design/screens-and-flows.md §10). The PRD **recommends** shipping with default link **off** + \"Can view\" to avoid accidental public-edit exposure of student notes, but defers the decision to the maintainer — and requires that whichever ships, the safer default is a **build-time configurable flag** (PRD-CO-036; CLAUDE.md §13 \"Default share posture\"). This issue implements the flag and the in-product first-share disclosure; the actual default value is a maintainer decision (`needs-decision`).\n\n## Scope\n**In:** a compile-time flag (`--dart-define=SANE_SHARE_DEFAULT=link-off-view|link-on-edit`) that sets the Share overlay's initial `linkOn` and `perm`; the in-product first-share note stating the active default; a documented decision record placeholder.\n**Out:** the overlay chrome ({{SN-SHR-014}}); role enforcement ({{SN-SHR-015}}); the actual maintainer choice (deferred).\n\n## Acceptance criteria\n- [ ] The initial `linkOn`/`perm` of the Share overlay is driven by the build-time flag, not hardcoded.\n- [ ] Both values are supported: link-off + \"Can view\" (recommended) and link-on + \"Can edit\" (design default).\n- [ ] On first share, the UI states the active default in-product (PRD-CO-036 \"documented in-product on first share\").\n- [ ] The default is documented in an ADR/threat-model note; the issue carries `needs-decision` until the maintainer chooses.\n- [ ] Changing the flag flips the default without any other code change.\n\n## Technical notes\nAdd `app/lib/sharing/share_posture.dart` reading the `--dart-define` (overview §7.1 flavour/define pattern) and feeding {{SN-SHR-014}}. Record the pending choice in docs/adr (new ADR or a note in docs/adr/0013) and docs/security/threat-model.md. Implements PRD-CO-036.\n\n## Security & privacy\nThis is a security-posture default (over-permissive default = accidental exposure). Threats: TM-P-06 (unintended disclosure). Controls: fail-safe default toward least privilege (ASVS-V4, OWASP-A01, CWE-1188 insecure default), honest in-product disclosure (MASVS-PRIVACY-2). The safer posture (link-off/view) is the recommended default. IDs: MASVS-PRIVACY-2, ASVS-V4, OWASP-A01, CWE-1188.\n\n## UX notes\nA one-line note on the first share (\"New shares start private — turn on the link to share widely\" or, if the design default ships, \"This link is on and set to Can edit\"). All 17 looks + dark; a11y-labelled.\n\n## Test plan\n`app/test/sharing/share_posture_test.dart` (flag drives initial linkOn/perm for both values, first-share disclosure shown). Manual verification of both build defines.\n\n## Dependencies\n{{SN-SHR-014}} (overlay initial state).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

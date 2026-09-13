@@ -1,0 +1,471 @@
+[
+ {
+  "key": "SN-HWR-001",
+  "title": "Build on-device handwriting recognition, OCR, math & shape engine (sane_ml)",
+  "type": "epic",
+  "priority": "p1",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "search",
+   "ai"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "XL",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-PRIVACY-2",
+   "MASVS-STORAGE-1",
+   "MASVS-NETWORK-1",
+   "MASVS-CODE-2",
+   "OWASP-A03",
+   "OWASP-A08",
+   "CWE-20",
+   "CWE-400"
+  ],
+  "depends_on": [
+   "SN-FND-002",
+   "SN-CORE-004",
+   "SN-INK-002",
+   "SN-SRCH-002"
+  ],
+  "labels_extra": [
+   "agent-ready",
+   "innovation"
+  ],
+  "body": "## Context\n\"Sane Sage\" recognition is the layer that makes handwriting searchable, convertible, and legible without ever leaving the device by default. This epic delivers `packages/sane_ml` (pure-Dart capability interfaces + on-device-first registry) and the `plugins/sane_ml_native` engines (Apple Vision/Speech/Foundation Models; Android ML Kit Digital Ink/Text/GenAI; Whisper/Tesseract on web) exactly as fixed in docs/adr/0016-on-device-ml-and-ai.md and specified in docs/product/prd-02-library-documents-audio-search.md §10–§11. The non-negotiable is locked decision 6: **on-device by default; any cloud inference is an explicit per-request opt-in with a visible data-leaves-device indicator** — there is no silent cloud fallback, ever. Recognition serves three promises at once: free on-device handwriting search (PRD-LB-300, deliberately not paywalled, unlike Notability), explicit Pro convert-to-text/math/solve (PRD-LB-302/306/307), and OCR of imported images and text-layerless PDFs so everything is findable (PRD-LB-305). All recognised text, transcripts, and embeddings are treated as note content: stored locally, E2E-encryptable on sync, and never logged (ADR-0016 Security & privacy impact).\n\n## Scope\n**In:** the `sane_ml` adapter interfaces + runtime registry + mocks; ML Kit Digital Ink ink→text; image OCR matrix (Vision/ML Kit/PaddleOCR/Tesseract.js); PDF OCR; web fallback path; language/model download & lifecycle; background non-destructive recognition feeding the search index with a stroke↔text map; lasso convert-to-text with confidence/correction UX; convert-as-you-write mode; shape recognition/beautification; handwriting refine/reflow; math recognition (LaTeX) and solve; custom dictionary; spellcheck; data detectors; the per-request cloud escalation gate + banner; accuracy evaluation datasets + tests; OCR-backed a11y alt-text; whole-document translation.\n**Out:** the FTS5 index storage itself ({{SN-SRCH-002}}), audio transcription capture ({{SN-AUD-002}}/{{SN-AUD-001}}), the Sane Sage assistant/RAG chat ({{SN-AI-001}}), the shape *tool* UX ({{SN-SHP-001}}), and billing entitlement plumbing ({{SN-BILL-001}}).\n\n## Acceptance criteria\n- [ ] With `SANE_AI_CLOUD_ENABLED=false` (default) every capability resolves to a local engine or degrades gracefully; no network call carries note content (airplane-mode test passes).\n- [ ] Background recognition builds a searchable per-word index without mutating a single stroke; tapping recognised text highlights the source ink and vice-versa.\n- [ ] Explicit lasso→convert produces editable typed text with confidence + correction UX; the original ink stays the source of truth.\n- [ ] Recognition language is selectable per notebook and covers the broadest available on-device set on **every** platform (no iOS-vs-Android disparity shipped).\n- [ ] All child issues below are closed, each with its own tests and Security & privacy section filled.\n\n## Technical notes\nPackages: `packages/sane_ml` (pure Dart, no `package:flutter`; `Result<T,Failure>` from `sane_core`), plugin `plugins/sane_ml_native` (federated, ADR-0012). Registry resolves best on-device engine per capability per device (ADR-0016 decision 2–3). Feeds `packages/sane_search` FTS5 + `sqlite-vec` ({{SN-SRCH-002}}). PRD IDs: PRD-LB-300–308, PRD-LB-260/261, PRD-LB-386/387/388/392, PRD-ED-112/116/187. ADRs: 0016 (this), 0015 (transcription hand-off), 0008 (ink consumed), 0012 (native plugins), 0010 (web constraints).\nChildren:\n- [ ] {{SN-HWR-002}} Define sane_ml capability interfaces + on-device-first registry + mocks\n- [ ] {{SN-HWR-003}} ML Kit Digital Ink Recognition adapter (ink→text, Android/iOS)\n- [ ] {{SN-HWR-004}} Recognition model download & lifecycle manager\n- [ ] {{SN-HWR-005}} Web ink→text recognition fallback path\n- [ ] {{SN-HWR-006}} Background non-destructive recognition → search index + stroke↔text map\n- [ ] {{SN-HWR-007}} Lasso convert-to-text (Pro-gated, editable output)\n- [ ] {{SN-HWR-008}} Recognition confidence & correction UX\n- [ ] {{SN-HWR-009}} Convert-as-you-write live recognition mode\n- [ ] {{SN-HWR-010}} Image OCR adapter matrix (Vision/ML Kit/PaddleOCR/Tesseract.js)\n- [ ] {{SN-HWR-011}} PDF OCR for text-layerless PDFs\n- [ ] {{SN-HWR-012}} Shape recognition & beautification engine\n- [ ] {{SN-HWR-013}} Handwriting refine / reflow / straighten backing\n- [ ] {{SN-HWR-014}} Math recognition → typeset + LaTeX\n- [ ] {{SN-HWR-015}} Solve math (worked step-by-step, Pro-gated)\n- [ ] {{SN-HWR-016}} Custom recognition dictionary\n- [ ] {{SN-HWR-017}} Handwriting spellcheck in the writer's own style\n- [ ] {{SN-HWR-018}} Data detectors over recognised text\n- [ ] {{SN-HWR-019}} Per-request cloud escalation gate + data-leaves-device banner\n- [ ] {{SN-HWR-020}} Recognition accuracy evaluation datasets & test harness\n- [ ] {{SN-HWR-021}} OCR-backed alt-text & accessibility for handwritten content\n- [ ] {{SN-HWR-022}} Whole-document translation (page/PDF)\n\n## Security & privacy\nOn-device-first is the privacy control (LINDDUN): the registry MUST resolve local first and MUST NOT fall back to cloud silently (MASVS-PRIVACY-1/2, ASVS V1). Recognised text, prompts, and model I/O are note content — stored locally, E2E-encryptable on sync (MASVS-STORAGE-1), never logged (CWE-117, overview §8.2). Untrusted image/PDF inputs to OCR are validated, resource-capped, and parsed off the UI isolate (MASVS-CODE-2, CWE-20/400/502). Downloaded models are integrity-checked before use (OWASP-A08). Each cloud escalation is a per-request opt-in with a banner (MASVS-NETWORK-1, OWASP-A03).\n\n## UX notes\nSurfaces: the On-device recognition toggle (design/Sane Notes.dc.html §12; docs/design/screens-and-flows.md §12), the selection action bar Convert-to-text / Solve-math (§7.4), Search (§11), Shapes (§7.3). All chrome uses `sane_ui` tokens (docs/design/tokens.json — 17 looks + light/dark) and meets WCAG 2.2 AA. Recognition never mutates the document silently; every convert is undoable.\n\n## Test plan\nPer-child unit/widget/golden/integration tests plus the shared accuracy harness in {{SN-HWR-020}} (`tools/recognition_eval/`). Airplane-mode integration test `app/integration_test/recognition_on_device_test.dart` asserts zero note-content egress at default settings.\n\n## Dependencies\nSN-FND-002 (monorepo scaffold), SN-CORE-004 (SQLite/blob store), SN-INK-002 (stroke capture), SN-SRCH-002 (FTS index). Recognition consumes ink from the {{SN-INK-001}} engine and feeds {{SN-SRCH-001}} search and {{SN-AI-001}} Sage.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-002",
+  "parent": "SN-HWR-001",
+  "title": "Define sane_ml capability interfaces + on-device-first registry + mocks",
+  "type": "task",
+  "priority": "p1",
+  "platforms": [
+   "core"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "ai"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "L",
+  "sdlc": "design",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-PRIVACY-2",
+   "MASVS-NETWORK-1",
+   "ASVS-V1",
+   "OWASP-A03",
+   "CWE-807"
+  ],
+  "depends_on": [
+   "SN-FND-002",
+   "SN-CORE-002"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nEvery recognition capability in Sane Notes must be reachable through one narrow, testable seam so the app always has an on-device default and the wildly different engines (ML Kit, Apple Vision/Foundation Models, PaddleOCR, Whisper, MyScript, Mathpix) hide behind a stable interface. docs/adr/0016-on-device-ml-and-ai.md decision 1–2 mandates pure-Dart capability interfaces in `packages/sane_ml` plus a **runtime registry that resolves the best available on-device implementation first** and only ever selects a cloud implementation when the user explicitly opts in for that request. This issue defines that seam and its mock implementations so all downstream recognition work ({{SN-HWR-003}}..{{SN-HWR-022}}) can be built and unit-tested headlessly before any native code exists. Getting the seam right is the difference between \"no note content leaves the device\" being an architectural guarantee versus a hope.\n\n## Scope\n**In:** the interfaces `InkRecognizer`, `ImageOcr`, `ShapeRecognizer`, `MathRecognizer`, `Transcriber`, `TextGenerator`, `Embedder`, `Translator`; the `RecognitionRegistry` with per-capability, per-device candidate lists and on-device-first resolution; an `EngineDescriptor` (id, licence, on-device flag, languages, model-size, availability probe); a `MockRecognizerSuite` backing every method; the `RecognitionConfig` (per-notebook language, cloud master gate `SANE_AI_CLOUD_ENABLED` default false).\n**Out:** any real engine implementation (later issues); the cloud opt-in banner UI ({{SN-HWR-019}}); FTS storage ({{SN-SRCH-002}}).\n\n## Acceptance criteria\n- [ ] All eight interfaces return `Result<T, Failure>` and carry `///` dartdoc; `packages/sane_ml` imports no `package:flutter` (arch-lint passes).\n- [ ] `RecognitionRegistry.resolve(capability)` returns the highest-priority **on-device** engine whose availability probe succeeds; a cloud engine is returned only when `request.cloudOptIn == true` AND `SANE_AI_CLOUD_ENABLED == true`.\n- [ ] With cloud disabled (default) and no on-device engine registered, `resolve` returns a typed `Failure.unavailable` (offer-download/opt-in), never throws and never silently returns a cloud engine — asserted by test.\n- [ ] A missing model surfaces `Failure.modelMissing(size)` so callers can offer download or cloud opt-in; no crash.\n- [ ] `MockRecognizerSuite` produces deterministic outputs for every interface for use across all downstream tests.\n\n## Technical notes\n`packages/sane_ml/lib/src/`: `recognition_registry.dart`, `engine_descriptor.dart`, `capabilities/*.dart`, `mock/mock_recognizers.dart`. Dependencies: `sane_core` only (Result/Failure, HLC, ids). Resolution order is data-driven from `EngineDescriptor.priority` + `onDevice`; the master gate reads `--dart-define=SANE_AI_CLOUD_ENABLED` via overview §7.1. Interfaces mirror ADR-0016 decision 1 and the engine matrix in decision 3. Do not couple to `sane_ml_native` MethodChannels here — those are injected implementations registered at app composition (ADR-0003 Riverpod).\n\n## Security & privacy\nThis is the on-device-first control point (LINDDUN, MASVS-PRIVACY-1/2, ASVS V1). The resolver MUST fail closed to on-device/unavailable and MUST NOT reach a cloud engine without an explicit per-request opt-in (OWASP-A03, MASVS-NETWORK-1); guard against a mis-registered cloud engine shadowing a local one (CWE-807 reliance on untrusted inputs in a security decision). No content is logged; `EngineDescriptor` logs only opaque ids.\n\n## UX notes\nNo direct UI; establishes the states later screens render — available / downloading / unavailable / cloud-opt-in. The On-device recognition toggle (docs/design/screens-and-flows.md §12) reads `RecognitionConfig`. Copy for the unavailable state defers to {{SN-HWR-004}}.\n\n## Test plan\n`packages/sane_ml/test/recognition_registry_test.dart` (resolution order, cloud-gate fail-closed, model-missing), `packages/sane_ml/test/mock_recognizers_test.dart`. No widget tests (pure Dart, headless).\n\n## Dependencies\nSN-FND-002 (scaffold), SN-CORE-002 (Result/Failure, model entities).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-003",
+  "parent": "SN-HWR-001",
+  "title": "Implement ML Kit Digital Ink Recognition adapter for ink-to-text",
+  "type": "feature",
+  "priority": "p1",
+  "platforms": [
+   "ipad",
+   "android-tablet",
+   "ios-phone",
+   "android-phone"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "ai"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "L",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-PLATFORM-2",
+   "MASVS-STORAGE-1",
+   "OWASP-A08",
+   "CWE-20",
+   "CWE-494"
+  ],
+  "depends_on": [
+   "SN-HWR-002",
+   "SN-INK-002"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nThe default online-ink engine for Sane Notes is **Google ML Kit Digital Ink Recognition** — free, fully on-device, covering 300+ languages / 25+ scripts plus shape and gesture classifiers — chosen over MyScript as the free default in docs/adr/0016-on-device-ml-and-ai.md decision 3 and required by PRD-LB-301. Because we capture ordered stroke data (not a flattened image) online-ink recognition is far more accurate than image OCR, and it powers both free handwriting search ({{SN-HWR-006}}) and Pro convert-to-text ({{SN-HWR-007}}). This issue wires ML Kit Digital Ink through `plugins/sane_ml_native` as the concrete `InkRecognizer` on Android and iOS, converting Sane ink strokes into ML Kit `Ink` and returning ranked candidates with per-token bounds for the stroke↔text map.\n\n## Scope\n**In:** the `InkRecognizer` implementation over ML Kit Digital Ink (Android via `com.google.mlkit:digital-ink-recognition`, iOS via `GoogleMLKit/DigitalInkRecognition`); stroke→`Ink` conversion (points, no timestamps required); model-tag resolution per BCP-47 language; ranked candidate list with scores; writing-area + pre-context hints; per-recognition language override; graceful `modelMissing` hand-off to {{SN-HWR-004}}.\n**Out:** language-pack download UI ({{SN-HWR-004}}); the search index writer ({{SN-HWR-006}}); convert-to-text UX ({{SN-HWR-007}}); web ({{SN-HWR-005}}).\n\n## Acceptance criteria\n- [ ] Given a set of Sane strokes and a target language with its model present, the adapter returns ≥ 1 ranked candidate; the top candidate for a clean English sample matches ground truth in the fixture set.\n- [ ] Recognition runs off the UI isolate and never blocks input; recognising a 200-stroke page returns in < 500 ms on a mid-range Android reference device.\n- [ ] Requesting a language whose model is absent returns `Failure.modelMissing` (not a crash) and triggers no network call by itself.\n- [ ] Every result exposes token text + score + bounding box so {{SN-HWR-006}} can build the stroke↔text map.\n- [ ] A `WritingArea` and optional pre-context are passed through and measurably improve recognition on the fixture set.\n\n## Technical notes\n`plugins/sane_ml_native` platform-interface method `recognizeInk(strokes, lang, writingArea, preContext)`; Kotlin uses `DigitalInkRecognition`, `Ink.Stroke.builder()`, `RecognitionContext`; Swift uses `MLKDigitalInkRecognizer`. Serialise strokes as compact point arrays across the channel (overview §6 isolate rules). Consumes `sane_ink` stroke geometry ({{SN-INK-002}}). Registered into `RecognitionRegistry` ({{SN-HWR-002}}) with `onDevice=true`, priority above cloud. Record ML Kit terms in the SBOM (ADR-0016 decision 9). Model management is delegated to {{SN-HWR-004}}.\n\n## Security & privacy\nInference is 100% on-device (MASVS-PRIVACY-1); no strokes or recognised text cross the network (MASVS-NETWORK). Validate stroke arrays crossing the MethodChannel (MASVS-PLATFORM-2, CWE-20). Model files fetched by {{SN-HWR-004}} are integrity-checked before load (OWASP-A08, CWE-494). Recognised text is note content: kept in the local store (MASVS-STORAGE-1), never logged.\n\n## UX notes\nNo standalone UI; feeds the recognition-driven surfaces. The On-device recognition indicator (docs/design/screens-and-flows.md §12) reflects that this engine runs locally. Language selection surfaces in {{SN-HWR-008}}. A11y: recognised text is what makes handwriting screen-reader-readable ({{SN-HWR-021}}).\n\n## Test plan\n`plugins/sane_ml_native/test/ink_recognizer_channel_test.dart` (channel contract, mock native), `packages/sane_ml/test/ink_recognition_fixture_test.dart` (ground-truth fixtures via the mock + a golden candidate list), and an on-device manual smoke on both platforms recorded in the harness ({{SN-HWR-020}}).\n\n## Dependencies\nSN-HWR-002 (interfaces/registry), SN-INK-002 (stroke capture).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-004",
+  "parent": "SN-HWR-001",
+  "title": "Add recognition model download & lifecycle manager with integrity checks",
+  "type": "feature",
+  "priority": "p1",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "settings"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "L",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-CODE-2",
+   "MASVS-STORAGE-1",
+   "MASVS-NETWORK-1",
+   "OWASP-A08",
+   "CWE-494",
+   "CWE-347",
+   "CWE-400"
+  ],
+  "depends_on": [
+   "SN-HWR-002"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nRecognition capability varies wildly by device: ML Kit language packs, Whisper weights, EmbeddingGemma weights and PaddleOCR models are all **downloaded on demand**, and a missing model must degrade gracefully (offer download or cloud opt-in) rather than crash (docs/adr/0016-on-device-ml-and-ai.md decision 8; consequences \"graceful-degradation logic is real complexity\"). Because downloaded models are executable-adjacent assets, decision 8 and the Security & privacy impact section require they be **integrity-checked (hash/signature) before use**. This issue centralises model discovery, size-aware download with user awareness, verification, storage, and eviction so every engine adapter ({{SN-HWR-003}}, {{SN-HWR-005}}, {{SN-HWR-010}}, {{SN-HWR-014}}) shares one trustworthy path, and so recognition/transcription/translation language pickers can expose the full on-device set (PRD-LB-371).\n\n## Scope\n**In:** a `ModelManager` (list installed/available, size, language coverage, licence), size-aware download with progress + cancel + resume + Wi-Fi-only option, SHA-256 (and signature where the vendor provides one) verification before first load, on-disk storage under the app sandbox, LRU/manual eviction under storage pressure, and a Settings → Languages & models screen; ML Kit `RemoteModelManager` integration.\n**Out:** the actual inference adapters; the cloud opt-in banner ({{SN-HWR-019}}); telemetry of download failures beyond opt-in diagnostics ({{SN-TEL-001}}).\n\n## Acceptance criteria\n- [ ] Downloading a model shows its size (MB) before starting and a live progress indicator; cancel and resume work; failure lands in a retryable error state, never a crash.\n- [ ] A model whose SHA-256 (or signature) does not match the manifest is deleted and rejected with `Failure.integrity`; it is never loaded (regression test).\n- [ ] With no model present, the capability reports unavailable and the UI offers Download or (if permitted) cloud opt-in — verified by test.\n- [ ] Wi-Fi-only respected; a metered-network download prompts before proceeding.\n- [ ] The Languages & models screen lists installed + available models with size and licence and lets the user delete any (freeing disk).\n\n## Technical notes\n`packages/sane_ml/lib/src/model_manager.dart` (pure orchestration + `Result`), native download via `plugins/sane_ml_native` (`RemoteModelManager` on ML Kit; direct HTTPS for Whisper/EmbeddingGemma weights with a pinned host). Manifest carries `{id, url, sizeBytes, sha256, sig?, licence, languages[]}`. Storage paths canonicalised and confined to the sandbox (secure-coding-checklist §1). Integrity + provenance recorded per ADR-0016 decision 9; SBOM lists every model + licence. Settings screen in `app/` uses `sane_ui`.\n\n## Security & privacy\nDownloaded models are untrusted binaries: verify SHA-256/signature before load and fail closed (OWASP-A08, CWE-494 download of code without integrity check, CWE-347 improper signature verification). Cap download size and disk use (CWE-400). Fetch only over TLS from a pinned host (MASVS-NETWORK-1, CWE-319). No note content is involved; log only model ids + outcome, never URLs with tokens (CWE-117). Stored models sit in the app sandbox (MASVS-STORAGE-1).\n\n## UX notes\nSettings → Languages & models (docs/design/screens-and-flows.md §12; design/Sane Notes.dc.html settings). States: idle / downloading (progress + cancel) / installed / verifying / failed (retry) / evicted. All 17 looks + light/dark via `sane_ui` tokens; 44pt/48dp targets; VoiceOver/TalkBack labels on rows and buttons; download size announced. Honest copy: \"Handwriting for Hindi needs a 38 MB language pack — download once, works offline.\"\n\n## Test plan\n`packages/sane_ml/test/model_manager_test.dart` (verify-before-load, integrity reject, resume, eviction), `app/test/settings/models_screen_test.dart` (widget states), golden `app/test/golden/models_screen_*` across looks.\n\n## Dependencies\nSN-HWR-002 (registry reads model availability).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-005",
+  "parent": "SN-HWR-001",
+  "title": "Implement web ink-to-text recognition fallback path",
+  "type": "feature",
+  "priority": "p2",
+  "platforms": [
+   "web"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "ai"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-NETWORK-1",
+   "OWASP-A03",
+   "OWASP-A08",
+   "CWE-319"
+  ],
+  "depends_on": [
+   "SN-HWR-002"
+  ],
+  "labels_extra": [
+   "agent-ready",
+   "needs-decision"
+  ],
+  "body": "## Context\nWeb is the weakest recognition surface: ML Kit is mobile-only and there is no first-class on-device online-ink engine in the browser (docs/adr/0016-on-device-ml-and-ai.md decision 3 — web ink→text is \"custom/none → cloud opt-in\"; consequences \"Web AI is the weakest surface\", ADR-0010). Sane Notes still must not silently ship a worse or a leaky experience on Web, so this issue defines the honest web path: attempt any available on-device option (a WASM recognizer if one is bundled/feasible), otherwise present the capability as **cloud-opt-in only** with the data-leaves-device banner and never auto-send ink. This keeps the on-device-first guarantee intact on Web while making the limitation explicit to the user.\n\n## Scope\n**In:** a web `InkRecognizer` registration that (1) uses a WASM/on-device recognizer when present, else (2) reports `unavailable` and routes to explicit cloud opt-in ({{SN-HWR-019}}); a capability-availability probe for the browser; graceful messaging; parity of the returned candidate shape with {{SN-HWR-003}}.\n**Out:** building a novel browser HWR model from scratch; image OCR on web (Tesseract.js is {{SN-HWR-010}}); the cloud transport itself.\n\n## Acceptance criteria\n- [ ] On a browser with no on-device engine and cloud disabled, ink→text reports `unavailable` and the UI explains why; no ink is sent anywhere.\n- [ ] With cloud explicitly opted-in per request, ink is sent only after the data-leaves-device banner is confirmed; the returned candidates match the {{SN-HWR-003}} shape so downstream UX is identical.\n- [ ] Where a WASM on-device recognizer is available, it is preferred over cloud automatically (on-device-first).\n- [ ] Recognition work runs in a Web Worker (Dart isolate) and never blocks the main thread (no frame > 16.7 ms while writing).\n\n## Technical notes\n`plugins/sane_ml_native/web` conditional import; Dart isolates compile to Web Workers (overview §6). Feature-detect WebGPU/WASM per ADR-0010. Register with `onDevice` reflecting reality so {{SN-HWR-002}} resolution stays honest. **needs-decision:** whether to bundle a specific WASM HWR model or ship web as cloud-opt-in-only for v1 (CLAUDE.md §13 web-AI posture) — implement the cloud-opt-in-only default and gate the WASM path behind availability.\n\n## Security & privacy\nNo silent cloud fallback (MASVS-PRIVACY-1, OWASP-A03); the only egress is an explicit per-request opt-in over TLS with the banner (MASVS-NETWORK-1, CWE-319). Web PWA at-rest guarantees are reduced (no Keychain) so recognised text follows the web storage posture (ADR-0010; CLAUDE.md §13). Model/WASM assets integrity-checked (OWASP-A08).\n\n## UX notes\nReuses the On-device recognition messaging (docs/design/screens-and-flows.md §12) with a web-specific note (\"On-device handwriting recognition isn't available in this browser yet\"). Cloud opt-in path shows the data-leaves-device banner ({{SN-HWR-019}}). Keyboard-reachable, AA contrast, all looks/dark.\n\n## Test plan\n`packages/sane_ml/test/web_ink_recognizer_test.dart` (unavailable + opt-in routing via mock), an integration test `app/integration_test/web_recognition_optin_test.dart` asserting no egress without opt-in.\n\n## Dependencies\nSN-HWR-002 (registry). Coordinates with {{SN-HWR-019}} (cloud banner).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-006",
+  "parent": "SN-HWR-001",
+  "title": "Run background non-destructive recognition into the search index",
+  "type": "feature",
+  "priority": "p1",
+  "platforms": [
+   "core"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "search"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "L",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-STORAGE-1",
+   "MASVS-PRIVACY-4",
+   "OWASP-A03",
+   "CWE-117",
+   "CWE-400"
+  ],
+  "depends_on": [
+   "SN-HWR-003",
+   "SN-SRCH-002",
+   "SN-CORE-004"
+  ],
+  "labels_extra": [
+   "agent-ready",
+   "innovation"
+  ],
+  "body": "## Context\nThe signature privacy-respecting feature is \"search your handwriting without converting it\": Sane Notes runs **background handwriting recognition continuously to build a searchable index, and this never destroys ink and is free/on-device/on-by-default** (PRD-LB-300; docs/adr/0016-on-device-ml-and-ai.md decision 5). Notability paywalls handwriting search — its most-resented gate — so keeping this free is a deliberate wedge (PRD-02 §14). This issue builds the background service that recognises new/edited ink off the UI isolate, writes `SearchIndexRow`s (PRD-LB-260) with enough locality to deep-link (docId, pageIndex, source, on-page quads/stroke ids — PRD-LB-261), and persists a **stroke↔text mapping** so tapping recognised text highlights the source ink and vice-versa (ADR-0016 decision 5).\n\n## Scope\n**In:** a debounced, incremental (per-page-on-change) recognition scheduler on the search/index isolate; conversion of {{SN-HWR-003}}/{{SN-HWR-005}} candidates into `SearchIndexRow` records; the `StrokeTextMap` (word→stroke-ids, stroke→text-range) persisted alongside the page; re-index on edit and invalidation on delete; the On-device recognition toggle wiring.\n**Out:** the FTS5 table + query engine ({{SN-SRCH-002}}); global search UX (PRD-LB-262, {{SN-SRCH-001}}); explicit convert-to-text ({{SN-HWR-007}}); embeddings/semantic RAG ({{SN-AI-001}}).\n\n## Acceptance criteria\n- [ ] Writing new ink and pausing triggers background recognition within a debounce window; the words become searchable without any stroke being modified (byte-for-byte ink unchanged — regression test).\n- [ ] Each `SearchIndexRow` carries docId, pageIndex, source=handwriting, text, per-word quads/stroke ids, and lang so a result scrolls to and highlights the exact strokes.\n- [ ] Tapping a recognised word highlights its source strokes; selecting strokes reveals their recognised text — both directions verified.\n- [ ] Recognition and indexing run entirely off the UI isolate; a 1,000-stroke page indexes without dropping a writing frame (no frame > 16.7 ms).\n- [ ] Turning the On-device recognition toggle off halts background recognition and (optionally) clears the derived index; turning it on re-indexes.\n\n## Technical notes\n`packages/sane_ml` orchestrator + `packages/sane_search` writer running on the search/index isolate (overview §6). `StrokeTextMap` stored as a page-scoped CRDT-friendly sidecar in `sane_core`/drift ({{SN-CORE-004}}). Row shape per PRD-LB-260/261 `SearchIndexRow{docId,pageIndex,source,text,quads,lang}`. Consumes {{SN-HWR-003}}; feeds {{SN-SRCH-002}}. Coalesce edits to bound work; only re-recognise changed regions.\n\n## Security & privacy\nRecognised text and the index are note content: stored locally and E2E-encryptable on sync (MASVS-STORAGE-1), on-device only (MASVS-PRIVACY-1), and **never logged** (CWE-117; ADR-0016 privacy impact). Background work is bounded to avoid resource exhaustion (CWE-400). The derived index is deletable and honours data-minimisation/erasure (MASVS-PRIVACY-4). No cloud path (OWASP-A03).\n\n## UX notes\nBacks Search (design/Sane Notes.dc.html §11) and the On-device recognition privacy toggle (§12). No new chrome here beyond the toggle state; the \"handwriting is searched on-device\" result-count line lives in search UX. Highlighting uses `sane_ui` selection tokens across all looks/dark. A11y: recognised text powers OCR alt-text ({{SN-HWR-021}}).\n\n## Test plan\n`packages/sane_ml/test/background_recognition_test.dart` (debounce, incremental, ink-unchanged), `packages/sane_search/test/index_row_locality_test.dart` (quads/stroke-id round-trip), `app/integration_test/handwriting_search_deeplink_test.dart` (search → scroll → highlight exact strokes).\n\n## Dependencies\nSN-HWR-003 (ink recognizer), SN-SRCH-002 (FTS index), SN-CORE-004 (persistence).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-007",
+  "parent": "SN-HWR-001",
+  "title": "Add lasso convert-to-text producing an editable text object",
+  "type": "feature",
+  "priority": "p1",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "editor"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-117"
+  ],
+  "depends_on": [
+   "SN-HWR-003",
+   "SN-ED-004"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nBeyond free background search, users need an **explicit** action to turn selected handwriting into editable typed text. PRD-LB-302 and PRD-ED-116 specify: lasso ink → \"Convert to text\" → an editable text object, keeping the **original ink as the source of truth** and storing a stroke↔text mapping so tapping text highlights source ink. This is the crucial Free/Pro line: *searching* your handwriting is free ({{SN-HWR-006}}); *converting* it to editable typed text is the Pro-gated action (mock; PRD-02 §14) — Free users hit the Upgrade overlay. The mock returns a canned string with no correction affordance (screens Open Q8); this issue delivers the real conversion producing an editable result and an \"undo conversion\" path.\n\n## Scope\n**In:** the selection action-bar \"Convert to text\" command; running {{SN-HWR-003}} over the lassoed strokes; inserting an editable `Text` object (decision 4 model) positioned at the selection; the stroke↔text map for the converted block; \"undo conversion\" restoring ink; the Pro gate + Upgrade overlay for Free.\n**Out:** confidence/correction UX detail ({{SN-HWR-008}}); convert-as-you-write ({{SN-HWR-009}}); math convert ({{SN-HWR-014}}); the lasso selection tool itself ({{SN-ED-004}}); entitlement backend ({{SN-BILL-001}}).\n\n## Acceptance criteria\n- [ ] Lassoing handwriting and tapping \"Convert to text\" (Pro) replaces the selection with an editable text block and shows toast \"Handwriting converted to text\"; a single Undo restores the exact original ink.\n- [ ] Free users tapping Convert see the Upgrade overlay and no conversion occurs; entitlement is checked via {{SN-BILL-001}}.\n- [ ] The converted block keeps a stroke↔text map; tapping a converted word highlights the source strokes (recoverable until the user discards them).\n- [ ] Convert respects the per-notebook recognition language and can be re-run in another language ({{SN-HWR-008}}).\n- [ ] Recognition runs on-device by default; any cloud assist requires the per-request banner ({{SN-HWR-019}}).\n\n## Technical notes\n`app/` editor state (Riverpod) invokes `RecognitionRegistry.resolve(inkToText)` on the selected strokes ({{SN-HWR-002}}/{{SN-HWR-003}}); result inserted as a `Text` object via `sane_core` op (undoable through {{SN-ED-003}}). Selection comes from {{SN-ED-004}}. Free/Pro gate via `sane_billing` ({{SN-BILL-001}}). Design: selection bar Convert-to-text (design/Sane Notes.dc.html §7.4). PRD-LB-302, PRD-ED-116.\n\n## Security & privacy\nOn-device by default (MASVS-PRIVACY-1); no ink or text leaves the device unless the user opts into cloud per request (OWASP-A03). Converted text is note content — stored locally, E2E-encryptable, never logged (MASVS-STORAGE-1, CWE-117). Converting handwriting to text is also an accessibility win (screen-reader-readable) while keeping ink recoverable via Undo.\n\n## UX notes\nSelection action bar \"Convert to text\" (design/Sane Notes.dc.html §7.4, §14 Upgrade). States: converting (spinner) / done (toast + editable block) / low-confidence (defers to {{SN-HWR-008}}) / Free (Upgrade overlay). `sane_ui` tokens across all 17 looks + light/dark; 44pt/48dp targets; VoiceOver announces the new text block; Undo is a labelled control. Keep original ink recoverable.\n\n## Test plan\n`app/test/editor/convert_to_text_test.dart` (widget: convert, undo-restores-ink, Free-gate overlay), `packages/sane_ml/test/convert_selection_test.dart` (mock recognizer → text object), golden `app/test/golden/convert_toast_*`.\n\n## Dependencies\nSN-HWR-003 (recognizer), SN-ED-004 (lasso selection). Gated by {{SN-BILL-001}}; correction UX in {{SN-HWR-008}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-008",
+  "parent": "SN-HWR-001",
+  "title": "Build recognition confidence and correction UX",
+  "type": "feature",
+  "priority": "p2",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "a11y"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-PRIVACY-4",
+   "OWASP-A03",
+   "CWE-117"
+  ],
+  "depends_on": [
+   "SN-HWR-007"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nThe mock's convert/solve outputs are canned strings with no way to see or fix mistakes (screens Open Q8). PRD-LB-303 requires that convert/recognition results **expose confidence and a correction UX**: show low-confidence words distinctly, let the user edit the converted text, re-convert in another language, and report a mis-recognition. It also requires the recognition **language be selectable per notebook** (default device locale) and cover the broadest available on-device set on every platform — explicitly not shipping Notability's 23-vs-72-language disparity. This issue delivers the shared confidence/correction layer used by lasso convert ({{SN-HWR-007}}), convert-as-you-write ({{SN-HWR-009}}) and math ({{SN-HWR-014}}).\n\n## Scope\n**In:** per-token confidence surfacing (underline/tint low-confidence words using tokens, never colour-only); inline edit of converted text; a language picker (per-notebook default + per-conversion override) exposing the full on-device set; alternate-candidate chips for a low-confidence word; a \"report mis-recognition\" action that stores a local correction pair (feeds {{SN-HWR-016}} dictionary); re-convert-in-language.\n**Out:** the conversion trigger itself ({{SN-HWR-007}}); dictionary storage ({{SN-HWR-016}}); spellcheck ({{SN-HWR-017}}).\n\n## Acceptance criteria\n- [ ] Words below a confidence threshold are visually distinct (token style + a non-colour cue) and expose ≤ 5 alternate candidates on tap.\n- [ ] The user can edit any converted word inline; edits persist and never alter the source ink.\n- [ ] A language picker shows the complete on-device language set (from {{SN-HWR-004}}) and defaults to the notebook language (device locale); re-convert re-runs recognition in the chosen language.\n- [ ] \"Report mis-recognition\" records a local ink→correct-text pair with no network call; it is retrievable by {{SN-HWR-016}}.\n- [ ] All controls are keyboard-operable and screen-reader-labelled; contrast ≥ 4.5:1 in all 17 looks + dark.\n\n## Technical notes\n`app/` editor overlay + `packages/sane_ml` confidence model (scores already returned by {{SN-HWR-003}}). Language set sourced from {{SN-HWR-004}} `ModelManager`. Correction pairs stored per-profile in `sane_core`/drift, language-scoped, for {{SN-HWR-016}}. Never mutate the document silently (ADR-0016 decision 5). PRD-LB-303/371, screens Open Q8.\n\n## Security & privacy\nCorrection pairs and edits are note content — local only (MASVS-PRIVACY-1), erasable (MASVS-PRIVACY-4), never logged (CWE-117). Re-convert stays on-device unless a per-request cloud opt-in is taken (OWASP-A03). No mis-recognition report is sent anywhere by default.\n\n## UX notes\nCorrection affordance on the converted text block and selection bar (design/Sane Notes.dc.html §7.4). Low-confidence styling from `sane_ui` tokens (all looks + dark); alternate-candidate chips; language picker as a bottom sheet. Empty/edge: no alternates → \"No other suggestions\". A11y (mandatory): candidates are a labelled radio-group, edits announced, never colour-only.\n\n## Test plan\n`app/test/editor/confidence_correction_test.dart` (low-conf styling, alternates, inline edit, language re-convert), golden `app/test/golden/low_confidence_word_*` across looks, `packages/sane_ml/test/correction_pair_store_test.dart`.\n\n## Dependencies\nSN-HWR-007 (conversion result to correct). Feeds {{SN-HWR-016}} (dictionary), used by {{SN-HWR-014}} (math).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-009",
+  "parent": "SN-HWR-001",
+  "title": "Add convert-as-you-write live recognition mode",
+  "type": "feature",
+  "priority": "p3",
+  "platforms": [
+   "ipad",
+   "android-tablet",
+   "ios-phone",
+   "android-phone"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "editor"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-117"
+  ],
+  "depends_on": [
+   "SN-HWR-003",
+   "SN-HWR-008"
+  ],
+  "labels_extra": [
+   "agent-ready",
+   "innovation",
+   "needs-decision"
+  ],
+  "body": "## Context\nA Nebo/MyScript-style **convert-as-you-write** mode turns handwriting into typed text continuously as the user writes, rather than only on an explicit lasso. ADR-0016 decision 5 endorses both modes (background non-destructive recognition + explicit convert) with ink as the source of truth; this issue adds the live interactive mode as a differentiator (innovation) layered on the same {{SN-HWR-003}} engine. It is an opt-in editor mode: while active, recently written strokes are recognised into a live typed line beneath/inline, editable via gestures, and committable — without ever silently mutating the page unless the user accepts the conversion.\n\n## Scope\n**In:** a toggleable \"Convert as you write\" editor mode; incremental recognition of the active writing region with debouncing; a live preview of recognised text; accept/reject per line; editing gestures (scratch-erase, insert space) backed by {{SN-HWR-018}}/recognition; commit to a `Text` object; Pro gating consistent with {{SN-HWR-007}}.\n**Out:** the background search index ({{SN-HWR-006}}); math live-convert ({{SN-HWR-014}}); the raw editing-gesture recognition backing ({{SN-HWR-018}} is separate); web (mobile/tablet only for v1).\n\n## Acceptance criteria\n- [ ] Enabling the mode recognises the active line within a debounce window and shows a live typed preview; the ink is untouched until the user accepts.\n- [ ] Accepting commits an editable text object with a stroke↔text map; rejecting leaves only ink.\n- [ ] Recognition runs off the UI isolate; enabling the mode does not regress the pen-down→pixel latency budget while writing (no frame > 16.7 ms).\n- [ ] The mode is off by default, per-profile, and Pro-gated where it produces committed typed text.\n- [ ] Works on-device with no network; cloud never engaged without the per-request banner.\n\n## Technical notes\n`app/` editor mode + `packages/sane_ml` incremental recogniser wrapping {{SN-HWR-003}}; reuse confidence/correction from {{SN-HWR-008}}. **needs-decision:** exact commit granularity (per-line vs per-pause) and whether the mode ships in M3 or defers — implement the per-line proposed default and gate behind a setting. Latency-sensitive: never hop isolates on the hot draw path (CLAUDE.md §8); recognise on the search/index isolate. PRD alignment: extends PRD-LB-302, ADR-0016 decision 5.\n\n## Security & privacy\nOn-device by default (MASVS-PRIVACY-1); live previews and committed text are note content, local + E2E-encryptable, never logged (MASVS-STORAGE-1, CWE-117). No silent cloud (OWASP-A03).\n\n## UX notes\nAn editor toolbar toggle (design/Sane Notes.dc.html §7 tool area; docs/design/screens-and-flows.md §7). Live preview styling + accept/reject affordances from `sane_ui` tokens across all looks + dark. Respect Reduce Motion. A11y: preview is announced; accept/reject are labelled controls, keyboard-operable on tablets with keyboards.\n\n## Test plan\n`app/test/editor/convert_as_you_write_test.dart` (incremental preview, accept/reject, off-by-default), `app/integration_test/editor_latency_test.dart` extended to assert no latency regression with the mode on.\n\n## Dependencies\nSN-HWR-003 (recognizer), SN-HWR-008 (confidence/correction). Related editing gestures {{SN-HWR-018}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-010",
+  "parent": "SN-HWR-001",
+  "title": "Implement image OCR adapters (Vision, ML Kit, PaddleOCR, Tesseract.js)",
+  "type": "feature",
+  "priority": "p1",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "images-media",
+   "search"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "L",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-CODE-2",
+   "MASVS-PRIVACY-1",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-20",
+   "CWE-400",
+   "CWE-434"
+  ],
+  "depends_on": [
+   "SN-HWR-002",
+   "SN-MED-001"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nImported photos and scans must become searchable, so Sane Notes OCRs images on import — explicitly beating Goodnotes, which does not OCR imports (PRD-LB-305). Per docs/adr/0016-on-device-ml-and-ai.md decision 3 the engine matrix is **Apple Vision `VNRecognizeTextRequest`** on Apple, **ML Kit Text Recognition v2 / PaddleOCR** on Android, **Tesseract.js / PaddleOCR-WASM** on Web, with cloud/TrOCR only as an explicit opt-in for hard cases. This issue implements the `ImageOcr` capability across those engines behind the {{SN-HWR-002}} registry and feeds recognised text (with on-page quads) into the search index. Because images are untrusted input, decode is resource-capped and off the UI isolate (secure-coding-checklist §1).\n\n## Scope\n**In:** the `ImageOcr` implementations (Vision / ML Kit Text v2 / PaddleOCR / Tesseract.js-WASM); per-platform registration with `onDevice=true`; block/line/word geometry (quads) + confidence; language handling; hand-off of recognised rows to {{SN-HWR-006}}/{{SN-SRCH-002}}; defensive image validation + size caps.\n**Out:** PDF OCR ({{SN-HWR-011}}); image import/EXIF-strip ({{SN-MED-001}}); math from images ({{SN-HWR-014}}); the cloud OCR path body ({{SN-HWR-019}}).\n\n## Acceptance criteria\n- [ ] Importing a photo of printed text produces searchable text with per-word quads; a search result highlights the exact region on the image.\n- [ ] OCR runs off the UI isolate and never blocks scroll; a 12-MP image OCRs without loading an unbounded bitmap (memory capped).\n- [ ] Each platform resolves its on-device engine (Vision on Apple, ML Kit/PaddleOCR on Android, Tesseract.js on Web); no cloud call without the per-request banner.\n- [ ] A malformed/oversized/hostile image fails **closed** into a user-safe error (no crash, no OOM) — fuzz corpus clean.\n- [ ] Recognised text is stored as note content and is deletable with the image.\n\n## Technical notes\n`plugins/sane_ml_native`: Swift `VNRecognizeTextRequest` (accurate level, language hints); Kotlin ML Kit `TextRecognition` + optional PaddleOCR; web Tesseract.js/PaddleOCR-WASM in a Worker. `packages/sane_ml` `ImageOcr` interface returns `OcrResult{blocks[]{text,quad,conf,lang}}`. Validate MIME/size, cap decode dimensions, decode off the UI isolate (secure-coding-checklist §1). Feeds {{SN-HWR-006}} row-writer. Consumes images from {{SN-MED-001}}. PRD-LB-305, PRD-LB-260/261.\n\n## Security & privacy\nUntrusted image input: validate type/size, cap resources before decode, parse off the UI isolate, fail closed (MASVS-CODE-2, CWE-20/400/434). On-device by default (MASVS-PRIVACY-1); cloud OCR only per-request with the banner (OWASP-A03). Recognised text is note content: local, E2E-encryptable, never logged (MASVS-STORAGE-1).\n\n## UX notes\nNo dedicated screen; recognised image text surfaces in Search (design/Sane Notes.dc.html §11) and powers alt-text ({{SN-HWR-021}}). A progress/failed state for large images per PRD-LB-361 (cancellable, retryable). All chrome via `sane_ui` tokens, all looks/dark, AA. A11y: OCR of a scanned image gives screen readers real text.\n\n## Test plan\n`packages/sane_ml/test/image_ocr_test.dart` (mock engines, quad round-trip), `plugins/sane_ml_native/test/image_ocr_channel_test.dart`, fuzz `packages/sane_ml/test/fuzz/image_ocr_malformed_test.dart` (hostile inputs fail closed), golden of a search hit highlighting an image region.\n\n## Dependencies\nSN-HWR-002 (registry), SN-MED-001 (image import). Feeds {{SN-HWR-006}} / {{SN-SRCH-002}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-011",
+  "parent": "SN-HWR-001",
+  "title": "OCR text-layerless PDFs on import for searchable text",
+  "type": "feature",
+  "priority": "p1",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "pdf",
+   "search"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-CODE-2",
+   "MASVS-PRIVACY-1",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-20",
+   "CWE-400"
+  ],
+  "depends_on": [
+   "SN-HWR-010",
+   "SN-PDF-002"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nSane Notes must OCR imported PDFs that lack a text layer so their content becomes searchable — explicitly beating Goodnotes, which only searches PDFs that already carry an OCR layer (PRD-LB-305, PRD-LB-260). For PDFs that already have a text layer, we extract it on first open; for those without, we render pages and OCR them via {{SN-HWR-010}} engines, storing recognised text with on-page quads so a search result scrolls to and highlights the exact location (PRD-LB-261). This runs off the UI isolate and is resource-capped because PDFs are untrusted input (secure-coding-checklist §1; docs/adr/0014-pdf-engine.md).\n\n## Scope\n**In:** detect `hasTextLayer`; extract the text layer (with quads) when present via the PDF engine; otherwise render pages at a sensible DPI and OCR them with {{SN-HWR-010}}; write `SearchIndexRow`s (source=pdf) with page quads; incremental/lazy processing (OCR on first open or on demand), cancellable with progress.\n**Out:** the PDF render/import pipeline itself ({{SN-PDF-002}}); image OCR engines ({{SN-HWR-010}}); highlight-on-result search UX ({{SN-SRCH-001}}).\n\n## Acceptance criteria\n- [ ] Importing a scanned (image-only) PDF makes its text searchable; a hit deep-links to the page and highlights the quad.\n- [ ] A PDF with an existing text layer is indexed by extraction (no redundant OCR) and its quads map correctly.\n- [ ] OCR/extraction runs off the UI isolate, is cancellable, shows progress, and fails into a retryable error (PRD-LB-361); scrolling a 600-page PDF stays at 60 fps during background OCR.\n- [ ] A hostile/malformed PDF fails closed (no crash, no decompression bomb); parser fuzzing clean.\n- [ ] All recognised PDF text is on-device by default and stored as note content.\n\n## Technical notes\n`packages/sane_pdf` supplies `hasTextLayer`, per-page render, and text-with-quads extraction ({{SN-PDF-002}}, ADR-0014); `packages/sane_ml` drives OCR via {{SN-HWR-010}} for image-only pages. Rows per PRD-LB-260/261 with source=pdf. Cap page render DPI and total work; process on a background isolate (overview §6). Coordinate with the PDF free-plan meter (PRD-LB) but OCR itself is free/on-device.\n\n## Security & privacy\nPDFs are hostile input: validate, cap resources before decode, parse off the UI isolate, fail closed (MASVS-CODE-2, CWE-20/400). On-device by default (MASVS-PRIVACY-1); cloud OCR only per-request with the banner (OWASP-A03). Recognised text is note content: local, E2E-encryptable, never logged (MASVS-STORAGE-1).\n\n## UX notes\nSurfaces in Search (design/Sane Notes.dc.html §11) and the in-note find (PRD-LB-264). A background \"Making this PDF searchable…\" progress affordance, cancellable (PRD-LB-361). `sane_ui` tokens, all looks/dark, AA. A11y: OCR'd PDF text becomes screen-reader-accessible and alt-text-capable ({{SN-HWR-021}}).\n\n## Test plan\n`packages/sane_ml/test/pdf_ocr_test.dart` (text-layer extraction vs OCR path, quad mapping), `packages/sane_pdf/test/fuzz/pdf_ocr_malformed_test.dart` (fail closed), `app/integration_test/pdf_search_deeplink_test.dart`.\n\n## Dependencies\nSN-HWR-010 (OCR engines), SN-PDF-002 (PDF render/text extraction).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-012",
+  "parent": "SN-HWR-001",
+  "title": "Build shape recognition and beautification engine",
+  "type": "feature",
+  "priority": "p2",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "shapes-diagrams"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "L",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "OWASP-A03",
+   "CWE-400"
+  ],
+  "depends_on": [
+   "SN-HWR-002",
+   "SN-INK-002"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nDrawing a rough shape and holding should snap it to a clean, still-editable form — line, circle, ellipse, triangle, square/rectangle, polygon, arrow (PRD-LB-308; resolves screens Open Q9's rectangle-only gap). Per docs/adr/0016-on-device-ml-and-ai.md decision 3 and ink-engine §9 the pipeline is: RDP simplify → `$P`/`$Q` recognizer (or ML Kit shape classifier as a mobile accelerator) for \"which shape\" → least-squares circle/ellipse (Taubin/Fitzgibbon) + corner-snapping for \"make it perfect\", with optional angle-snap to 0/45/90°. This issue delivers the `ShapeRecognizer` capability; the shape *tool* interaction/UX lives in {{SN-SHP-001}}.\n\n## Scope\n**In:** the `ShapeRecognizer` in `packages/sane_ml` — RDP simplification, `$P`/`$Q` classification, least-squares fit for circle/ellipse, corner/vertex snapping, angle-snap; the recognised shape as editable geometry (vertices/handles) with stroke+fill retained; optional ML Kit shape-classifier acceleration on mobile; confidence output.\n**Out:** the dwell-to-snap tool UX, rulers/connectors, and the shape palette ({{SN-SHP-001}}, PRD-ED shape set); hand-drawn table recognition (shape engine MAY, tracked elsewhere).\n\n## Acceptance criteria\n- [ ] Rough drawings of each of line, circle, ellipse, triangle, square/rectangle, polygon, and arrow classify correctly on the fixture set (≥ the target accuracy in {{SN-HWR-020}}).\n- [ ] A recognised shape returns clean editable geometry (vertices/handles) preserving the stroke width, colour and fill; it remains editable, not a flattened image.\n- [ ] Circle/ellipse fits use least-squares (Taubin/Fitzgibbon), not a bounding-box guess; near-axis angles snap to 0/45/90° when enabled.\n- [ ] Recognition runs off the UI isolate and returns within a hold/dwell budget without dropping a writing frame.\n- [ ] Everything is on-device; no network path.\n\n## Technical notes\n`packages/sane_ml/lib/src/shapes/` (RDP, `$P`/`$Q`, least-squares fits) consuming `sane_ink` polylines ({{SN-INK-002}}); optional native ML Kit shape classifier via `sane_ml_native`. Emits editable shape objects for `sane_core` (decision 4). Cross-references ink-engine §9 and PRD-LB-308. The tool that calls this (dwell timing, haptics on `pathCompleted`) is {{SN-SHP-001}}.\n\n## Security & privacy\nFully on-device (MASVS-PRIVACY-1); no egress (OWASP-A03). Bound iteration counts in RDP/`$Q` to avoid pathological CPU on adversarial stroke sets (CWE-400). No content logged.\n\n## UX notes\nBacks the Shapes surface (design/Sane Notes.dc.html §7.3). Snapped shapes get semantic labels for screen readers; a haptic fires on recognition ({{SN-SHP-001}}). Rendering via `sane_ui`/`sane_render` across all looks + dark. A11y: shape objects expose a description (\"circle\", \"arrow\").\n\n## Test plan\n`packages/sane_ml/test/shape_recognizer_test.dart` (per-shape classification on fixtures, least-squares fit accuracy, angle-snap), golden of beautified shapes across looks, perf micro-benchmark for dwell budget.\n\n## Dependencies\nSN-HWR-002 (registry), SN-INK-002 (stroke polylines). Tool UX in {{SN-SHP-001}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-013",
+  "parent": "SN-HWR-001",
+  "title": "Provide handwriting refine, straighten and reflow backing",
+  "type": "feature",
+  "priority": "p2",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "editor"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "M",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-117"
+  ],
+  "depends_on": [
+   "SN-HWR-003",
+   "SN-ED-004"
+  ],
+  "labels_extra": [
+   "agent-ready"
+  ],
+  "body": "## Context\nSane Notes offers Smart-Script-style clean-up on selected ink: **Refine** (smooth/straighten while preserving the writer's style), **Straighten** (level to baseline), and **Reflow/Reorganize** (adjust spacing / insert space so ink behaves like typed text) — all non-destructive, undoable, with ink kept as the source of truth (PRD-ED-187). The recognition/geometry backing for these actions lives in the recognition layer (prd-02 §11; ADR-0016 decision 5), because reflow needs word/line segmentation and baseline detection from the same engine that powers search and convert. This issue provides that backing (segmentation, baseline/slant estimation, spacing model) and the transform ops; the editor exposes the commands ({{SN-ED-004}} selection, PRD-ED-187 UX).\n\n## Scope\n**In:** word/line segmentation and baseline + x-height + slant estimation from selected strokes; a Refine transform (per-stroke smoothing preserving style), a Straighten transform (rotate/translate to level baseline), and a Reflow transform (re-space words/insert gaps) producing new stroke geometry as undoable ops; style-preservation guards.\n**Out:** the editor command surfacing and toolbar (PRD-ED-187, {{SN-ED-004}}); spellcheck ({{SN-HWR-017}}); convert-to-text ({{SN-HWR-007}}).\n\n## Acceptance criteria\n- [ ] Straighten levels a slanted line of handwriting to a horizontal baseline while preserving relative letter shapes; a single Undo restores the original strokes exactly.\n- [ ] Reflow inserts/removes horizontal space between words so text can be reorganised like typed text, without distorting individual glyph strokes.\n- [ ] Refine smooths jitter while keeping the writer's recognisable style (measured against a before/after golden set); it is non-destructive.\n- [ ] All three transforms run off the UI isolate and are fully undoable via the op-log ({{SN-ED-003}}); ink remains the source of truth.\n- [ ] Entirely on-device; no network path.\n\n## Technical notes\n`packages/sane_ml/lib/src/refine/` (segmentation, baseline/slant fit, spacing) reusing recognition bounds from {{SN-HWR-003}}; transforms emit `sane_core` stroke-edit ops (undoable, {{SN-ED-003}}). Consumes selection from {{SN-ED-004}}. Backs PRD-ED-187; cross-refs Apple Smart Script, Samsung Straighten, Goodnotes Reorganization.\n\n## Security & privacy\nOn-device (MASVS-PRIVACY-1); transformed ink is note content, local + E2E-encryptable, never logged (MASVS-STORAGE-1, CWE-117). No cloud path (OWASP-A03). Original ink always recoverable via Undo (improves legibility, an a11y win).\n\n## UX notes\nCommands live on the selection bar (design/Sane Notes.dc.html §7.4; PRD-ED-187) — Refine / Straighten / Reflow. Non-destructive with clear Undo; respect Reduce Motion on any animated reflow. `sane_ui` tokens across all looks + dark. A11y: transforms improve legibility; controls labelled and keyboard-operable.\n\n## Test plan\n`packages/sane_ml/test/refine_reflow_test.dart` (baseline/slant fit, spacing, undo-restores-exact), golden `app/test/golden/handwriting_straighten_before_after_*`.\n\n## Dependencies\nSN-HWR-003 (recognition bounds), SN-ED-004 (selection). Command UX PRD-ED-187 / {{SN-ED-003}} undo.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ },
+ {
+  "key": "SN-HWR-014",
+  "parent": "SN-HWR-001",
+  "title": "Add math recognition producing typeset expressions and LaTeX",
+  "type": "feature",
+  "priority": "p2",
+  "platforms": [
+   "all"
+  ],
+  "areas": [
+   "ocr-hwr",
+   "text"
+  ],
+  "milestone": "M3 Audio & Recognition",
+  "size": "L",
+  "sdlc": "implementation",
+  "security": [
+   "MASVS-PRIVACY-1",
+   "MASVS-NETWORK-1",
+   "MASVS-STORAGE-1",
+   "OWASP-A03",
+   "CWE-117",
+   "CWE-319"
+  ],
+  "depends_on": [
+   "SN-HWR-002",
+   "SN-HWR-008"
+  ],
+  "labels_extra": [
+   "agent-ready",
+   "needs-decision"
+  ],
+  "body": "## Context\nConvert-to-math turns a lassoed equation into a typeset expression plus **editable LaTeX** (copyable, copy-as-image) — PRD-LB-306, PRD-ED-112. Per docs/adr/0016-on-device-ml-and-ai.md decision 3 the on-device engines are **Apple Math Notes** (OS 26) or **MyScript Math** on Apple and **MyScript Math** on Android, with **Mathpix** as an explicit cloud opt-in for hard/printed/chemistry content; there is no local math engine on Web (cloud opt-in only). This issue delivers the `MathRecognizer` capability and its LaTeX output, reusing the confidence/correction UX ({{SN-HWR-008}}); the render target (typeset/MathML block) is PRD-ED-112 and the solve step is {{SN-HWR-015}}.\n\n## Scope\n**In:** the `MathRecognizer` returning a typeset expression + LaTeX + confidence; Apple Math Notes / MyScript Math on-device adapters; the Mathpix cloud adapter behind the per-request opt-in ({{SN-HWR-019}}); LaTeX edit + copy-as-image; per-notebook math language/notation where supported.\n**Out:** the solve/worked-steps engine ({{SN-HWR-015}}); the typeset render widget/MathML a11y (PRD-ED-112, editor); equation graphing (backlog, PRD-CO-163).\n\n## Acceptance criteria\n- [ ] Lassoing a handwritten equation returns a typeset expression and valid, editable LaTeX; editing the LaTeX re-renders the typeset form.\n- [ ] On-device engine is used by default (Apple Math Notes/MyScript); Mathpix is used only after the per-request data-leaves-device banner is confirmed ({{SN-HWR-019}}).\n- [ ] Low-confidence recognition surfaces the correction UX ({{SN-HWR-008}}) rather than a silent wrong answer.\n- [ ] Copy-as-image and copy-LaTeX both work; the original ink is preserved.\n- [ ] Web with no local engine reports unavailable and offers cloud opt-in (never silent).\n\n## Technical notes\n`packages/sane_ml` `MathRecognizer`; `plugins/sane_ml_native` Apple Math Notes / MyScript Math bindings; Mathpix via the cloud adapter (opt-in, {{SN-HWR-019}}). LaTeX rendered by the editor target (PRD-ED-112). **needs-decision:** MyScript vs ML-Kit-only overall recognition posture is a maintainer gate before M4 (CLAUDE.md §13, PRD-02 §17 Q5) — implement behind the interface so either resolves; MyScript's 30-day-connectivity licence caveat is a documented vendor risk (ADR-0016 decision 9). Record engines/licences in the SBOM.\n\n## Security & privacy\nOn-device by default (MASVS-PRIVACY-1); Mathpix is a per-request cloud opt-in with the banner over TLS (MASVS-NETWORK-1, OWASP-A03, CWE-319) — never a silent fallback. Recognised math/LaTeX is note content: local, E2E-encryptable, never logged (MASVS-STORAGE-1, CWE-117).\n\n## UX notes\nSelection bar \"Convert to math\" and the typeset result (design/Sane Notes.dc.html §7.4). Confidence/correction from {{SN-HWR-008}}. A11y (mandatory): expose a text/MathML representation, not an image (PRD-ED-112). `sane_ui` tokens across all looks + dark; copy actions labelled.\n\n## Test plan\n`packages/sane_ml/test/math_recognizer_test.dart` (mock → LaTeX round-trip, confidence), `app/test/editor/math_convert_test.dart` (typeset render, copy-as-image, cloud-opt-in gate), fixtures in {{SN-HWR-020}}.\n\n## Dependencies\nSN-HWR-002 (registry), SN-HWR-008 (correction UX). Cloud path {{SN-HWR-019}}; solve {{SN-HWR-015}}; render PRD-ED-112.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/product/prd-02-library-documents-audio-search.md §11)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, prompts, transcripts, or recognised text in logs"
+ }
+]

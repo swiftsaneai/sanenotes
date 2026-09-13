@@ -1,0 +1,261 @@
+[
+  {
+    "key": "SN-SET-009",
+    "title": "Build the Appearance settings tab (look, dark mode, wallpaper)",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "settings",
+      "theming",
+      "design-system"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-SET-001",
+    "depends_on": [
+      "SN-SET-002",
+      "SN-SET-003",
+      "SN-SET-004",
+      "SN-DS-015"
+    ],
+    "security": [
+      "MASVS-PRIVACY-3",
+      "MASVS-CODE-4",
+      "CWE-400",
+      "CWE-532"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nThe Appearance tab is where a student picks one of the 17 looks, toggles dark mode, and sets a wallpaper (`docs/design/screens-and-flows.md` §12; PRD-SET-011/012/013/021). The look and dark-mode choices are per-profile and restyle the entire app including notebook pages; the wallpaper is explicitly device-scoped ('saved on this device'). The reusable theme-card grid, dark toggle and wallpaper card are built as design-system widgets ({{SN-DS-015}}, {{SN-DS-014}}); this tab integrates them into Settings, wires persistence, and enforces the design invariant that PDFs keep their original colours even in dark mode.\n\n## Scope\n\n**In:** the `AppearanceTab` in `app/lib/settings/tabs/`; the `Look` control — the 17-card `SaneThemeGrid` (grouped Warm/Clean/Bold/Soft/Raw) writing `look` (default paper) with copy \"Seventeen looks… Every one restyles the whole app, including your notebooks.\"; the `darkMode` toggle (default system) with copy \"Every look has a night version; PDFs keep their original colors.\"; the wallpaper card (`SaneWallpaperCard`) — Upload photo + 6 presets (Aurora, Dusk, Ink wash, Sand, Meadow, Graphite) + Blur (0–40px) + Veil (0–80%) + Remove, persisted **device-scoped** (localStorage/device store), with a \"Showing <name> — saved on this device\" line; enforcing that changing look/dark never recolours PDF pages; wallpaper backdrop turns panels to frosted glass while honouring `prefers-reduced-transparency`.\n**Out:** the token/ThemeExtension engine and the 17 looks themselves ({{SN-DS-002}}, {{SN-DS-011}}); the reusable grid/wallpaper widgets ({{SN-DS-015}}, {{SN-DS-014}}); the wallpaper image decode/downscale internals (in {{SN-DS-014}}).\n\n## Acceptance criteria\n\n- [ ] The Look grid shows all 17 named looks; selecting one sets `look` per profile and restyles the whole app live including notebook pages (PRD-SET-011).\n- [ ] The dark-mode toggle sets `darkMode` (system/light/dark) per profile; every look renders a correct night variant (PRD-SET-012).\n- [ ] Switching look or dark mode never alters PDF page colours (design invariant, PRD-SET-021).\n- [ ] Wallpaper: upload + 6 presets work; Blur (0–40px) and Veil (0–80%) sliders update live; 'Remove' clears it; the choice is device-scoped and survives restart but does **not** sync or follow the profile to another device (PRD-SET-013, PRD-SET-019).\n- [ ] With a wallpaper set, panels become frosted glass but drop to opaque under `prefers-reduced-transparency`; note text stays legible (contrast ≥ 4.5:1).\n- [ ] Uploaded images are downscaled and decoded safely off the UI isolate under a size cap; a hostile/oversized image fails closed to a toast (MASVS-CODE-4, CWE-400).\n- [ ] Correct across all 17 looks + dark; theme cards are a keyboard-navigable radio group with named labels.\n\n## Technical notes\n\n`app/lib/settings/tabs/appearance_tab.dart` consuming `SaneThemeGrid`/`SaneToggle`/`SaneWallpaperCard` from {{SN-DS-015}}/{{SN-DS-014}}. `look`/`darkMode` persist per profile via {{SN-SET-003}} and drive `SaneLookScope` ({{SN-DS-011}}). Wallpaper meta persists device-scoped (excluded from the sync op-log). PDF-colour invariant enforced by the PDF render layer never inheriting the look's ground/ink tokens. Downscale/decode uses the hardened image path (off-isolate, capped).\n\n## Security & privacy\n\nWallpaper upload is untrusted image input: validate type/size, cap before decode, decode off the UI isolate (MASVS-CODE-4, CWE-400). The image stays on-device and is never uploaded or logged (MASVS-PRIVACY-3, CWE-532). Look/dark are non-sensitive local preferences.\n\n## UX notes\n\nDesign 'Appearance' (screens §12; component inventory §8 `SaneThemeGrid`, `SaneWallpaperCard`). Looks are grouped Warm/Clean/Bold/Soft/Raw. Empty wallpaper state shows the presets. Error on a bad upload → toast, no red. Reduce-motion cross-fades look changes.\n\n## Test plan\n\nWidget: `app/test/settings/appearance_tab_test.dart` (17 cards, look/dark persist per profile, wallpaper device-scoped, blur/veil ranges, reduced-transparency fallback). Golden: `app/test/settings/golden/appearance_tab_golden_test.dart` across looks + dark. Security: `app/test/settings/wallpaper_upload_test.dart` (oversized/hostile image fails closed).\n\n## Dependencies\n\n{{SN-SET-002}}, {{SN-SET-003}}, {{SN-SET-004}}, {{SN-DS-015}}.\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR/PRD updated if behaviour, a preference key/default/scope, or a control mapping changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs verified in docs/security/controls-matrix.md"
+  },
+  {
+    "key": "SN-SET-010",
+    "title": "Build the Notifications settings tab",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "settings",
+      "notifications"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "parent": "SN-SET-001",
+    "depends_on": [
+      "SN-SET-002",
+      "SN-SET-003",
+      "SN-SET-004",
+      "SN-NOTF-001"
+    ],
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-PLATFORM-3",
+      "CWE-532"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nThe Notifications tab carries three category toggles (`docs/design/screens-and-flows.md` §12; PRD-SET-014/015/016, PRD-NOTIF): `reminders` (class reminders, on), `sharedNotif` (shared notebook activity, on), and `tips` (weekly tip, off). These toggles gate categories only — the OS notification permission is requested separately at first relevant use, not here (PRD-NOTIF-001). Shared-activity notifications depend on collaboration (M6) and stay inert until then. Class reminders need a timetable the app does not yet collect, delivered by {{SN-SET-011}}.\n\n## Scope\n\n**In:** the `NotificationsTab` in `app/lib/settings/tabs/`; the three toggles with verbatim copy — `reminders` (on) \"Class reminders — Open the right notebook 5 minutes before a lecture\"; `sharedNotif` (on) \"Shared notebook activity — When someone writes in a notebook you share\"; `tips` (off) \"Tips — One short tip a week, never more\"; an inline note that turning a category on will request the OS notification permission at first use if not yet granted; a link to the class-timetable editor ({{SN-SET-011}}) shown under `reminders`; the `sharedNotif` row disabled with an 'Available with shared notebooks' hint until collaboration ships (PRD-NOTIF-003).\n**Out:** notification scheduling/delivery ({{SN-NOTF-001}}); the timetable editor ({{SN-SET-011}}); the OS permission request UI (owned by the privacy permissions panel {{SN-PRV-004}}).\n\n## Acceptance criteria\n\n- [ ] All three toggles exist with the exact keys, defaults and verbatim copy of PRD-SET-014/015/016.\n- [ ] Toggling a category on does not itself grant the OS permission; the tab explains the permission is requested at first relevant use (PRD-NOTIF-001).\n- [ ] `sharedNotif` is present but disabled with an explanatory hint until collaboration ships (PRD-NOTIF-003).\n- [ ] Enabling `reminders` surfaces a link to set up a class timetable ({{SN-SET-011}}).\n- [ ] Changes apply immediately and persist per profile; renders in all 17 looks + dark; targets ≥ 44pt.\n\n## Technical notes\n\n`app/lib/settings/tabs/notifications_tab.dart`; `SaneSettingRow`/`SaneToggle` ({{SN-SET-004}}); writes via {{SN-SET-003}}. Category toggles gate the notification scheduler ({{SN-NOTF-001}}); nothing here calls the OS permission API directly (that is point-of-use, {{SN-PRV-004}}). Reminders/tips are locally scheduled, no server (PRD-NOTIF-002/004).\n\n## Security & privacy\n\nNotification categories are consent state (MASVS-PRIVACY-2). Payloads must never carry note content and are suppressed for locked profiles — enforced by the scheduler, referenced here (MASVS-PLATFORM-3, PRD-NOTIF-001, PRD-LEAK-004). No PII logged (CWE-532).\n\n## UX notes\n\nDesign 'Notifications' (screens §12). The disabled `sharedNotif` row uses the muted-hint pattern, never a dead toggle. Tips copy promises 'never more' than weekly and one-tap off from the notification itself.\n\n## Test plan\n\nWidget: `app/test/settings/notifications_tab_test.dart` (keys/defaults/copy; sharedNotif disabled pre-collab; reminders link present). Golden across looks + dark.\n\n## Dependencies\n\n{{SN-SET-002}}, {{SN-SET-003}}, {{SN-SET-004}}, {{SN-NOTF-001}}.\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR/PRD updated if behaviour, a preference key/default/scope, or a control mapping changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs verified in docs/security/controls-matrix.md"
+  },
+  {
+    "key": "SN-SET-011",
+    "title": "Build the class-reminder timetable editor and local scheduling",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "settings",
+      "notifications"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-SET-001",
+    "depends_on": [
+      "SN-SET-010",
+      "SN-NOTF-001"
+    ],
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PLATFORM-3",
+      "CWE-532"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "needs-decision"
+    ],
+    "body": "## Context\n\n'Class reminders — Open the right notebook 5 minutes before a lecture' (`reminders`, PRD-SET-014) needs a class schedule the app does not currently collect (design open question 19). PRD-NOTIF-002 requires a lightweight timetable source: a manual class-schedule editor (subject → day/time → notebook) and, optionally, device-calendar import with explicit consent. Reminders MUST be scheduled locally, never via a server. **needs-decision** (CLAUDE.md §13, PRD §15.4): whether v1 ships the manual editor only, calendar import, or both, and in which milestone — this issue implements the manual editor as the decisive default and gates calendar import behind the decision.\n\n## Scope\n\n**In:** a `TimetableEditor` reachable from the Notifications tab ({{SN-SET-010}}); create/edit/delete recurring class entries (subject, weekday(s), start time, linked notebook) persisted per profile; local notification scheduling that fires 5 minutes before each class and deep-links to the linked notebook (never auto-mutating it, CLAUDE.md §7); enable/disable per entry; graceful handling when a linked notebook is deleted (entry flagged, no crash); a stub/flag for optional device-calendar import (behind the maintainer decision, off by default).\n**Out:** the notification delivery engine and permission request ({{SN-NOTF-001}}, {{SN-PRV-004}}); calendar-import implementation until the decision lands; collaboration-driven notifications.\n\n## Acceptance criteria\n\n- [ ] A user can add a class entry (subject, day(s), time, notebook) and see it listed; edit and delete work; entries persist per profile.\n- [ ] With `reminders` on and OS permission granted, a local notification fires ~5 minutes before each scheduled class and, on tap, opens the linked notebook read-only in the editor (deep link lands in view, never auto-mutates — CLAUDE.md §7).\n- [ ] Reminders are scheduled entirely locally; no network call is made to schedule or deliver them (PRD-NOTIF-002).\n- [ ] Deleting the linked notebook flags the entry with a fix-up prompt rather than crashing or firing a broken reminder.\n- [ ] Calendar import is present only as a disabled/flagged option pending the maintainer decision; the default path is the manual editor.\n- [ ] Renders in all 17 looks + dark; time/day pickers are AT-labelled and keyboard-operable on web.\n\n## Technical notes\n\n`app/lib/settings/timetable_editor.dart`; entries persist via {{SN-SET-003}} (per-profile). Local scheduling through the notification facade ({{SN-NOTF-001}}) using platform local-notification APIs (`docs/platform/*`), rescheduled on entry change and app launch. Calendar import, if enabled later, requests calendar permission at point of use ({{SN-PRV-004}}) with a purpose string. Deep links use the verified in-app route, landing in view/confirm.\n\n## Security & privacy\n\nTimetable entries are minimal personal data kept on-device (MASVS-PRIVACY-1); notification payloads carry only a user-authored title, never note content, and are suppressed for locked profiles (MASVS-PLATFORM-3, PRD-NOTIF-001). Calendar access, if used, is point-of-use consent. No schedule or notebook name logged (CWE-532).\n\n## UX notes\n\nDesign gap resolved by PRD-NOTIF-002 (screens §12 'Notifications'; open question 19). Empty state: 'Add your classes and we'll open the right notebook before each one.' Error (permission denied): a toast + link to OS settings. Reduce-motion static transitions.\n\n## Test plan\n\nWidget: `app/test/settings/timetable_editor_test.dart` (add/edit/delete, deleted-notebook flag, calendar-import gated). Integration: `app/integration_test/settings_reminder_schedule_test.dart` (a scheduled reminder deep-links to the notebook in view mode; no network). Golden across looks + dark.\n\n## Dependencies\n\n{{SN-SET-010}}, {{SN-NOTF-001}}.\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR/PRD updated if behaviour, a preference key/default/scope, or a control mapping changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs verified in docs/security/controls-matrix.md"
+  },
+  {
+    "key": "SN-SET-012",
+    "title": "Build the Privacy & export settings tab",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "settings",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-SET-001",
+    "depends_on": [
+      "SN-SET-002",
+      "SN-SET-003",
+      "SN-SET-004",
+      "SN-PRV-001"
+    ],
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-4",
+      "OWASP-A02",
+      "CWE-532"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nThe Privacy & export tab makes the local-first promise legible and lets a student take their data out (`docs/design/screens-and-flows.md` §12; PRD-SET-017/018/022, PRD-PRIV). It owns the `onDevice` toggle (on-device handwriting recognition, default on) and the 'Export everything' action, and it is the entry point into the fuller privacy dashboard ({{SN-PRV-001}}). The `onDevice` default of **on** is a locked-decision guarantee (#6): ink never leaves the device to become searchable, and turning it off is not permission to silently send ink to the cloud — cloud inference always needs its own per-request opt-in (PRD-SET-022).\n\n## Scope\n\n**In:** the `PrivacyExportTab` in `app/lib/settings/tabs/`; the `onDevice` toggle (on) with verbatim copy \"On-device handwriting recognition — Your ink never leaves the device to become searchable\"; the 'Export everything' action (`exportAll`) that runs the local, network-free ZIP export (PDF + .sane per notebook) with the toast \"Preparing a ZIP of every notebook (PDF + .sane)…\" and the one-time unencrypted-archive warning; a 'What leaves this device' entry and links into the privacy dashboard, permissions panel, telemetry consent, and data-deletion flows ({{SN-PRV-002}}, {{SN-PRV-004}}, {{SN-PRV-009}}, {{SN-PRV-006}}); a visible Privacy Policy link.\n**Out:** the export/archive engine internals (`BKP`, owned by the storage/export area); the privacy dashboard, permissions panel, telemetry surface and deletion flows themselves ({{SN-PRV-001}} children); cloud-AI opt-in UI (owned by the AI area).\n\n## Acceptance criteria\n\n- [ ] `onDevice` defaults on with verbatim copy; turning it off only relaxes on-device indexing and does NOT enable any cloud send — cloud inference still needs its own per-request opt-in with a 'data leaves device' indicator (PRD-SET-022, decision #6).\n- [ ] 'Export everything' runs with no network, produces a ZIP of PDF + .sane for the current profile, shows the toast, and hands the archive to the OS share/save sheet (PRD-BKP-001/002).\n- [ ] A one-time warning states the exported archive is unencrypted and the user's responsibility to store safely (PRD-BKP-002).\n- [ ] The tab links to the privacy dashboard, permissions, telemetry consent, data-deletion and the Privacy Policy ({{SN-PRV-001}}).\n- [ ] Changes apply immediately and persist per profile; renders in all 17 looks + dark; targets ≥ 44pt.\n\n## Technical notes\n\n`app/lib/settings/tabs/privacy_export_tab.dart`; `SaneSettingRow`/`SaneToggle`/`SaneButton` ({{SN-SET-004}}); `onDevice` persists via {{SN-SET-003}} and is read by the recognition/index pipeline. 'Export everything' calls the export service (decrypts to cleartext into the archive, off the UI isolate). Dashboard links route to {{SN-PRV-001}} surfaces.\n\n## Security & privacy\n\n`onDevice` is a privacy consent guarantee (MASVS-PRIVACY-1/2): default on keeps ink local; no analytics/ad SDK ships (MASVS-PRIVACY-4). The export archive is the user's plaintext copy — it is decrypted only on-device and the disclosure risk is flagged to the user (OWASP-A02, LINDDUN-Disclosure). No content, path, email or phone logged (CWE-532).\n\n## UX notes\n\nDesign 'Privacy & export' (screens §12). Export shows a progress toast (not just a spinner) for large libraries. The unencrypted-archive warning appears once and is dismissible. Links to the dashboard use the standard row-with-chevron pattern.\n\n## Test plan\n\nWidget: `app/test/settings/privacy_export_tab_test.dart` (onDevice default/copy; off does not enable cloud; export warning shown once; dashboard links). Integration: `app/integration_test/settings_export_all_test.dart` (export runs offline and yields a ZIP with PDF + .sane). Golden across looks + dark.\n\n## Dependencies\n\n{{SN-SET-002}}, {{SN-SET-003}}, {{SN-SET-004}}, {{SN-PRV-001}}.\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR/PRD updated if behaviour, a preference key/default/scope, or a control mapping changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs verified in docs/security/controls-matrix.md"
+  },
+  {
+    "key": "SN-SET-013",
+    "title": "Build the Security settings section (app lock, recovery, devices, leak controls)",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "settings",
+      "security",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-SET-001",
+    "depends_on": [
+      "SN-SET-002",
+      "SN-SET-003",
+      "SN-SET-004",
+      "SN-CRY-001",
+      "SN-AUTH-001"
+    ],
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-STORAGE-2",
+      "MASVS-PLATFORM-3",
+      "MASVS-CRYPTO-2",
+      "OWASP-A04",
+      "CWE-532"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nPRD-SET-023 requires a Security area (under Sync & backup or its own row) that surfaces the device- and account-protection controls in one place: app-lock configuration, per-profile lock, recovery-code re-view/regenerate, paired devices, and the clipboard/screenshot protections. These features are implemented by the identity, crypto and platform-hardening areas; this issue builds the **settings surface** that configures and routes to them, so a student can find every protection in one predictable place. It composes app lock (`LOCK`), leak protections (`LEAK`), recovery (`KEY`), and multi-device (`SYNC`).\n\n## Scope\n\n**In:** a `SecuritySection` in `app/lib/settings/`; App Lock config — enable/disable + timeout (Immediately / 1 min / 5 min / 15 min) using device biometric/passcode, off by default (PRD-LOCK-001); a per-profile lock control (PRD-PROF-005); a 'Hide contents when app is backgrounded' toggle and a screenshot/screen-record deterrence toggle (PRD-LEAK-001/002); a 'View/Regenerate recovery code' action gated behind biometric/app-lock (PRD-KEY-006); a 'Paired devices' list entry (name, platform, last-seen, revoke) linking to the multi-device screen (PRD-SYNC-014); honest copy that the app never adds its own weaker PIN that undercuts the platform gate (PRD-LOCK-002).\n**Out:** the biometric/app-lock engine ({{SN-AUTH-001}}, LOCK requirements); recovery-code generation/escrow and key rotation ({{SN-CRY-001}}, {{SN-CRY-003}}); FLAG_SECURE/iOS overlay implementation (platform hardening); the paired-devices screen internals ({{SN-SYNC-001}}).\n\n## Acceptance criteria\n\n- [ ] App Lock can be enabled with a timeout choice (Immediately/1/5/15 min) and, when on, requires device biometric or passcode on launch and on return after the timeout; off by default (PRD-LOCK-001).\n- [ ] The section exposes a per-profile lock control and never offers a custom app PIN that weakens the platform gate (PRD-PROF-005, PRD-LOCK-002).\n- [ ] 'Hide contents when app is backgrounded' and screenshot/record deterrence toggles exist and are clearly labelled best-effort, not unbreakable (PRD-LEAK-001/002).\n- [ ] 'View/Regenerate recovery code' is gated behind biometric/app-lock and routes to the recovery-code surface; regenerate warns it invalidates the old code (PRD-KEY-006).\n- [ ] 'Paired devices' links to the multi-device screen and reflects the current device name (PRD-SYNC-014).\n- [ ] Renders in all 17 looks + dark; every control is AT-labelled; targets ≥ 44pt.\n\n## Technical notes\n\n`app/lib/settings/security_section.dart`; toggles/segments via `SaneSettingRow` ({{SN-SET-004}}); app-lock timeout persists via {{SN-SET-003}}. Biometric flows call the auth/biometric facade ({{SN-AUTH-001}}); recovery routes to {{SN-CRY-003}}; leak toggles set flags consumed by the platform-hardening layer (Android FLAG_SECURE, iOS resign-active overlay, MASVS-PLATFORM-3). No PIN of our own (MASVS-AUTH-1).\n\n## Security & privacy\n\nThis is the security control plane: app lock (MASVS-AUTH-1), secure token/key storage referenced not exposed (MASVS-STORAGE-2), recovery escrow (MASVS-CRYPTO-2), screenshot/clipboard/backup hardening (MASVS-PLATFORM-3). Insecure design avoided by never adding a weaker gate (OWASP-A04). No secret, key or recovery code is rendered inline or logged (CWE-532).\n\n## UX notes\n\nDesign has no explicit Security tab (six-tab design); PRD-SET-023 places this as a section under Sync & backup or its own row — implemented here as a labelled section reachable from Sync & backup, noted in Technical notes as a sensible default. Deterrence toggles state 'best-effort'. Recovery action shows a biometric prompt before revealing anything.\n\n## Test plan\n\nWidget: `app/test/settings/security_section_test.dart` (app-lock enable+timeout; no custom PIN; recovery gated; leak toggles; paired-devices link). Integration: `app/integration_test/settings_app_lock_test.dart` (lock on background+timeout requires biometric). Golden across looks + dark.\n\n## Dependencies\n\n{{SN-SET-002}}, {{SN-SET-003}}, {{SN-SET-004}}, {{SN-CRY-001}}, {{SN-AUTH-001}}.\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR/PRD updated if behaviour, a preference key/default/scope, or a control mapping changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs verified in docs/security/controls-matrix.md"
+  },
+  {
+    "key": "SN-SET-014",
+    "title": "Build the storage usage breakdown view",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "settings",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "parent": "SN-SET-001",
+    "depends_on": [
+      "SN-SET-006",
+      "SN-CORE-004",
+      "SN-CORE-014"
+    ],
+    "security": [
+      "MASVS-PRIVACY-3",
+      "CWE-532"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\n\nThe Sync & backup storage meter (\"1.8 GB of 5 GB\") answers 'how much', but a student who is near the cap needs 'what' and 'how do I reduce it'. This view expands the meter into a breakdown by content type (audio, PDFs, images, ink/notes) with the largest notebooks called out, so the \"Audio recordings use most of it\" copy (screens §12) becomes actionable. It reads the local content-addressed blob store and DB; it is a read-only reporting surface plus links to the places a user can free space.\n\n## Scope\n\n**In:** a `StorageUsageView` reachable from the storage meter ({{SN-SET-006}}); a total used/cap headline; a by-type breakdown (audio, PDFs, images, ink/notes, other) with sizes and proportional bars; the top few space-consuming notebooks with a jump-to link; a 'what counts toward the cap' explanation tied to the soft-cap reinterpretation (PRD-SYNC-012); links to Trash and to Export-then-delete for reclaiming space; a refresh that recomputes off the UI isolate.\n**Out:** the sync soft-cap enforcement/pause logic ({{SN-SYNC-001}}); deleting notebooks (library area); the Upgrade flow ({{SN-BILL-001}}); blob GC ({{SN-CORE-020}}).\n\n## Acceptance criteria\n\n- [ ] The view shows total used vs cap and a by-type breakdown whose parts sum to the total; each row is AT-labelled with type and size.\n- [ ] The top space-consuming notebooks are listed with sizes and a jump-to affordance.\n- [ ] The breakdown is computed off the UI isolate and shows a skeleton while computing; a large library does not jank the UI (no frame > 16.7 ms).\n- [ ] Copy explains what counts toward the soft cap (PRD-SYNC-012) and never blocks local note-taking.\n- [ ] Renders in all 17 looks + dark; targets ≥ 44pt.\n\n## Technical notes\n\n`app/lib/settings/storage_usage_view.dart`; reads sizes from the drift DB ({{SN-CORE-004}}) and the content-addressed blob store ({{SN-CORE-014}}) via a one-shot `Isolate.run` aggregation; `SaneProgress` bars per type. No blob content read into memory — sizes only. Values are bytes, formatted for locale.\n\n## Security & privacy\n\nNone beyond baseline: reports sizes only, never note content, titles or PII; nothing logged (MASVS-PRIVACY-3, CWE-532); computation stays on-device.\n\n## UX notes\n\nDesign 'Sync & backup' storage meter (screens §12) expanded. Loading: skeleton bars. Empty (tiny library): 'You're using almost no space.' Reduce-motion: static bars.\n\n## Test plan\n\nWidget: `app/test/settings/storage_usage_view_test.dart` (breakdown sums to total, AT labels, skeleton while computing). Unit: aggregation function over a seeded blob store. Golden across looks + dark.\n\n## Dependencies\n\n{{SN-SET-006}}, {{SN-CORE-004}}, {{SN-CORE-014}}.\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR/PRD updated if behaviour, a preference key/default/scope, or a control mapping changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs verified in docs/security/controls-matrix.md"
+  },
+  {
+    "key": "SN-SET-015",
+    "title": "Build the About, licences and help screen",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "settings",
+      "docs"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "parent": "SN-SET-001",
+    "depends_on": [
+      "SN-SET-002",
+      "SN-SET-004"
+    ],
+    "security": [
+      "MASVS-CODE-3",
+      "MASVS-PRIVACY-3",
+      "CWE-532"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\n\nEvery app needs an About/licences surface for legal compliance (open-source licence attributions), support, and version transparency. The six-tab design (`docs/design/screens-and-flows.md` §12) has no dedicated Help tab; this screen fills that scope item (task brief 'about/licences screen' + 'Help'): app version/build, open-source licences, and links to help/support, Privacy Policy and Terms. It is reachable from Account & plan (and can be promoted to a Help tab later — a minor placement decision noted below). Rendering third-party licences accurately is a supply-chain/compliance requirement.\n\n## Scope\n\n**In:** an `AboutScreen` in `app/lib/settings/`; app name, version and build number; a generated **open-source licences** list (Flutter's `showLicensePage`/`LicenseRegistry` plus any native plugin notices) rendered offline; links to Help/support (FAQ/contact), Privacy Policy and Terms (live URLs, matching the login fine print, PRD-AUTH-005); an acknowledgement that the mascot art is a placeholder where relevant; a build-flavour indicator in non-release builds (e.g. the AUTH-BYPASS watermark note is elsewhere, but the dev flavour is shown here).\n**Out:** authoring the actual help/FAQ content (docs/website area); the Privacy Policy/Terms text ({{SN-PRV-017}}); a 7th Settings tab (placement decision — see UX notes).\n\n## Acceptance criteria\n\n- [ ] The screen shows the app name, version and build number sourced from the build, not hard-coded.\n- [ ] Open-source licences render from the license registry and are complete (every bundled package's notice appears) and scrollable offline.\n- [ ] Help/support, Privacy Policy and Terms links open live URLs; the Privacy/Terms links match the login fine print (PRD-AUTH-005).\n- [ ] In dev/profile builds the current build flavour is indicated; in release it is not.\n- [ ] Renders in all 17 looks + dark; the licences list is keyboard-scrollable on web and AT-navigable; targets ≥ 44pt.\n\n## Technical notes\n\n`app/lib/settings/about_screen.dart`; version/build from `package_info`/the build config; licences via `LicenseRegistry`/`showLicensePage`, with native plugin notices registered so they appear. Links use the hardened URL launcher (verified https only). Reached from {{SN-SET-005}} (Account & plan) as a row.\n\n## Security & privacy\n\nRendering the full licence set satisfies open-source attribution/compliance (MASVS-CODE-3, supply-chain hygiene). External links are https-only and open in the platform browser, not an in-app webview collecting anything (MASVS-PRIVACY-3). No device identifier or PII shown or logged (CWE-532).\n\n## UX notes\n\nDesign shows six tabs and no Help tab; this screen is reached from Account & plan as an 'About & licences' / 'Help' row, which is the sensible default — promoting it to a seventh Settings tab is a minor maintainer placement choice, not a blocker (noted here rather than blocking with needs-decision). Empty/error: if a link fails, a toast, never a dead tap.\n\n## Test plan\n\nWidget: `app/test/settings/about_screen_test.dart` (version present, licences list non-empty, links present, flavour shown only in non-release). Golden across looks + dark.\n\n## Dependencies\n\n{{SN-SET-002}}, {{SN-SET-004}}.\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR/PRD updated if behaviour, a preference key/default/scope, or a control mapping changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs verified in docs/security/controls-matrix.md"
+  },
+  {
+    "key": "SN-SET-016",
+    "title": "Implement reset settings to defaults",
+    "type": "task",
+    "priority": "p3",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "settings"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "XS",
+    "sdlc": "implementation",
+    "parent": "SN-SET-001",
+    "depends_on": [
+      "SN-SET-003",
+      "SN-SET-004"
+    ],
+    "security": [
+      "MASVS-PRIVACY-3",
+      "CWE-532"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\n\nStudents experiment with looks, stylus tuning and toggles; a one-tap 'Reset settings to defaults' lets them get back to a known-good state without hunting through six tabs. This is a small, self-contained action over the preferences backbone ({{SN-SET-003}}): it restores every preference key to its §7.1 default for the active profile, after an explicit confirmation, without touching notes, account, sync data or keys. It is the 'reset' half of the task brief's 'reset/export' scope (export is the Privacy tab's Export-everything).\n\n## Scope\n\n**In:** a 'Reset settings to defaults' destructive action (in the Privacy & export tab or Account & plan — see UX) that, after a confirm dialog, writes `Preferences.defaults()` for the active profile via the LWW-registered path so the reset propagates like any other change; a clear statement of exactly what resets (preferences only) and what does not (notes, account, sync, keys, wallpaper image kept unless explicitly included); a toast on completion.\n**Out:** wiping notes or profile data (that is the privacy dashboard's delete flows, {{SN-PRV-006}}); resetting account/entitlement; a factory-reset of the whole app.\n\n## Acceptance criteria\n\n- [ ] The action is destructive and confirms first; cancel makes no change.\n- [ ] On confirm, every preference key returns to its §7.1 default for the active profile and the change is visible immediately across open surfaces (e.g. look reverts to paper, dock to bottom).\n- [ ] Notes, folders, account, sync configuration and encryption keys are untouched; the confirm copy states this explicitly.\n- [ ] The reset writes through the LWW path so it converges across devices without clobbering newer legitimate changes on other devices incorrectly (higher-HLC wins).\n- [ ] A completion toast is shown; renders in all 17 looks + dark; the destructive control is AT-labelled.\n\n## Technical notes\n\nSmall handler in `app/lib/settings/` calling a `SettingsRepository.resetToDefaults(profileId)` added to {{SN-SET-003}} that batch-writes defaults through the register path. Confirm dialog via `SaneDialog` ({{SN-DS-019}}); destructive `SaneButton`. Wallpaper (device-scoped) is left as-is unless a checkbox opts to clear it.\n\n## Security & privacy\n\nNone beyond baseline: touches only local preference registers; no notes, keys, tokens or PII affected or logged (MASVS-PRIVACY-3, CWE-532). Destructive-by-confirmation avoids accidental loss.\n\n## UX notes\n\nPlaced at the bottom of Privacy & export (or Account & plan) as a destructive row, consistent with Sign out styling. Confirm dialog lists what resets and what does not. Reduce-motion: static dialog transition.\n\n## Test plan\n\nWidget: `app/test/settings/reset_settings_test.dart` (confirm required; defaults restored; notes/account untouched; toast). Unit: `resetToDefaults` in the repository test ({{SN-SET-003}}).\n\n## Dependencies\n\n{{SN-SET-003}}, {{SN-SET-004}}.\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, gitleaks/trufflehog, OSV-Scanner)\n- [ ] Docs/ADR/PRD updated if behaviour, a preference key/default/scope, or a control mapping changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs verified in docs/security/controls-matrix.md"
+  }
+]

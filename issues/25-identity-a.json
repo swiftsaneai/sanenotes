@@ -1,0 +1,491 @@
+[
+  {
+    "key": "SN-AUTH-001",
+    "title": "Deliver Identity: sign-in, guest, profiles, tokens, locks and account deletion",
+    "type": "epic",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "XL",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-AUTH-2",
+      "MASVS-STORAGE-1",
+      "MASVS-STORAGE-2",
+      "MASVS-NETWORK-1",
+      "MASVS-PRIVACY-2",
+      "ASVS-V6",
+      "ASVS-V3",
+      "OWASP-A01",
+      "OWASP-A02",
+      "OWASP-A07",
+      "CWE-287",
+      "CWE-522"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs",
+      "sec: threat-model"
+    ],
+    "body": "## Context\nIdentity in Sane Notes exists only for profile display, sharing/collaboration, entitlements and cloud sync — it is **never required to take notes** (locked decision #5, CLAUDE.md §2; ADR-0004 local-first, zero-server). This epic delivers everything in docs/product/prd-03-identity-sync-privacy-settings-billing.md §1 (AUTH), §2 (PROF) and §14 (DEL): the provider-agnostic auth abstraction and session model, the dev auth-bypass guard that must be impossible in release (p0, CLAUDE.md §7 rule 5), Sign in with Google/Microsoft/Apple, phone-number OTP, first-class guest mode, guest-to-account adoption, account linking, per-profile data isolation and biometric lock, secure token storage, sign-out, and self-service account/data deletion. It is scheduled in M4 (docs/roadmap.md) alongside crypto (SN-CRY) and sync (SN-SYNC), and it is a hard dependency of collaboration/sharing (M6) and billing (M8). The threat model rows this epic satisfies are TM-S-01, TM-S-02, TM-E-01, TM-I-03, TM-I-05 and TM-P-02 in docs/security/threat-model.md.\n\n## Scope\n**In:** every SN-AUTH child below — auth abstraction and session, bypass guard, the three social providers, phone OTP, guest mode and adoption, account linking, local profiles with isolation and lock, secure token storage, sign-out, account deletion, the identity security-test suite, the OAuth credentials manifest, and the release-unreachability CI gate.\n**Out:** E2EE key hierarchy and recovery code (SN-CRY-001), cloud sync and multi-device pairing (SN-SYNC-001), the onboarding tour and login-screen chrome/theming (SN-ONB-001), app-wide lock and clipboard/screenshot protections (SN-SET-001 / LEAK), billing/entitlement purchase flows (SN-BILL-001), and student verification. This epic wires against those but does not build them.\n\n## Acceptance criteria\n- [ ] A user can take notes with no account (guest) and no network, then sign in later and keep every note in place (PRD-AUTH-007/008/010).\n- [ ] Sign in with Google, Microsoft and Apple and phone OTP all complete to the Profiles screen using native SDKs / OS pickers, never an in-app provider password form (PRD-AUTH-002).\n- [ ] Auth bypass is proven unreachable in a release build by CI (TM-E-01); tokens live only in the secure store, never the notes DB, logs, backups or synced store (PRD-AUTH-006).\n- [ ] Switching profiles swaps the entire visible dataset; a locked profile stays encrypted-at-rest until biometric unlock (PRD-PROF-004/005).\n- [ ] Self-service account/data deletion offers export-first and completes or clearly reports partial completion (PRD-DEL-001..004).\n- [ ] Every child issue below is closed with its Definition of done met.\n\n## Technical notes\nAuth lives in app/lib/auth (a CODEOWNERS-protected path, CLAUDE.md §5); it is app-layer coordination, not a package (the package DAG forbids feature-to-feature imports, CLAUDE.md §3). Providers sit behind a federated auth abstraction that returns Result<Session, Failure> (sane_core sealed types). Tokens and wrapped keys go through the sane_secure_store plugin (Keychain/Secure Enclave on Apple, Keystore/StrongBox on Android; platform docs docs/platform/ipad.md §8, docs/platform/android.md §8, docs/platform/web.md §7). OIDC uses PKCE + state + nonce (TM-S-01). Children: {{SN-AUTH-002}}, {{SN-AUTH-003}}, {{SN-AUTH-004}}, {{SN-AUTH-005}}, {{SN-AUTH-006}}, {{SN-AUTH-007}}, {{SN-AUTH-008}}, {{SN-AUTH-009}}, {{SN-AUTH-010}}, {{SN-AUTH-011}}, {{SN-AUTH-012}}, {{SN-AUTH-013}}, {{SN-AUTH-014}}, {{SN-AUTH-015}}, {{SN-AUTH-016}}, {{SN-AUTH-017}}, {{SN-AUTH-018}}, {{SN-AUTH-019}}, {{SN-AUTH-020}}, {{SN-AUTH-021}}.\n\n## Security & privacy\nThis epic owns the Spoofing and Elevation-of-privilege identity surface. Threats: token theft/replay (TM-S-01, CWE-287/522), OTP brute-force / SIM-swap (TM-S-02), bypass shipping in release (TM-E-01, CWE-489), token/PII in logs (TM-I-05), account takeover yielding note plaintext (must be impossible — zero-knowledge, keys not derivable from identity). Controls map to MASVS-AUTH-1/2, MASVS-STORAGE-2, MASVS-NETWORK-1, ASVS V6/V3 and OWASP A01/A02/A07. The invariant: an account is for identity only; losing or seizing it must never expose note content (ADR-0004, threat-model §5.1 TM-S-02).\n\n## UX notes\nScreens and copy are fixed by docs/design/screens-and-flows.md §3 (Login), §4 (Profiles) and §12 (Settings → Account); the login/onboarding chrome is themed by SN-ONB-001 across all 17 looks + dark mode. Every auth surface must meet a11y basics (Semantics labels, 44pt/48dp targets, ≥4.5:1 contrast, keyboard-reachable on web) per docs/design/accessibility.md. This epic renders no new visual language of its own; it wires behaviour into the design-system components (SN-DS-003).\n\n## Test plan\nEpic is done when every child's tests are green: unit tests for the session state machine and bypass accessor, widget tests for login/profile flows, integration tests (patrol) for native provider dialogs and biometrics, the identity abuse suite ({{SN-AUTH-019}}), and the release-unreachability CI gate ({{SN-AUTH-021}}, app/test/security/auth_bypass_test.dart).\n\n## Dependencies\nSN-FND-005 (flavours/--dart-define), SN-CORE-001 (Result/Failure + model), SN-CRY-002 (secure key storage), SN-PRV-001 (privacy/deletion rights), SN-BILL-001 (entitlement scope), SN-ONB-001 (login/onboarding chrome).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-002",
+    "title": "Implement auth abstraction, session model and dev auth-bypass release guard",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-CODE-2",
+      "MASVS-RESILIENCE-2",
+      "ASVS-V6",
+      "OWASP-A07",
+      "CWE-489",
+      "CWE-287",
+      "CWE-798"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-FND-002",
+      "SN-FND-005",
+      "SN-CORE-001"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs",
+      "sec: threat-model"
+    ],
+    "body": "## Context\nEvery sign-in method (Google, Microsoft, Apple, phone OTP, guest) needs one provider-agnostic seam so the rest of the app depends on an AuthState, never on a specific SDK. This issue builds that abstraction and the session model, and it lands the p0 dev auth-bypass guard from PRD-AUTH-011/012/013 and CLAUDE.md §7 rule 5. The bypass is a compile-time flag --dart-define=SANE_AUTH_BYPASS=true that MAY short-circuit login in debug/profile only and MUST be impossible in a release build. The threat is TM-E-01 in docs/security/threat-model.md (a bypass shipping in release, Spoofing/Elevation, Impact Critical). Foundations scaffolded a stub assertAuthBypassSafe() (M0); this issue implements the real three-layer guard: (1) a single BuildConfig-style accessor that returns a compile-time false under kReleaseMode so the bypass branch is tree-shaken out, (2) a runtime assertAuthBypassSafe() that hard-fails at startup if the flag ever resolves true in release, and (3) a persistent on-screen dev watermark while bypass is active.\n\n## Scope\n**In:** the AuthController/AuthService interface returning Result<Session, Failure>; the immutable AuthState (signedOut / guest / signedIn(provider, account) / locked) and Session value object; a SessionStore that reads/writes tokens through the secure store seam ({{SN-AUTH-008}}); the SANE_AUTH_BYPASS accessor + assertAuthBypassSafe() + the AUTH BYPASS dev watermark; Riverpod providers exposing auth state to the app.\n**Out:** the actual OIDC network flow ({{SN-AUTH-009}}), each provider's SDK wiring ({{SN-AUTH-003}}/{{SN-AUTH-004}}/{{SN-AUTH-005}}/{{SN-AUTH-006}}), the release-artifact CI scan ({{SN-AUTH-021}}), and profile partitioning ({{SN-AUTH-013}}).\n\n## Acceptance criteria\n- [ ] The bypass accessor resolves to a compile-time false in release; a release build with --dart-define=SANE_AUTH_BYPASS=true still requires real sign-in (dead-code-eliminated branch, verified by a golden test on the accessor).\n- [ ] assertAuthBypassSafe() throws at startup (bootstrap.dart) if the flag is true while kReleaseMode is true; the app cannot reach Library in that state.\n- [ ] While bypass is active in a non-release build a persistent AUTH BYPASS — dev build watermark is rendered over every screen (PRD-AUTH-013).\n- [ ] AuthState is an immutable sealed type; a switch over it is exhaustive; no mutable global auth singleton exists (CLAUDE.md §6).\n- [ ] Auth failures return Result<Session, Failure>, never a thrown exception across a package boundary and never null-as-error.\n- [ ] No token, account id, email or phone number is written to any log (SaneLog redaction; print() banned).\n\n## Technical notes\nRead the flag only through one accessor (e.g. AuthBypass.enabled) implemented as const bool.fromEnvironment('SANE_AUTH_BYPASS') && !kReleaseMode so the release compiler folds it to false (see SN-FND-005 flavour/--dart-define matrix and overview §7.2). Wire assertAuthBypassSafe() into app bootstrap. Session/AuthState use sane_core sealed Result types; expose via Riverpod (ADR-0003). Keep app/lib/auth free of SDK imports — providers implement the interface. This path is CODEOWNERS-protected (CLAUDE.md §5).\n\n## Security & privacy\nThreats: TM-E-01 bypass-in-release (Critical) countered by the three independent layers; TM-I-05 token/PII in logs countered by the SaneLog allow-list; TM-S-01 by keeping token handling behind the secure store. Controls: MASVS-AUTH-1, MASVS-RESILIENCE-2, MASVS-CODE-2, ASVS V6, OWASP-A07, CWE-489 (active debug code in production), CWE-798. Never weaken any of the three layers (CLAUDE.md §7 rule 5). This issue adds no network egress; note that in the PR.\n\n## UX notes\nNo end-user surface beyond the dev watermark, which must be unmistakable in every look and both modes (a translucent diagonal band using sane_ui tokens, never a hardcoded colour; Semantics label AUTH BYPASS dev build). The real Login/Profiles chrome is themed by SN-ONB-001 and design §3/§4; this issue only exposes the state that drives them.\n\n## Test plan\nUnit: app/test/auth/auth_state_test.dart (exhaustive switch, transitions), app/test/auth/bypass_accessor_test.dart (false under kReleaseMode). Security: app/test/security/auth_bypass_test.dart asserts the guarded branch is unreachable in release mode (extended into a CI gate by {{SN-AUTH-021}}). Widget: watermark renders while bypass active. No-PII-in-logs assertion test.\n\n## Dependencies\nSN-FND-002, SN-FND-005, SN-CORE-001. Token persistence detail is {{SN-AUTH-008}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-003",
+    "title": "Implement Sign in with Google across all platforms",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-NETWORK-1",
+      "ASVS-V6",
+      "ASVS-V9",
+      "OWASP-A07",
+      "CWE-287",
+      "CWE-384"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-AUTH-008",
+      "SN-AUTH-009"
+    ],
+    "labels_extra": [
+      "needs-credentials",
+      "sec: masvs"
+    ],
+    "body": "## Context\nThe Login screen offers Continue with Google as the first social method (PRD-AUTH-001, design §3). It MUST use the platform's native account picker, never an in-app web form collecting the Google password (PRD-AUTH-002). Per platform docs the surfaces differ: Android uses Credential Manager / Google Identity Services (docs/platform/android.md §8, \"Sign-in / passkeys\"); iOS/iPadOS uses the GIS SDK; Web uses Google Identity Services (One Tap + token client, docs/platform/web.md §7). The chosen Dart package is google_sign_in v7 (its redesigned API — budget for the migration, per docs/platform/web.md §7 and research/flutter-ink-stack.md). On success the app navigates to Profiles and toasts Signed in with Google.\n\n## Scope\n**In:** the GoogleAuthProvider implementing the {{SN-AUTH-002}} auth interface on Android, Apple and Web; native picker invocation; exchanging the provider result into a Session; storing the resulting tokens via {{SN-AUTH-008}}; the success toast + navigation to Profiles.\n**Out:** the shared OIDC/PKCE plumbing ({{SN-AUTH-009}}), Google Drive authorization scopes for sync (that is SN-SYNC's drive.file scope, docs/platform/android.md §5), account linking ({{SN-AUTH-012}}), and login-screen theming (SN-ONB-001).\n\n## Acceptance criteria\n- [ ] Continue with Google opens the OS/native Google account picker on Android, iOS/iPadOS and the GIS flow on web — never an app-rendered password form.\n- [ ] A successful sign-in yields a Session, stores access + refresh tokens in the secure store, navigates to Profiles, and toasts Signed in with Google.\n- [ ] A cancelled or failed sign-in returns Result.failure, shows a non-blocking error, and leaves the user on the Login screen (no partial session).\n- [ ] No Google token is written to the notes DB, logs, backups or synced store (PRD-AUTH-006).\n- [ ] Identity is decoupled from note access: after sign-in the user still has no note plaintext exposure risk (keys are separate, SN-CRY-001).\n- [ ] Client IDs are injected via --dart-define / CI secrets, never committed.\n\n## Technical notes\nGoogleAuthProvider consumes google_sign_in v7 behind the auth abstraction (app/lib/auth). Web uses GIS (ID token split from OAuth authorization). Do NOT request Drive scopes here — authorization for the user's cloud is a separate SN-SYNC concern using the narrow drive.file scope. Tokens flow to {{SN-AUTH-008}}; the OIDC id_token nonce/state validation is shared via {{SN-AUTH-009}}. Requires a Google OAuth client ID per platform (Android SHA-256 cert, iOS bundle id, web origin) — see the credentials manifest {{SN-AUTH-020}}.\n\n## Security & privacy\nThreats: token theft/replay (TM-S-01, CWE-287), CSRF on the web redirect (CWE-352/384 — mitigated by state, delegated to {{SN-AUTH-009}}), phishing via a fake in-app form (prevented by mandating the native picker). Controls: MASVS-AUTH-1, MASVS-NETWORK-1 (TLS-only, no cleartext), ASVS V6/V9, OWASP-A07. Marked needs-credentials because a real Google OAuth client ID/secret must be supplied by the maintainer via CI secrets (CLAUDE.md §13); do not commit or hardcode it (Dart AOT is reversible, CLAUDE.md §7 rule 2).\n\n## UX notes\nButton label, order and the toast copy are fixed by design §3 and PRD-AUTH-001/002; the Login screen chrome is built and themed by SN-ONB-001 across all 17 looks + dark mode. Button must have a 44pt/48dp target, a Semantics label, ≥4.5:1 contrast, and be keyboard-reachable on web (docs/design/accessibility.md). Show a loading state on the button while the picker/flow is in flight; render a clear inline error on failure.\n\n## Test plan\nWidget: app/test/auth/google_sign_in_test.dart (success → Session + navigation; cancel → failure state). Integration (patrol): app/integration_test/auth_google_test.dart exercises the native picker on Android and iOS. Negative: token never appears in a captured log; a failed exchange leaves no session. Golden not required (chrome owned by SN-ONB-001).\n\n## Dependencies\nSN-AUTH-002, SN-AUTH-008, SN-AUTH-009; maintainer client IDs tracked in {{SN-AUTH-020}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-004",
+    "title": "Implement Sign in with Microsoft via MSAL",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-NETWORK-1",
+      "ASVS-V6",
+      "ASVS-V9",
+      "OWASP-A07",
+      "CWE-287",
+      "CWE-384"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-AUTH-008",
+      "SN-AUTH-009"
+    ],
+    "labels_extra": [
+      "needs-credentials",
+      "sec: masvs"
+    ],
+    "body": "## Context\nContinue with Microsoft is the third social method on the Login screen (PRD-AUTH-001, design §3), required for students/professionals on Microsoft 365 and a prerequisite for a future OneDrive sync backend. It MUST use MSAL — the Microsoft Authentication Library — behind the federated auth layer, never an in-app password form (PRD-AUTH-002). Web uses @azure/msal-browser with PKCE (docs/platform/web.md §7, \"Microsoft\"); ADAL is end-of-life and MUST NOT be used. The Dart package is aad_oauth (MSAL browser on web) per research/flutter-ink-stack.md.\n\n## Scope\n**In:** a MicrosoftAuthProvider implementing the {{SN-AUTH-002}} interface on all platforms via MSAL/aad_oauth; PKCE authorization-code flow; Session creation; token storage via {{SN-AUTH-008}}; success toast Signed in with Microsoft + navigation to Profiles.\n**Out:** Microsoft Graph / OneDrive Files authorization for sync (SN-SYNC), the shared OIDC nonce/state helper ({{SN-AUTH-009}}), account linking ({{SN-AUTH-012}}), login-screen theming (SN-ONB-001).\n\n## Acceptance criteria\n- [ ] Continue with Microsoft launches the MSAL system browser / broker flow (authorization-code + PKCE), never an app-rendered password form.\n- [ ] Success yields a Session, stores access + refresh tokens in the secure store, navigates to Profiles, toasts Signed in with Microsoft.\n- [ ] Cancellation/failure returns Result.failure with a non-blocking error and no partial session.\n- [ ] Refresh-token rotation is honoured; an expired access token silently refreshes without a re-prompt where MSAL allows.\n- [ ] No Microsoft token reaches the notes DB, logs, backups or synced store; client IDs come from --dart-define / CI secrets.\n\n## Technical notes\nUse aad_oauth/MSAL behind app/lib/auth; configure the multi-tenant or consumers authority as the maintainer chooses (record in {{SN-AUTH-020}}). Delegate state/nonce validation to {{SN-AUTH-009}}. Do not request Graph Files scopes here (that is sync). Requires an Azure app registration (client id + redirect URIs per platform) supplied by the maintainer. Prefer the system browser / auth broker over an embedded webview (OWASP OAuth best practice; also required by Google/Microsoft policy).\n\n## Security & privacy\nThreats: token theft/replay (TM-S-01), authorization-code interception (mitigated by PKCE), CSRF on redirect (state, via {{SN-AUTH-009}}), embedded-webview credential capture (avoided by using the system browser). Controls: MASVS-AUTH-1, MASVS-NETWORK-1, ASVS V6/V9, OWASP-A07, CWE-287/384. needs-credentials: the Azure client id/secret is maintainer-supplied via CI secrets (CLAUDE.md §13) and must never be committed.\n\n## UX notes\nLabel, order and toast copy per design §3 / PRD-AUTH-001. Chrome themed by SN-ONB-001 across 17 looks + dark mode. 44pt/48dp target, Semantics label, ≥4.5:1 contrast, keyboard-reachable on web. Button shows a spinner during the flow; failures render inline, not as a blocking dialog.\n\n## Test plan\nWidget: app/test/auth/microsoft_sign_in_test.dart (success/cancel paths, refresh handling with a mock MSAL). Integration (patrol): app/integration_test/auth_microsoft_test.dart on Android + web redirect. Negative: no token in logs; failed flow leaves no session.\n\n## Dependencies\nSN-AUTH-002, SN-AUTH-008, SN-AUTH-009; client IDs via {{SN-AUTH-020}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-005",
+    "title": "Implement Sign in with Apple (native and web JS)",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-NETWORK-1",
+      "ASVS-V6",
+      "ASVS-V9",
+      "OWASP-A07",
+      "CWE-287"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-AUTH-008",
+      "SN-AUTH-009"
+    ],
+    "labels_extra": [
+      "needs-credentials",
+      "sec: masvs"
+    ],
+    "body": "## Context\nSign in with Apple is required by App Store Guideline 4.8 whenever the app offers any third-party social login for the primary account (docs/platform/ipad.md §8/§9, PRD-AUTH-001). On Apple platforms it uses native ASAuthorization (AuthenticationServices); on Android and Web it uses Sign in with Apple JS (AppleID.auth), which needs a Services ID, a verified domain and HTTPS (docs/platform/web.md §7, \"Apple\" — the heaviest setup). The Dart package is sign_in_with_apple (web redirect flow). Success navigates to Profiles and toasts Signed in with Apple. Because Apple relays a private/hidden email on first consent, the provider must persist the returned name/email on the FIRST authorization only (Apple returns them once).\n\n## Scope\n**In:** an AppleAuthProvider implementing the {{SN-AUTH-002}} interface: native ASAuthorization on iOS/iPadOS, Sign in with Apple JS on web and Android; first-authorization name/email capture; Session creation; token storage via {{SN-AUTH-008}}; success toast + navigation.\n**Out:** the shared OIDC helper ({{SN-AUTH-009}}), account linking ({{SN-AUTH-012}}), the App Store 4.8 compliance gate wording (tracked in the iPad release-gate work), login-screen theming (SN-ONB-001).\n\n## Acceptance criteria\n- [ ] Sign in with Apple appears and works on all Apple platforms (native) and is available on web + Android (JS) so Guideline 4.8 is satisfied wherever other socials appear.\n- [ ] The identity token is validated (issuer, audience, nonce) before a Session is created (nonce via {{SN-AUTH-009}}).\n- [ ] Name/email returned on the first authorization are captured and persisted once; subsequent sign-ins that omit them do not wipe the stored profile.\n- [ ] Success stores tokens in the secure store, navigates to Profiles, toasts Signed in with Apple; cancel/failure returns Result.failure with no partial session.\n- [ ] Services ID / key material is maintainer-supplied via CI secrets, never committed.\n\n## Technical notes\nUse sign_in_with_apple: native ASAuthorizationController on Apple; the web redirect flow (AppleID.auth) on web/Android needs a Services ID + return URL + a domain-verified association. Generate and pass a nonce, validate it and the id_token claims on return (share validation with {{SN-AUTH-009}}). Register NSFaceIDUsageDescription is unrelated here (that is per-profile lock, {{SN-AUTH-014}}). Record the Services ID, team id and key in the credentials manifest {{SN-AUTH-020}}. Set ITSAppUsesNonExemptEncryption per docs/platform/ipad.md §9.\n\n## Security & privacy\nThreats: id_token forgery/replay (TM-S-01 — countered by issuer/audience/nonce validation, CWE-287), email relay privacy (Apple private relay — do not attempt to de-anonymize; store what Apple returns), token theft (secure store). Controls: MASVS-AUTH-1, MASVS-NETWORK-1, ASVS V6/V9, OWASP-A07. needs-credentials: Apple Developer team, Services ID and key are maintainer-supplied (CLAUDE.md §13); never committed.\n\n## UX notes\nButton uses Apple's required styling within the design system where the platform mandates it; label/order/toast per design §3 / PRD-AUTH-001; chrome themed by SN-ONB-001 across 17 looks + dark mode. 44pt/48dp target, Semantics label, contrast, keyboard-reachable on web. Loading state during the flow; inline error on failure.\n\n## Test plan\nWidget: app/test/auth/apple_sign_in_test.dart (token-claim validation, first-auth email capture, cancel path). Integration (patrol): app/integration_test/auth_apple_test.dart on iPadOS native + web redirect. Negative: forged/altered id_token nonce is rejected; no token in logs.\n\n## Dependencies\nSN-AUTH-002, SN-AUTH-008, SN-AUTH-009; credentials via {{SN-AUTH-020}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-006",
+    "title": "Implement phone-number OTP sign-in",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-AUTH-2",
+      "MASVS-NETWORK-1",
+      "ASVS-V6",
+      "OWASP-A07",
+      "CWE-307",
+      "CWE-287"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-AUTH-008"
+    ],
+    "labels_extra": [
+      "needs-decision",
+      "needs-credentials",
+      "sec: masvs"
+    ],
+    "body": "## Context\nContinue with mobile number is the primary/accent sign-in method (PRD-AUTH-001, design §3) and the most important for the India-first student persona who often has no card/email account. The flow has three steps (design §3, loginStep phone then otp): a fixed +91 prefix (locale-derived, other country codes at GA), Send code (rejects <10 digits with Enter a 10-digit mobile number, advances and toasts Code sent to +91 <phone>), then a 6-digit code with Verify and continue (rejects <6 digits, else navigates to Profiles), plus Change number and Resend code. The OTP **provider is undecided** (needs-decision, CLAUDE.md §13 / PRD open): candidates include Firebase Phone Auth, Twilio Verify, or an MSG91/India SMS gateway; the choice must satisfy the rate-limit and single-use requirements below and avoid vendor lock-in of the identity seam.\n\n## Scope\n**In:** the PhoneOtpProvider implementing the {{SN-AUTH-002}} interface behind a provider-neutral OtpGateway seam; the phone and otp UI states wired to real send/verify calls; client-side input validation and error copy exactly per design §3; resend/change-number controls; Session creation + token storage ({{SN-AUTH-008}}).\n**Out:** picking the SMS provider (needs-decision), country-code expansion beyond +91 at GA (verify list later), and login-screen theming (SN-ONB-001).\n\n## Acceptance criteria\n- [ ] Send code rejects fewer than 10 digits with the toast Enter a 10-digit mobile number; otherwise advances to the otp step and toasts Code sent to +91 <phone> (design §3, PRD-AUTH-003).\n- [ ] Verify and continue rejects fewer than 6 digits, else verifies server-side and navigates to Profiles; Change number and Resend code are present and functional (PRD-AUTH-003).\n- [ ] OTP codes are single-use, server-verified (never validated client-side), and expire within 10 minutes (PRD-AUTH-004, MASVS-AUTH-1).\n- [ ] Resends are rate-limited to at least 30s between sends and at most 5 per hour per number; abuse backs off (PRD-AUTH-004, TM-S-02, CWE-307).\n- [ ] Account takeover via OTP/SIM-swap yields NO note plaintext (keys not derivable from identity — integration test, TM-S-02).\n- [ ] The OtpGateway is provider-neutral so the vendor can be swapped without touching the auth abstraction.\n\n## Technical notes\nDefine OtpGateway.sendCode(e164) and verifyCode(e164, code) returning Result; implement one adapter for the chosen provider (leave a // DESIGN-OPEN / needs-decision marker naming the candidates). Strip non-digits on input (design setPhone, max 11 chars incl. space; setOtp max 6). Rate-limit + expiry are enforced by the provider AND defended client-side (disable Resend for 30s). Store the resulting session token via {{SN-AUTH-008}}. Record any provider API key in the credentials manifest {{SN-AUTH-020}}.\n\n## Security & privacy\nThreats: OTP brute force and SIM-swap (TM-S-02, CWE-307 — countered by provider rate-limit/lockout + single-use codes + short expiry), replayed session (TM-S-01), phone number in logs (banned — TM-I-05, PRD-03 rule 3). Controls: MASVS-AUTH-1/2, MASVS-NETWORK-1, ASVS V6, OWASP-A07. OTP is identity only — it never gates note access (guest is first-class), and no note data is recoverable through an account (zero-knowledge, ADR-0004). needs-decision: SMS/OTP provider; needs-credentials: the provider API key (maintainer-supplied).\n\n## UX notes\nCopy, step order and validation messages are verbatim from design §3 and must be preserved. Chrome themed by SN-ONB-001 across 17 looks + dark mode. The OTP input is large and letter-spaced (design); provide a Semantics label, 44pt/48dp targets, contrast, and keyboard/paste support (auto-fill one-time-code where the OS supports it). Show a countdown on Resend; render send/verify failures inline.\n\n## Test plan\nUnit: app/test/auth/otp_gateway_test.dart (validation thresholds, rate-limit backoff, single-use with a fake gateway). Widget: app/test/auth/phone_otp_flow_test.dart (phone→otp→profiles, change number, resend disabled window). Integration (patrol): app/integration_test/auth_otp_test.dart. Abuse: brute-force attempts are throttled; account-takeover yields no plaintext.\n\n## Dependencies\nSN-AUTH-002, SN-AUTH-008; provider decision + key via {{SN-AUTH-020}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-007",
+    "title": "Implement local profiles (multiple per device, add and switch)",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "onboarding"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "ASVS-V6",
+      "OWASP-A01",
+      "CWE-284"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-CORE-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\nProfiles are a Netflix-style local partition — multiple people or contexts on one device, one shared sign-in (PRD-PROF-001..003, design §4 Who's writing?). The Profiles screen lists local profiles as tiles (rounded-square avatar with initial, name, note); tapping activates and opens Library, and on first run after login also opens the onboarding tour. This issue builds the profile model, the Profiles screen behaviour, and the add/switch flow that also appears under Settings → Account → Profiles on this account (design §12). Seed profiles from the persona: Riya (Owner), Aarav (Sibling), Work (Workspace). The actual per-profile data partition and lock are separate issues ({{SN-AUTH-013}}, {{SN-AUTH-014}}).\n\n## Scope\n**In:** the Profile value object ({ id, name, initials, colour, role, note }) and a ProfileRepository in the document model; the Profiles screen (tiles, active-ring + Current / Switch labels, pickProfile → Library, firstRun → onboarding); Add profile inline name input (max 24 chars) → Create (rotating colour, role Member, note New profile, toast Profile added — <name>) and Cancel; Use a different account → sign-out ({{SN-AUTH-017}}); the mirrored add/switch UI in Settings → Account.\n**Out:** the per-profile data isolation guarantee ({{SN-AUTH-013}}), per-profile biometric lock ({{SN-AUTH-014}}), rename/delete/manage ({{SN-AUTH-015}}), entitlement scope ({{SN-AUTH-016}}), and the onboarding tour content (SN-ONB-001).\n\n## Acceptance criteria\n- [ ] The Profiles screen lists all local profiles; the active one shows an accent ring + Current, others show Switch (design §4, PRD-PROF-001).\n- [ ] Tapping a tile activates it and opens Library; the first pick after login also opens the onboarding overlay once, then clears firstRun (PRD-PROF-001).\n- [ ] Add profile reveals an inline name input capped at 24 chars; Create appends a profile with a rotating colour and toasts Profile added — <name>; Cancel dismisses with no change (PRD-PROF-002).\n- [ ] The same add/switch flow exists under Settings → Account → Profiles on this account (PRD-PROF-002).\n- [ ] Profiles persist locally and survive app restart; profile data lives in the document model, not shared prefs.\n- [ ] A guest session has exactly one implicit Guest profile until an account is attached.\n\n## Technical notes\nModel the Profile under Workspace → Profiles in sane_core (per the document model, {{SN-AUTH-013}} adds the partition columns). Persist via the drift store (sane_core repositories; heavy content stays in the blob store). Drive the active profile through a Riverpod provider so switching re-derives the whole app tree (ADR-0003). The Profiles screen consumes sane_ui components (SN-DS-003). Keep identity (one sign-in) separate from profiles (many local) — a signed-out/guest device still has profiles.\n\n## Security & privacy\nThreats: one profile reading another's data (broken access control, OWASP-A01, CWE-284) — the hard guarantee is delivered by {{SN-AUTH-013}}; this issue must not leak cross-profile data through a shared provider or cache. Controls: MASVS-STORAGE-1, MASVS-PRIVACY-2, ASVS V6. No new network egress; profiles are local (PRD-PROF-001). Note in the PR that the isolation guarantee is completed in {{SN-AUTH-013}}.\n\n## UX notes\nScreen structure, copy and seed profiles are fixed by design §4 (Who's writing? / One account, a private space for each of you). Render across all 17 looks + dark mode; tiles need Semantics labels (name + role + Current/Switch), 44pt/48dp targets, ≥4.5:1 contrast, and keyboard navigation on web. Empty state: at least the Add profile tile is always present. The name input validates length inline (max 24). Golden-test the tile grid across looks.\n\n## Test plan\nUnit: app/test/auth/profile_repository_test.dart (add, list, activate, name cap). Widget: app/test/auth/profiles_screen_test.dart (pick → library, firstRun → onboarding once, add/cancel). Golden: profiles_screen goldens across a sample of looks + dark. Integration: switch profile persists across restart.\n\n## Dependencies\nSN-AUTH-002, SN-CORE-002.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-008",
+    "title": "Store identity tokens in the platform secure store",
+    "type": "task",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-2",
+      "MASVS-CRYPTO-1",
+      "ASVS-V6",
+      "OWASP-A02",
+      "CWE-522",
+      "CWE-312"
+    ],
+    "parent": "SN-AUTH-002",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-CRY-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\nTokens from any provider (OIDC access + refresh tokens, the phone-OTP session) MUST be stored only in the platform secure store and MUST NOT be written to the notes DB, logs, backups or the synced cloud store (PRD-AUTH-006, threat-model TM-I-03/TM-I-05). This task implements the SessionStore that the auth abstraction ({{SN-AUTH-002}}) and every provider use, backed by the sane_secure_store plugin: Keychain (kSecAttrAccessibleWhenUnlocked, optionally Secure Enclave) on Apple, Android Keystore + AES-GCM (StrongBox where available) on Android, and the reduced-guarantee WebCrypto/session posture on web (docs/platform/ipad.md §8, docs/platform/android.md §8, docs/platform/web.md §7, R4).\n\n## Scope\n**In:** a SessionStore (put/get/delete access+refresh tokens keyed by provider+account) over sane_secure_store; refresh-token rotation storage; token wipe on sign-out ({{SN-AUTH-017}}); a documented web posture (tokens held in memory + short-lived, not in unprotected localStorage).\n**Out:** the master-key hierarchy and per-notebook key wrapping (SN-CRY-001/002 — this task only stores identity tokens), and the biometric gate for note content ({{SN-AUTH-014}}).\n\n## Acceptance criteria\n- [ ] Access and refresh tokens are written only through sane_secure_store; a filesystem/DB/log/backup scan finds no token material (MASVS-STORAGE-2).\n- [ ] On Android the Keystore key is hardware-backed where available (StrongBox requested, TEE fallback); on Apple items use an appropriate accessibility class and are excluded from backups.\n- [ ] Sign-out deletes all token entries for the account; a subsequent launch shows signed-out.\n- [ ] The web build never persists a long-lived token in localStorage/IndexedDB in cleartext; the reduced-guarantee posture is documented in the privacy dashboard (SN-PRV-001) and PR.\n- [ ] Tokens are never logged (SaneLog redaction allow-list; print() banned).\n\n## Technical notes\nUse sane_secure_store (platform-interface + Swift/Kotlin impls; do NOT use the deprecated Android Jetpack Security EncryptedFile — docs/platform/android.md §2). Keys wrap the token blob with a hardware-backed key; store per provider+account id. Android: KeyGenParameterSpec with setIsStrongBoxBacked(true) + AES-GCM (docs/platform/android.md §8). Apple: Keychain Services, optionally kSecAttrSynchronizable for iCloud Keychain escrow of long-lived items only where intended (docs/platform/ipad.md §8). Web: derive/wrap per session; do not rely on flutter_secure_storage web (R4). This is a CODEOWNERS-protected path.\n\n## Security & privacy\nThreats: token extraction from disk/backup (TM-I-03/TM-I-10, CWE-522/312), token in logs (TM-I-05). Controls: MASVS-STORAGE-2, MASVS-CRYPTO-1, ASVS V6, OWASP-A02. Fail closed: if the secure store is unavailable, do not fall back to plaintext storage — surface an error and remain signed-out. Update the threat model only if a new stored asset/flow is introduced (it is not — this hardens A6 identity tokens).\n\n## UX notes\nNone beyond baseline (no user-facing surface). Baseline: no token or account identifier is ever logged; the web reduced-guarantee posture must be surfaced truthfully in the privacy dashboard (SN-PRV-001). No new visual elements.\n\n## Test plan\nUnit: app/test/auth/session_store_test.dart with a mock secure store (put/get/delete, rotation, wipe-on-signout). Security: a test asserting no token string appears in captured logs or a DB dump; platform tests (patrol) that a stored token survives restart and is removed on sign-out. Android: assert KeyInfo security level is queried.\n\n## Dependencies\nSN-AUTH-002, SN-CRY-002 (secure key storage plugin/hierarchy).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-009",
+    "title": "Implement shared OIDC PKCE sign-in flow (state, nonce, redirect)",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-NETWORK-1",
+      "ASVS-V6",
+      "ASVS-V9",
+      "OWASP-A07",
+      "CWE-287",
+      "CWE-384",
+      "CWE-352"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-AUTH-008"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs",
+      "sec: asvs"
+    ],
+    "body": "## Context\nGoogle, Microsoft and Apple sign-in all share the same OpenID Connect / OAuth2 machinery, and getting it wrong is the classic identity vulnerability (TM-S-01 in docs/security/threat-model.md). This issue implements the shared, provider-neutral OIDC helper: PKCE (code_verifier/code_challenge), a random state to defend the redirect against CSRF, a random nonce bound into the id_token, id_token claim validation (issuer, audience, expiry, nonce), and safe redirect handling on each platform (system browser / ASWebAuthenticationSession on Apple, Custom Tabs on Android, redirect flow on web). Providers ({{SN-AUTH-003}}/{{SN-AUTH-004}}/{{SN-AUTH-005}}) plug their endpoints and client IDs into this helper rather than re-implementing it.\n\n## Scope\n**In:** an OidcFlow helper (buildAuthUrl, handleRedirect, validateIdToken) with PKCE + state + nonce; secure-context redirect handling per platform; id_token signature/claims verification against the provider JWKS; single-use state/nonce enforcement; a typed OidcResult feeding {{SN-AUTH-002}} Session creation.\n**Out:** provider-specific SDK/button wiring (the three provider issues), token persistence ({{SN-AUTH-008}}), and drive/graph authorization scopes (SN-SYNC).\n\n## Acceptance criteria\n- [ ] Every authorization request carries a unique code_verifier, state and nonce generated with a CSPRNG; state and nonce are single-use and validated on return.\n- [ ] A redirect whose state does not match the pending request is rejected (CSRF defence, CWE-352/384) and no Session is created.\n- [ ] The id_token is verified (signature via provider JWKS, issuer, audience, exp, and the bound nonce) before any Session is created; a forged/altered token is refused.\n- [ ] Authorization uses the system browser / ASWebAuthenticationSession / Custom Tabs, never an embedded webview that could capture the provider password.\n- [ ] All traffic is TLS 1.2+; no cleartext; the flow works on all five surfaces.\n- [ ] The helper is provider-neutral: adding a fourth OIDC provider needs only endpoint + client-id config.\n\n## Technical notes\nGenerate the verifier/state/nonce from a CSPRNG (dart:math Random.secure or platform crypto). Use flutter_appauth / package_specific flows behind app/lib/auth, or hand-rolled with the system browser via url_launcher + a redirect listener — but ALWAYS validate state and the id_token claims yourself; do not trust an SDK to have checked the nonce. Verify the id_token against the provider JWKS (cache keys with rotation). On web, ensure the redirect origin is exact and the flow runs on the app's own isolated origin (docs/platform/web.md §8/§9). This is a CODEOWNERS-protected path.\n\n## Security & privacy\nThreats: token replay/forgery (TM-S-01, CWE-287), CSRF on redirect (CWE-352/384), embedded-webview credential theft, JWKS-rotation acceptance of a stale key. Controls: MASVS-AUTH-1, MASVS-NETWORK-1, ASVS V6/V9, OWASP-A07. Fail closed on any validation error (no partial session). No id_token/claims are logged. This helper is the single verification point the identity abuse suite ({{SN-AUTH-019}}) targets.\n\n## UX notes\nNone beyond baseline — no independent UI (the buttons live in the provider issues / SN-ONB-001). Baseline: no token/claim logging; any error surfaces to the caller as Result.failure to render inline, never a raw exception dialog.\n\n## Test plan\nUnit: app/test/auth/oidc_flow_test.dart — CSPRNG uniqueness, state-mismatch rejection, nonce-mismatch rejection, expired/invalid-audience id_token rejection, JWKS signature verification with a rotated key. Integration (patrol): app/integration_test/auth_oidc_redirect_test.dart exercises the system-browser redirect on Android + web. Abuse cases feed {{SN-AUTH-019}}.\n\n## Dependencies\nSN-AUTH-002, SN-AUTH-008.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-010",
+    "title": "Make guest mode a first-class, no-account note-taking path",
+    "type": "feature",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "onboarding"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-STORAGE-1",
+      "ASVS-V6",
+      "OWASP-A01",
+      "CWE-284"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nIdentity is never required to take notes (locked decision #2/#5, ADR-0004). The design mock has no skip control — a design gap the PRD closes: the Login screen MUST offer a tertiary Skip for now — take notes without an account under the methods (PRD-AUTH-007). Choosing it creates a local Guest profile and lands on Library (no onboarding gate beyond the optional tour). Guest mode MUST provide the full note-taking experience with no network call, disabling only account-bound features (sync, sharing, cross-device entitlement, student verification), each behind a single inline Sign in to <benefit> affordance rather than a whole-screen block (PRD-AUTH-008/009). This is a genuine differentiator: competitors either force an account or reduce guests to a demo.\n\n## Scope\n**In:** the Skip for now control on the Login screen; creating a local Guest profile and landing on Library; making every core feature (create/edit/organize notebooks, ink, PDF import within Free limits, audio, on-device search, local export) work offline as guest; the inline Sign in to <benefit> affordances on account-bound surfaces.\n**Out:** adopting guest data on later sign-in ({{SN-AUTH-011}}), the onboarding tour (SN-ONB-001), the actual Free/Pro limits enforcement (SN-BILL-001), and sync (SN-SYNC-001).\n\n## Acceptance criteria\n- [ ] The Login screen shows a Skip for now — take notes without an account tertiary link under the methods (PRD-AUTH-007).\n- [ ] Choosing it creates a local Guest profile and opens Library with zero network calls (verified by a network-log assertion).\n- [ ] As guest, a user can create/edit/organize notebooks, ink, import a PDF (within Free limits), record audio, search on-device and export locally (PRD-AUTH-008).\n- [ ] Account-bound surfaces (sync, sharing, cross-device entitlement, student verification) show a single inline Sign in to <benefit> affordance, not a blocking gate (PRD-AUTH-009).\n- [ ] Airplane mode does not degrade any guest note-taking capability.\n\n## Technical notes\nGuest is an AuthState.guest with an implicit local Guest profile ({{SN-AUTH-007}}). No token exists. Feature availability is a capability query (accountRequired?), not a platform check; account-bound widgets render the inline upsell affordance. Keep note-taking entirely local (drift + blob store, sane_core); guest at-rest protection SHOULD still use a device-bound Keystore/Keychain key (PRD-STOR-003) even without a user passphrase. The Skip control lives on the Login screen chrome (SN-ONB-001) but the behaviour/state is owned here.\n\n## Security & privacy\nThreats: an account-bound feature accidentally leaking to the network as guest (would violate no-egress; A01/CWE-284), guest data readable across profiles. Controls: MASVS-PRIVACY-1 (no unexpected data collection), MASVS-STORAGE-1 (device-bound at-rest key), ASVS V6. Privacy-by-design: guest is the maximally-private default — nothing leaves the device. Assert in tests that guest triggers no egress. Update the privacy dashboard (SN-PRV-001) to reflect guest as the zero-collection default.\n\n## UX notes\nThe Skip link and the What leaves this device promise are the honest, student-readable framing (design §16, PRD-PRIV-001). Render the inline upsell affordances using sane_ui components across all 17 looks + dark mode; each needs a Semantics label, 44pt/48dp target, contrast, and keyboard reachability on web. Empty state for a fresh guest is Library Nothing here yet (design §6). No dead-ends: every gated feature explains the one-tap path to sign in.\n\n## Test plan\nWidget: app/test/auth/guest_mode_test.dart (skip → guest profile → library; account-bound surface shows inline upsell). Integration (patrol): app/integration_test/guest_offline_test.dart runs core flows in airplane mode. Negative: a network-egress assertion proves guest note-taking makes no calls.\n\n## Dependencies\nSN-AUTH-002 (auth state); works with {{SN-AUTH-007}} (Guest profile).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-011",
+    "title": "Adopt guest data in place when a user signs in later",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "ASVS-V6",
+      "OWASP-A01",
+      "CWE-212"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-010",
+      "SN-AUTH-002",
+      "SN-CRY-001"
+    ],
+    "labels_extra": [
+      "needs-decision",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nWhen a guest signs in later, the app MUST adopt (not discard) the existing local workspace: the current local data is attached to the new identity in place, with a one-line confirmation Your notes stay on this device and are now linked to <account>, and NOTHING is uploaded until sync is explicitly enabled (PRD-AUTH-010). This is the bridge from first-class guest ({{SN-AUTH-010}}) to an account without the data-loss trap competitors fall into. There is an open maintainer decision on the friction of the first-time E2EE key-setup + recovery-code flow that a later sync enable triggers (PRD-03 §15.5, needs-decision) — this issue must make adoption itself lossless and defer key setup to the sync/E2EE flow (SN-CRY-001 / SN-SYNC-001).\n\n## Scope\n**In:** detecting a sign-in from a guest state; re-parenting the Guest profile's workspace to the newly signed-in account in place (no copy, no upload); the confirmation copy; leaving sync OFF until the user turns it on.\n**Out:** the E2EE key setup + recovery code (SN-CRY-001), turning on sync (SN-SYNC-001), account linking of a second provider ({{SN-AUTH-012}}), and resolving the migration-friction decision (maintainer, PRD §15.5).\n\n## Acceptance criteria\n- [ ] Signing in from guest keeps every existing notebook/page/attachment in place and attributes it to the new account — no data is lost, duplicated or moved (PRD-AUTH-010).\n- [ ] A one-line confirmation Your notes stay on this device and are now linked to <account> is shown after adoption.\n- [ ] No note content is uploaded during or after adoption until sync is explicitly enabled (network-egress assertion).\n- [ ] If the user cancels sign-in mid-flow, the guest workspace is untouched and remains usable.\n- [ ] Adoption is idempotent: repeating it (e.g. a retried sign-in) does not fork or duplicate the workspace.\n\n## Technical notes\nAdoption re-parents the existing local Workspace/Profile records to the account id via the sane_core repositories — a metadata update, not a data migration; blobs are content-addressed and untouched. Guard against partial state with a transactional update (drift). Defer any encryption re-keying to the E2EE setup (SN-CRY-001) which only runs when sync is enabled; adoption itself changes no ciphertext. Leave a // needs-decision marker referencing PRD §15.5 for the key-setup friction question. Keep the operation off the UI isolate if it touches many rows.\n\n## Security & privacy\nThreats: silent upload on sign-in (would break zero-server promise — must be prevented; A01), incomplete adoption leaving orphaned/cross-account data (CWE-212), cross-profile leakage. Controls: MASVS-STORAGE-1, MASVS-PRIVACY-2, ASVS V6. Privacy-by-design: sign-in changes attribution, not data location, and never triggers egress. needs-decision: the acceptable friction of the later key-setup/recovery flow is a maintainer call (PRD §15.5) and is out of this issue's control.\n\n## UX notes\nThe confirmation copy is fixed by PRD-AUTH-010 and must read exactly; render it as a non-blocking toast/inline banner via sane_ui across all 17 looks + dark mode, with a Semantics announcement for screen readers. No modal that blocks note-taking. If the user later enables sync, hand off to the E2EE setup UX (SN-CRY-001) rather than surfacing keys here.\n\n## Test plan\nUnit: app/test/auth/guest_adoption_test.dart (re-parent keeps all rows, idempotent, transactional rollback on failure). Widget: confirmation banner appears. Integration: guest creates notes → signs in → notes intact → no egress until sync enabled (network assertion).\n\n## Dependencies\nSN-AUTH-010, SN-AUTH-002, SN-CRY-001 (deferred key setup on later sync enable).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-012",
+    "title": "Link multiple sign-in providers to one identity",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "ASVS-V6",
+      "OWASP-A07",
+      "CWE-287",
+      "CWE-863"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-003",
+      "SN-AUTH-009"
+    ],
+    "labels_extra": [
+      "needs-decision",
+      "sec: masvs"
+    ],
+    "body": "## Context\nA student may sign in with Google today and Apple tomorrow, or a phone number and Google, and expect the same account and entitlement — not a duplicate. This issue lets a signed-in user link additional providers to one identity and resolves the same-email collision case (two providers returning the same verified email should converge, not fork). Because the product is zero-knowledge and the account is thin (identity + entitlement only, ADR-0004), linking affects the entitlement/identity association ({{SN-AUTH-016}}, SN-BILL-001), never note keys. The exact identity model (link by verified email vs an entitlement-provider app-user id, and whether Apple's private-relay email can be reconciled) is a **maintainer decision** (needs-decision) — implement the decisive default of app-user-id-based linking with verified-email hints and leave the hook.\n\n## Scope\n**In:** a Link account action (Settings → Account) that runs a provider sign-in ({{SN-AUTH-009}}) while already signed in and associates it with the current identity; detecting and merging a same-verified-email collision into one identity; showing linked providers; unlinking a provider (keeping at least one).\n**Out:** the underlying entitlement association model (SN-BILL-001 / {{SN-AUTH-016}}), guest adoption ({{SN-AUTH-011}}), and the final identity-model decision (maintainer).\n\n## Acceptance criteria\n- [ ] A signed-in user can add a second provider; afterwards either provider signs into the same account with the same entitlement (PRD-PROF-006 scope).\n- [ ] Two providers returning the same verified email converge to one identity rather than creating a duplicate account.\n- [ ] Linked providers are listed under Settings → Account; a provider can be unlinked while at least one sign-in method remains.\n- [ ] Linking never exposes or re-keys note content (identity/entitlement only, zero-knowledge).\n- [ ] An attempt to link a provider already bound to a different account is refused with a clear message (no silent account takeover, CWE-863).\n\n## Technical notes\nReuse {{SN-AUTH-009}} for the link sign-in; the association lives in the identity/entitlement layer (RevenueCat-style app_user_id per SN-BILL-001, PRD-BILL-011). Treat Apple private-relay emails as opaque — do not attempt de-anonymization; link by app_user_id with verified-email as a hint only. Leave a // needs-decision marker citing the identity-model question. Enforce that unlinking cannot leave an account with zero sign-in methods.\n\n## Security & privacy\nThreats: account takeover by linking a victim's email/provider (CWE-287/863), privilege confusion between two identities (broken authorization). Controls: MASVS-AUTH-1, ASVS V6, OWASP-A07. Every link/unlink requires the user to be already authenticated for the current account and to complete a fresh provider sign-in. No note keys are touched. needs-decision: the canonical identity key (app_user_id vs verified email) and private-relay reconciliation are maintainer calls.\n\n## UX notes\nLinked-providers UI lives under Settings → Account (design §12) built with sane_ui across all 17 looks + dark mode; each row needs a Semantics label, 44pt/48dp target, contrast, keyboard reachability on web. Collision and refusal states show clear, non-technical copy. Confirm before unlinking the last-but-one method.\n\n## Test plan\nUnit: app/test/auth/account_linking_test.dart (link adds provider, same-email converges, unlink keeps >=1, cross-account link refused). Widget: linked-providers list renders and updates. Integration (patrol): link Apple to a Google-signed-in session.\n\n## Dependencies\nSN-AUTH-003, SN-AUTH-009; entitlement association SN-BILL-001 / {{SN-AUTH-016}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-013",
+    "title": "Enforce per-profile data isolation",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "ASVS-V6",
+      "OWASP-A01",
+      "CWE-284",
+      "CWE-639"
+    ],
+    "parent": "SN-AUTH-007",
+    "depends_on": [
+      "SN-AUTH-007",
+      "SN-CORE-004"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\nProfiles claim separate notebooks and looks, but the mock only swaps the avatar. PRD-PROF-004 (P0) makes real isolation the spec: each profile MUST own an isolated partition of notebooks/pages/attachments, look/dark-mode/wallpaper, all SET preferences, sync configuration, and (where applicable) its own encryption sub-keys — and switching profiles MUST swap the entire visible dataset, not just the avatar. This is the M4 exit criterion Switching profiles swaps the entire visible dataset (docs/roadmap.md M4). It is a broken-access-control guarantee (OWASP-A01): profile B must never see profile A's data through a shared query, cache, index or provider.\n\n## Scope\n**In:** partitioning every profile-scoped store by profile id — notebooks/pages/attachments, preferences (SET), sync config, search index, thumbnails/caches; making the active-profile provider re-derive the whole app tree on switch; scoping per-profile encryption sub-keys where a profile is locked ({{SN-AUTH-014}}).\n**Out:** the biometric lock itself ({{SN-AUTH-014}}), device-scoped settings that intentionally stay shared (e.g. wallpaper sane.wall is device-scoped, PRD-SET-013), and cross-device sync partitioning (SN-SYNC-001, which uses one target per profile).\n\n## Acceptance criteria\n- [ ] Switching profiles swaps the entire visible dataset — notebooks, look, wallpaper (per its scope), preferences and sync config — verified by an integration test, not just the avatar (PRD-PROF-004).\n- [ ] No query, cache, FTS index or Riverpod provider returns another profile's notebooks, thumbnails or preferences (broken-access-control test, CWE-639).\n- [ ] Preferences and sync configuration are profile-scoped except explicitly device-scoped ones (sane.wall), which stay shared per PRD-SET-013/PRD-SET-019.\n- [ ] A locked profile's partition (content, thumbnails, search index) is unreadable until unlock (composes with {{SN-AUTH-014}}).\n- [ ] Deleting or switching a profile never mutates another profile's partition.\n\n## Technical notes\nAdd a profileId scope column/key to the drift schema (SN-CORE-004 persistence) and every profile-scoped repository query; scope the FTS index and thumbnail/cache directories by profile id. Drive the active profile via a single Riverpod provider so switching invalidates and re-derives dependent providers (ADR-0003) — no stale cross-profile state. Per-profile encryption sub-keys derive from the key hierarchy (SN-CRY-001) only where a profile is locked. Device-scoped settings (sane.wall) explicitly bypass the partition (PRD-SET-013). Keep heavy re-derivation off the UI isolate.\n\n## Security & privacy\nThreats: cross-profile data disclosure (OWASP-A01, CWE-284/639, LINDDUN-Disclosure), a shared cache/index leaking another profile's titles/thumbnails. Controls: MASVS-STORAGE-1, MASVS-PRIVACY-2, ASVS V6. This is a trust boundary between local profiles — add/adjust the relevant note in docs/security/threat-model.md if the stored-asset partition changes. Fail closed: an unscoped query is a bug the tests must catch.\n\n## UX notes\nSwitching is instant and total: the greeting, notebook set, look/dark-mode and preferences all change together (design §4/§12). Render correctly across all 17 looks + dark mode (each profile may choose a different look). Provide a clear active-profile indicator; ensure screen readers announce the switch. No end-user control here beyond what {{SN-AUTH-007}} exposes.\n\n## Test plan\nUnit: app/test/auth/profile_isolation_test.dart (every profile-scoped repository filters by profile id; unscoped access throws in debug). Security: app/test/security/profile_access_control_test.dart proves profile B cannot read profile A's notebooks/index/thumbnails. Integration (patrol): switch profile → entire dataset + look swap persists across restart.\n\n## Dependencies\nSN-AUTH-007, SN-CORE-004 (persistence). Composes with {{SN-AUTH-014}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-014",
+    "title": "Add per-profile biometric lock",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "ios-phone",
+      "android-phone"
+    ],
+    "areas": [
+      "auth",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-2",
+      "MASVS-STORAGE-1",
+      "MASVS-STORAGE-2",
+      "ASVS-V6",
+      "OWASP-A01",
+      "CWE-287"
+    ],
+    "parent": "SN-AUTH-007",
+    "depends_on": [
+      "SN-AUTH-007",
+      "SN-AUTH-013",
+      "SN-CRY-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\nA profile MAY be marked locked; a locked profile MUST require device biometric (Face ID / Touch ID / Android BiometricPrompt class 3) or the device passcode as fallback before its tiles open, and its content, thumbnails and search index MUST remain encrypted-at-rest and unreadable until unlock (PRD-PROF-005). This composes with per-profile isolation ({{SN-AUTH-013}}) and the app-wide lock (SN-SET-001 / LOCK §12): unlocking the app does not auto-unlock a locked profile (PRD-LOCK-003). The app MUST NOT expose its own weaker PIN that undercuts the platform gate (PRD-LOCK-002/006, MASVS-AUTH).\n\n## Scope\n**In:** a per-profile locked flag + the biometric gate on profile open (LAContext .deviceOwnerAuthentication on Apple, BiometricPrompt + Keystore CryptoObject on Android); keeping a locked profile's partition keys wrapped by a biometric-gated key so content/thumbnails/index are unreadable until unlock; composing predictably with app lock.\n**Out:** app-wide lock and its timeout (SN-SET-001 / LOCK), per-notebook/folder lock (PRD-LOCK-005, likely SN-LIB/SN-SET), clipboard/screenshot protection (LEAK, SN-SET-001), and the web reduced-guarantee posture (web excluded from this issue's platforms — no Keychain/Keystore).\n\n## Acceptance criteria\n- [ ] Marking a profile locked requires biometric/passcode on every subsequent open of that profile (PRD-PROF-005).\n- [ ] A locked profile's notes, thumbnails and search index are unreadable at rest until unlock — decryption keys are biometric-gated in the secure store (MASVS-STORAGE-1/2).\n- [ ] Failed biometric falls back to the device passcode; the app exposes no separate weaker PIN (PRD-LOCK-002, MASVS-AUTH).\n- [ ] Unlocking the app does not auto-unlock a locked profile; each locked profile is gated independently (PRD-LOCK-003).\n- [ ] Biometric enrollment changes are handled per policy (setInvalidatedByBiometricEnrollment configured deliberately, docs/platform/android.md §8).\n\n## Technical notes\nApple: LAContext.evaluatePolicy(.deviceOwnerAuthentication) (needs NSFaceIDUsageDescription, docs/platform/ipad.md §8); wrap the profile partition key with a Keychain item gated by biometryCurrentSet. Android: BiometricPrompt + a Keystore key created with setUserAuthenticationParameters(AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL) via sane_secure_store (docs/platform/android.md §8). The partition keys come from the key hierarchy (SN-CRY-002). Compose with {{SN-AUTH-013}}: a locked partition stays encrypted until the gate passes. Suppress the locked profile's previews everywhere (feeds LEAK, SN-SET-001).\n\n## Security & privacy\nThreats: unlocked-device access to a locked profile (TM-I-03/TM-I-07, CWE-287), a self-rolled PIN weakening the platform gate, previews leaking on the lock screen/app switcher. Controls: MASVS-AUTH-2, MASVS-STORAGE-1/2, ASVS V6, OWASP-A01. Fail closed: on any keying/biometric error show a locked state, never partial content (PRD-KEY-009). This is a CODEOWNERS-protected path; update the threat model if the stored-key gating changes.\n\n## UX notes\nLocked tiles show a lock affordance on the Profiles screen (design §4) and prompt the system biometric sheet on open, rendered consistently across all 17 looks + dark mode. Provide Semantics labels (Locked profile, unlock with Face ID), 44pt/48dp targets and contrast. On repeated failure, fall back to passcode via the OS sheet — never a custom PIN pad. Excluded on web (no hardware key store) — surface that honestly in the privacy dashboard (SN-PRV-001).\n\n## Test plan\nUnit: app/test/auth/profile_lock_test.dart (locked flag gates open; keys stay wrapped until unlock). Integration (patrol): app/integration_test/profile_biometric_test.dart drives the biometric sheet on iOS + Android and asserts content is unreadable pre-unlock and that app-unlock does not unlock the profile. Negative: no custom PIN path exists.\n\n## Dependencies\nSN-AUTH-007, SN-AUTH-013, SN-CRY-002.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

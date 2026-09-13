@@ -1,0 +1,364 @@
+[
+  {
+    "key": "SN-SHR-001",
+    "title": "Build sharing, export & import (exporters, capability share links, competitor import)",
+    "type": "epic",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "security",
+      "storage"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "XL",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-CRYPTO-1",
+      "MASVS-NETWORK-1",
+      "MASVS-PLATFORM-1",
+      "MASVS-PRIVACY-2",
+      "ASVS-V4",
+      "OWASP-A01",
+      "OWASP-A02",
+      "OWASP-A08",
+      "CWE-22",
+      "CWE-200"
+    ],
+    "parent": null,
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nSane Notes promises \"open, round-trippable data\" and zero lock-in: everything a user creates MUST be exportable in open formats and importable from the tools they are leaving, all on-device (PRD-CO-003, PRD-CO-004; docs/product/prd-04-sharing-collaboration-ai-study-a11y-i18n.md §1-§2). This epic owns three things: (1) the **exporters** — PDF (ink vector + searchable OCR layer), PNG, SVG, Markdown, JSON, and the canonical open **.sanenote** bundle (docs/architecture/file-format.md §9), plus share-sheet and system print; (2) **capability share links** — a notebook id + a wrapped content key carried only in the URL fragment, with roles (Owner/Can edit/Can comment/Can view), link on/off, expiry, and **cryptographic** (not cosmetic) revocation (PRD-CO-030..039; docs/architecture/file-format.md §6.2); and (3) **import** from PDF, images, Markdown, Goodnotes, Notability, OneNote and Notion, with a per-import report and hostile-input hardening (PRD-CO-070..079; docs/security/secure-coding-checklist.md §1). Export/import foundations begin in **M2 Library & Documents**; share links, competitor import and fidelity tests land in **M6** (docs/roadmap.md M6). The Share overlay is already designed (docs/design/screens-and-flows.md §10). Real-time collaboration transport is a sibling epic ({{SN-COL-001}}); crypto primitives come from {{SN-CRY-001}}.\n\n## Scope\n**In:** the on-device export service (streaming, cancellable, scoped to page/range/notebook); PDF/PNG/SVG/Markdown/JSON/.sanenote writers; \"Export everything\" ZIP; OS share sheet + system print; the capability-link model (mint + resolve, fragment key); Share overlay UI; roles + cryptographic enforcement; invite/people management + Free 3-person gate; expiry; link-activity + scoped single-page share; the default-posture build-time flag; the import pipeline + report; Markdown/image/Notion/Goodnotes/Notability/OneNote importers; import hardening; export/import round-trip fidelity tests.\n**Out:** the CRDT/key primitives ({{SN-CRY-001}}, {{SN-CRY-002}}); sync transport ({{SN-SYNC-001}}); real-time collaboration, comments, presence ({{SN-COL-001}}); PDF render/annotate engine internals ({{SN-PDF-001}}); OS widgets/share-target *registration* deep-dive ({{SN-NOTF-001}}); on-device OCR/recognition engines ({{SN-HWR-001}}).\n\n## Acceptance criteria\n- [ ] Every child below is delivered with its named test files and its PRD-CO / MASVS / TM IDs.\n- [ ] M6 exit gates hold (docs/roadmap.md M6): share links land in a view/confirm context and never auto-mutate; the share-key stays in the URL fragment; the default share posture follows the resolved maintainer flag ({{SN-SHR-020}}); import of a hostile competitor file fails closed ({{SN-SHR-027}}).\n- [ ] \"Export everything\" works on **Free** and offline; no export is ever plan-gated (PRD-CO-003/004/016).\n- [ ] A network capture during any default (non-opt-in) export/import shows no plaintext note content leaving the device (PRD-CO-000).\n- [ ] Revocation is cryptographic: removing a member / turning off a link rotates the content key ({{SN-SHR-017}}).\n\n## Technical notes\nExport orchestration lives in `app/` (composition root, Riverpod) driving format writers in the packages that own each surface: PDF in `packages/sane_pdf`, PNG/SVG raster+vector in `packages/sane_render`, Markdown/JSON/.sanenote in `packages/sane_core` (respecting the package DAG, CLAUDE.md §3). Import parsing runs off the UI isolate (`Isolate.run`) into a new isolated notebook. Capability links reuse the envelope key hierarchy ({{SN-CRY-002}}) and the manifest field-level encryption of docs/architecture/file-format.md §6.2. Implements docs/adr/0004-local-first-zero-server.md and docs/adr/0007-end-to-end-encryption-and-keys.md; share transport aligns with docs/adr/0013-collaboration-transport.md.\n\n## Security & privacy\nThis epic is where note content deliberately leaves the app (export) and where recipients gain cryptographic access (share). Threats: TM-I-01 (cloud/relay sees only ciphertext), TM-S-04 (share-link forgery), TM-I-09 (referrer leaking the fragment), TM-D-01 (zip/decompression bombs on import), TM-T-06 (path traversal on import/export), TM-E-04 (parser memory safety). Controls: MASVS-STORAGE-1, MASVS-CRYPTO-1, MASVS-NETWORK-1, MASVS-PLATFORM-1, MASVS-PRIVACY-2, ASVS-V4, OWASP-A01/A02/A08, CWE-22/200 (docs/security/secure-coding-checklist.md §1, §3, §5).\n\n## UX notes\nAnchored on the Share overlay (docs/design/screens-and-flows.md §10) and Settings → Privacy & export \"Export everything\" (§12). Every user-facing surface renders across all 17 looks + light/dark, meets 44pt/48dp targets, ≥ 4.5:1 contrast, and is keyboard-reachable on web; children own their specific screens and states (empty/progress/error/offline).\n\n## Test plan\nAggregate across `app/test/sharing/`, `packages/sane_core/test/export/`, `packages/sane_render/test/export/`, `packages/sane_pdf/test/export/`, `app/integration_test/share_flow_test.dart`, and the fidelity suite {{SN-SHR-028}}. Each child names its own files.\n\n## Dependencies\nCross-epic: {{SN-CORE-001}} (document model), {{SN-CRY-001}} (keys/envelope), {{SN-SYNC-001}} (op-log/segments), {{SN-PDF-001}} (PDF engine), {{SN-HWR-001}} (OCR for searchable export/import), {{SN-BILL-001}} (Free/Pro gate), {{SN-COL-001}} (collaboration), {{SN-NOTF-001}} (share-target/deep-link registration).\n\n### Children\n- [ ] {{SN-SHR-002}} On-device export service (scope, streaming, progress, cancel)\n- [ ] {{SN-SHR-003}} Export a notebook/range to PDF (ink vector + searchable text)\n- [ ] {{SN-SHR-004}} Export page/selection to PNG (1x/2x/3x, transparent)\n- [ ] {{SN-SHR-005}} Export ink/shapes/text to SVG vector paths\n- [ ] {{SN-SHR-006}} Export to Markdown (CommonMark + GFM)\n- [ ] {{SN-SHR-007}} Export structured JSON of the document model\n- [ ] {{SN-SHR-008}} Export the open .sanenote bundle (lossless)\n- [ ] {{SN-SHR-009}} \"Export everything\" ZIP (PDF + .sane), Free + offline\n- [ ] {{SN-SHR-010}} OS share sheet for export artefacts\n- [ ] {{SN-SHR-011}} System print of a page range\n- [ ] {{SN-SHR-012}} Preserve accessibility metadata in exports\n- [ ] {{SN-SHR-013}} Capability share-link model (wrapped key in fragment)\n- [ ] {{SN-SHR-014}} Share overlay UI (link, permission, people, export)\n- [ ] {{SN-SHR-015}} Share roles & cryptographic capability enforcement\n- [ ] {{SN-SHR-016}} Invite by email + People list management + 3-person gate\n- [ ] {{SN-SHR-017}} Cryptographic revocation (key rotation + re-wrap)\n- [ ] {{SN-SHR-018}} Expiring share links (exp claim in wrapped-key envelope)\n- [ ] {{SN-SHR-019}} Link-activity view + scoped single-page/range share\n- [ ] {{SN-SHR-020}} Default share posture build-time flag\n- [ ] {{SN-SHR-021}} Import entry points, pipeline & import report\n- [ ] {{SN-SHR-022}} Markdown import (front-matter, wikilinks, images)\n- [ ] {{SN-SHR-023}} Image import with on-device OCR + camera-scan crop\n- [ ] {{SN-SHR-024}} Notion import (Markdown+CSV / HTML zip)\n- [ ] {{SN-SHR-025}} Goodnotes & Notability import (tier-A + tier-B)\n- [ ] {{SN-SHR-026}} OneNote import (PDF/.docx tier-B + Graph/.one tier-A)\n- [ ] {{SN-SHR-027}} Harden competitor/bundle import (caps, paths, off-isolate)\n- [ ] {{SN-SHR-028}} Export/import round-trip & fidelity test suite\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-002",
+    "title": "Implement the on-device export service: scope, streaming, progress, cancel",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "storage"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "CWE-22",
+      "CWE-400"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-CORE-005"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nEvery export format needs the same skeleton: pick a scope (current page, a page range, or the whole notebook), fold the document model to that scope, run the format writer on a background isolate, stream bytes to a user-chosen destination with a progress indicator, and let the user cancel without leaving a partial file (PRD-CO-017). Exporting a 1,000-page notebook MUST NOT OOM on a 4 GB Android device or block the UI thread (locked decision 7; docs/platform/performance-budgets.md). This service is the shared substrate the PDF/PNG/SVG/Markdown/JSON/.sanenote writers plug into, so it exists before any one format. It reads the folded page state from `sane_core` and the on-disk bundle described in docs/architecture/file-format.md.\n\n## Scope\n**In:** an `ExportRequest {scope, format, options, destination}` model; scope resolution (page / range / notebook / selection); a background export runner (`Isolate.run`) with a progress stream and a cancellation token; temp-then-rename atomic file writing so a cancel/crash leaves no partial artefact; a registry the concrete writers ({{SN-SHR-003}}..{{SN-SHR-008}}) register into.\n**Out:** the individual format writers; the share sheet ({{SN-SHR-010}}); print ({{SN-SHR-011}}); the \"Export everything\" batch ({{SN-SHR-009}}).\n\n## Acceptance criteria\n- [ ] Export runs off the UI isolate; a `flutter run --profile` timeline shows no frame > 16.7 ms on the reference iPad while a 1,000-page export runs in the background.\n- [ ] A progress stream advances 0->1 with page counts; the UI can render \"Exporting page N of M\".\n- [ ] Cancel stops the run and deletes any `.tmp` partial; no partial file remains on disk.\n- [ ] Peak memory stays < 300 MB on the reference 4 GB Android device for a 1,000-page notebook (perf budget).\n- [ ] Destination paths are canonicalised and confined to the OS-granted directory; a `..` or absolute path from options is rejected.\n- [ ] All export runs on-device by default; no bytes go to any network (PRD-CO-000/017).\n\n## Technical notes\nAdd `app/lib/sharing/export/export_service.dart` + `export_request.dart`; writers live in their owning packages and register a `FormatWriter` capability. Use `Isolate.run` for the folding+encoding step (CLAUDE.md §8: persistence/heavy work off the UI isolate). Atomic write = write `<name>.tmp`, fsync, rename (mirrors docs/architecture/file-format.md §2.4). Fold state via `sane_core` repository interfaces; do not import feature packages sideways (coordinate in `app/`). Implements PRD-CO-017.\n\n## Security & privacy\nExport writes note content to a user-chosen location: confine and canonicalise the path (reject `..`/absolute/symlink; CWE-22, checklist §1), cap wall-clock and memory before encoding (CWE-400), and never log the content, page titles, or the chosen path (checklist §7). Baseline: no content in logs, tokens only. IDs: MASVS-STORAGE-1, MASVS-PRIVACY-2, CWE-22, CWE-400.\n\n## UX notes\nDrives the Export row toasts in the Share overlay (docs/design/screens-and-flows.md §10: \"Exporting PDF with ink & highlights…\") and Settings §12. Progress + Cancel affordance render in all 17 looks + dark; the progress control is `Semantics`-labelled (\"Export 40 percent\"), 44pt/48dp, keyboard-cancellable on web. Empty state (nothing to export) is disabled with a hint; error state shows a user-safe message, never a stack trace.\n\n## Test plan\n`app/test/sharing/export_service_test.dart` (scope resolution, cancellation leaves no partial, progress monotonic), `app/integration_test/export_large_notebook_test.dart` (1,000-page memory + no-jank), path-confinement negative test.\n\n## Dependencies\n{{SN-CORE-005}} (.sanenote reader/writer + folded state). Coordinates with {{SN-CORE-001}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-003",
+    "title": "Export a notebook or page range to PDF with vector ink and a searchable text layer",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "pdf"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-1",
+      "CWE-20"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-002",
+      "SN-PDF-019"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nPDF is the universal hand-off format, and the Share overlay's first Export option is \"PDF — with ink & highlights\" (docs/design/screens-and-flows.md §10). Sane must export a page, a page range, or a whole notebook with ink, highlights, typed text, images and PDF-backed pages flattened at print fidelity, with a page outline (one bookmark per page/section) and — where recognition exists — a selectable invisible OCR text layer so the exported PDF is searchable (PRD-CO-010, PRD-CO-018). Exported PDF-backed pages MUST keep their original colours even when the app is in dark mode (PRD-CO-022; design §0 \"PDFs keep their original colours\"). This composes the per-page PDF writer that {{SN-PDF-019}} builds for PDF-backed pages, extending it to Sane's own paged/infinite/template pages.\n\n## Scope\n**In:** rendering Sane pages (paged, infinite-canvas crop, PDF-backed) to PDF via the export service; embedding typed text as real selectable text (embedded TrueType); ink and shapes as vector where feasible, else high-DPI raster; a document outline; honouring the \"never dark-invert PDF pages\" rule; wiring the searchable invisible OCR text layer produced by {{SN-PDF-020}} when recognition is available (graceful: no bogus text when unrecognised).\n**Out:** the invisible-OCR-layer generator itself ({{SN-PDF-020}}); PDF annotation round-trip ({{SN-PDF-016}}); print ({{SN-SHR-011}}); page-scoped share ({{SN-SHR-019}}).\n\n## Acceptance criteria\n- [ ] Exported PDF opens in Preview/Acrobat; page count equals the selected scope; outline has one bookmark per page/section.\n- [ ] Typed text is selectable (embedded TrueType), not rasterised; ink renders as vector paths where feasible.\n- [ ] With recognition available, text search in a reference reader finds handwritten words; with none, the page exports as vector with no fabricated text.\n- [ ] A dark-mode notebook exports light PDF pages for PDF-backed content (PRD-CO-022).\n- [ ] Highlighter strokes export at multiply/low-alpha so underlying text stays legible.\n- [ ] Export runs off the UI isolate via {{SN-SHR-002}} and streams to disk.\n\n## Technical notes\nAdd `packages/sane_pdf/lib/src/export/notebook_pdf_export.dart`, reusing `package:pdf` writing and the flatten path from {{SN-PDF-019}}. Ink vector geometry comes from `sane_render`/`sane_ink`; the invisible text render mode + OCR bounds come from {{SN-PDF-020}} (Apple Vision / ML Kit / Tesseract per platform, {{SN-HWR-001}}). Implements PRD-CO-010/018/022 and docs/architecture/file-format.md §9 (PDF row). Follows docs/adr/0014-pdf-engine.md.\n\n## Security & privacy\nOCR runs on-device by default; any cloud OCR escalation is per-request opt-in with the data-leaves-device banner (decision 6, TM-I-08). Recognised text and page content are note content: never logged (checklist §7); validate recognition output before embedding (CWE-20). IDs: MASVS-STORAGE-1, MASVS-PRIVACY-1, CWE-20.\n\n## UX notes\nTriggered from the Share overlay Export row (design §10, toast \"Exporting PDF with ink & highlights…\") and the library `⋯` menu. A scope picker (This page / Pages A-B / Whole notebook) and an optional \"Make handwriting searchable\" checkbox. Renders in all 17 looks + dark; progress/cancel and a11y from {{SN-SHR-002}}; alt-text metadata handled by {{SN-SHR-012}}.\n\n## Test plan\n`packages/sane_pdf/test/export/notebook_pdf_export_test.dart` (page count, outline, selectable typed text, dark-mode colour preservation, highlighter alpha, no-fabrication when unrecognised), interop open in a reference reader in `app/integration_test/export_pdf_test.dart`.\n\n## Dependencies\n{{SN-SHR-002}} (export service), {{SN-PDF-019}} (PDF flatten writer). References {{SN-PDF-020}} (searchable layer) and {{SN-HWR-001}} (OCR).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-004",
+    "title": "Export a page or selection to PNG at 1x/2x/3x with optional transparency",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "images-media"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "CWE-22"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe Share overlay's \"Image\" export produces a PNG of the current page (\"Exporting this page as PNG…\", docs/design/screens-and-flows.md §10). Users need a raster they can drop into slides, chats, or an LMS. The app MUST export the current page or a lasso selection to PNG at a user-chosen scale (1x/2x/3x), with an optional transparent background, honouring the page tint (PRD-CO-011). This is a thin writer over the render pipeline that already rasterises pages for thumbnails.\n\n## Scope\n**In:** a PNG `FormatWriter` that rasterises the selected page or lasso selection to a `dart:ui` Picture at the chosen scale, with transparent-background toggle and page-tint honouring; registration into the export service.\n**Out:** SVG vector export ({{SN-SHR-005}}); multi-page batch ({{SN-SHR-009}}); the share sheet ({{SN-SHR-010}}).\n\n## Acceptance criteria\n- [ ] PNG dimensions equal page units x scale for 1x/2x/3x (exact pixel counts asserted).\n- [ ] With \"transparent\" chosen, the output has an alpha channel and no page-tint fill; without it, the page tint is painted.\n- [ ] A lasso selection exports only the selection's bounding region, not the whole page.\n- [ ] Export runs off the UI isolate and streams to disk via {{SN-SHR-002}}; cancel leaves no partial file.\n- [ ] Colours match the on-screen page in light mode; dark-mode PDF-backed content is not inverted.\n\n## Technical notes\nAdd `packages/sane_render/lib/src/export/png_export.dart` using `Picture.toImage` / `Image.toByteData(png)` at the device pixel ratio x scale. Reuse the page painter used for thumbnails so ink/brush fidelity matches the canvas. Register the writer with {{SN-SHR-002}}. Implements PRD-CO-011.\n\n## Security & privacy\nThe rasterised page is note content; write only to the confined export destination (CWE-22) and never log the bytes or path (checklist §7). Baseline: no content in logs, tokens only. IDs: MASVS-STORAGE-1, MASVS-PRIVACY-2, CWE-22.\n\n## UX notes\nShare overlay Export \"Image\" and the library `⋯` menu; a small scale segmented control (1x/2x/3x) and a \"Transparent background\" switch. Toast per design. Renders in all 17 looks + dark; controls are `Semantics`-labelled, 44pt/48dp, keyboard-reachable on web.\n\n## Test plan\n`packages/sane_render/test/export/png_export_test.dart` (dimensions per scale, alpha present/absent, selection cropping, tint honouring), golden comparison of a themed page raster.\n\n## Dependencies\n{{SN-SHR-002}} (export service).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-005",
+    "title": "Export ink, shapes and text to SVG as vector paths",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "ink"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "CWE-22"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nSVG is the loss-free vector export: strokes stay as scalable paths so a diagram or handwritten figure re-imports or opens in a browser without rasterisation (PRD-CO-012; docs/architecture/file-format.md §9 PNG/SVG row). This is a differentiator over apps that only flatten to raster, and it feeds accessible metadata (SVG `<title>/<desc>`, {{SN-SHR-012}}). One `<path>` per stroke preserves colour, width and opacity; the highlighter maps to a multiply/low-alpha compositing so overlaps read correctly.\n\n## Scope\n**In:** an SVG `FormatWriter` emitting one `<path>` per stroke with stroke colour, width and opacity; highlighter as multiply/low-alpha groups; typed text as `<text>` where feasible (fallback: outline path); shapes as native SVG primitives where recognised; a viewBox matching page units.\n**Out:** PNG raster ({{SN-SHR-004}}); Markdown embedding of SVG ({{SN-SHR-006}}); accessibility `<title>/<desc>` injection ({{SN-SHR-012}}).\n\n## Acceptance criteria\n- [ ] Opening the SVG in a browser reproduces strokes as vectors (no rasterisation) at any zoom.\n- [ ] Each stroke is a single `<path>`; colour/width/opacity match the source stroke within tolerance.\n- [ ] Highlighter strokes render at low alpha / multiply so overlapping text stays visible.\n- [ ] Typed text exports as selectable `<text>` where the font permits; otherwise as an outline path (no dropped content).\n- [ ] The `viewBox` maps page coordinates so a re-import lands geometry in the right place.\n\n## Technical notes\nAdd `packages/sane_render/lib/src/export/svg_export.dart` (or `sane_ink` for pure geometry-to-path), building path `d` data from the stroke outline geometry ({{SN-INK-004}}). Keep numeric precision bounded (fixed-point) so files stay small. Register with {{SN-SHR-002}}. Implements PRD-CO-012.\n\n## Security & privacy\nSVG is note content written to the confined destination (CWE-22); never log content/path (checklist §7). Do not embed remote references or scripts in emitted SVG (no `<script>`, no external `href`) so the artefact cannot become an exfiltration/XSS vector when opened elsewhere. Baseline: no content in logs, tokens only. IDs: MASVS-STORAGE-1, MASVS-PRIVACY-2, CWE-22.\n\n## UX notes\nOffered under an \"Export as… > SVG (vector)\" affordance in the library `⋯` / share Export overflow (design §10 Export row + overflow). Renders/consistent in all 17 looks; a11y metadata added by {{SN-SHR-012}}.\n\n## Test plan\n`packages/sane_render/test/export/svg_export_test.dart` (one path per stroke, colour/width/opacity fidelity, highlighter alpha, viewBox mapping, no `<script>`/remote href), browser-render golden.\n\n## Dependencies\n{{SN-SHR-002}} (export service), {{SN-INK-004}} (stroke outline geometry).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-006",
+    "title": "Export typed text and OCR transcripts to Markdown (CommonMark + GFM)",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "text"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-1",
+      "CWE-22"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-002",
+      "SN-SHR-005"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nMarkdown is the maximally portable text export and the anti-lock-in path for note-takers who also live in Obsidian/Notion (PRD-CO-013; docs/architecture/file-format.md §9). Sane must export typed text, headings, lists, tables, checkboxes, backlinks and OCR transcripts of ink to CommonMark + GFM (tables, task lists); ink pages with no recognised text MUST be embedded as linked PNG/SVG so nothing is silently dropped; wiki-links export as `[[target]]` and as relative links. A round-trip (Markdown export -> import -> Markdown) MUST preserve headings, lists, links and image references.\n\n## Scope\n**In:** a Markdown `FormatWriter` folding typed rich-text blocks, lists, GFM tables, task-list checkboxes, backlinks/wiki-links and (when recognition exists) ink OCR transcripts; embedding un-recognised ink pages as linked PNG/SVG assets in a sibling folder; front-matter with note title/tags/properties.\n**Out:** the SVG/PNG asset writers themselves ({{SN-SHR-004}}/{{SN-SHR-005}}); Markdown *import* ({{SN-SHR-022}}); the OCR engine ({{SN-HWR-001}}).\n\n## Acceptance criteria\n- [ ] Round-trip Markdown -> {{SN-SHR-022}} import -> Markdown preserves headings, lists, task-lists, links and image references.\n- [ ] GFM tables and `- [ ]`/`- [x]` checkboxes render correctly in a reference viewer.\n- [ ] Wiki-links export both as `[[target]]` and as a working relative link to the exported target file.\n- [ ] An ink page with no recognised text is embedded as a linked PNG/SVG (never dropped); with recognition, its transcript is inlined.\n- [ ] YAML front-matter carries the note title, tags and typed properties.\n\n## Technical notes\nAdd `packages/sane_core/lib/src/export/markdown_export.dart` (pure Dart; no `package:flutter`). Compose the PNG/SVG asset writers via the export service for embedded ink. Use the Peritext/text CRDT snapshot for rich text (docs/architecture/document-model.md §TEXT). Implements PRD-CO-013. OCR transcripts are optional and graceful when {{SN-HWR-001}} is unavailable at runtime.\n\n## Security & privacy\nMarkdown + assets are note content written to the confined destination (CWE-22); never log content/path (checklist §7). Normalise text to Unicode NFC and strip meaningless control characters before writing (checklist §1). Baseline: no content in logs. IDs: MASVS-STORAGE-1, MASVS-PRIVACY-1, CWE-22.\n\n## UX notes\n\"Export as… > Markdown\" in the library `⋯`/share Export overflow. A folder-style export (`note.md` + `assets/`) with a toast. Consistent across 17 looks + dark; a11y alt attributes for embedded images set by {{SN-SHR-012}}.\n\n## Test plan\n`packages/sane_core/test/export/markdown_export_test.dart` (headings/lists/tables/checkboxes, wiki-link dual form, ink-embedding fallback, front-matter, NFC normalisation), round-trip test paired with {{SN-SHR-022}}.\n\n## Dependencies\n{{SN-SHR-002}} (export service), {{SN-SHR-005}} (SVG asset writer). References {{SN-HWR-001}} (OCR transcripts) and {{SN-SHR-022}} (round-trip import).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-007",
+    "title": "Export a notebook to structured JSON matching the .sanenote schema",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "storage"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "CWE-22"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-002",
+      "SN-CORE-005"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\nFor programmatic re-use, backup tooling and debugging, Sane must export a notebook to structured JSON describing the document model — pages, layers, objects, stroke geometry, the text CRDT snapshot and metadata — per the published `.sanenote` schema (PRD-CO-014; docs/architecture/file-format.md §9 JSON row). This is the \"your data is really yours, and readable without our app\" guarantee for developers, and it validates against the same schema a headless reader uses to reconstruct page geometry.\n\n## Scope\n**In:** a JSON `FormatWriter` that folds the current document state (snapshot + op tail) to a single JSON document matching the published schema, including stroke geometry (decoded from the ink-v1 blob), object records and the Peritext text snapshot; deterministic key ordering so output is diff-stable.\n**Out:** the binary `.sanenote` bundle ({{SN-SHR-008}}); JSON *import* (covered by the generic importer / out of v1); schema publication doc (owned by {{SN-CORE-005}}).\n\n## Acceptance criteria\n- [ ] The emitted JSON validates against the published `.sanenote` document-model schema.\n- [ ] A headless reader can reconstruct page geometry (stroke sample points within fixed-point tolerance) from the JSON alone.\n- [ ] Object ids, layers, z-order and the text CRDT snapshot are all present.\n- [ ] Output key ordering is deterministic (stable across two exports of the same state).\n- [ ] Export runs off the UI isolate and streams to disk via {{SN-SHR-002}}.\n\n## Technical notes\nAdd `packages/sane_core/lib/src/export/json_export.dart` (pure Dart). Decode stroke geometry from the `application/ink-v1` blob framing (docs/architecture/file-format.md §5.3) into explicit sample arrays. Reuse the folded snapshot from {{SN-CORE-005}}. Implements PRD-CO-014.\n\n## Security & privacy\nJSON is a full plaintext dump of note content — write only to the confined destination (CWE-22), never log it (checklist §7), and clearly label it as an unencrypted export in the UI. Baseline: no content in logs, tokens only. IDs: MASVS-STORAGE-1, MASVS-PRIVACY-2, CWE-22.\n\n## UX notes\n\"Export as… > JSON (developer)\" in the Export overflow, with a one-line \"plain, unencrypted structural export\" note. Consistent in all 17 looks + dark; a11y-labelled control.\n\n## Test plan\n`packages/sane_core/test/export/json_export_test.dart` (schema validation, geometry round-trip tolerance, deterministic ordering, presence of layers/text snapshot).\n\n## Dependencies\n{{SN-SHR-002}} (export service), {{SN-CORE-005}} (.sanenote schema + folded state).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-008",
+    "title": "Export the lossless .sanenote bundle with optional encryption",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "storage"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-CRYPTO-1",
+      "MASVS-PRIVACY-2",
+      "CWE-22"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-002",
+      "SN-CORE-005"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe `.sanenote` bundle is the canonical, documented, published format and the \"your data outlives the app\" guarantee (PRD-CO-015; docs/architecture/file-format.md §1). The Share overlay labels it \"**.sane (with audio) — keeps audio sync**\" (docs/design/screens-and-flows.md §10). Exporting it folds the sync store to snapshots, optionally decrypts (a cleartext export on the user's own device is the longevity guarantee), and zips a Zip64 archive with MANIFEST.cbor, per-page snapshots/op-tail, content-addressed blobs (including audio, chunk-framed) and derived thumbnails/index. Export then re-import MUST reproduce the notebook bit-for-bit (ink, audio-ink timestamps, backlinks, tags).\n\n## Scope\n**In:** a `.sanenote` `FormatWriter` that compacts pages to a snapshot, assembles MANIFEST.cbor (deterministic CBOR) with the hash tree and hlcVector, packs blobs (audio chunked), writes the FORMAT sentinel, and produces a Zip64 (or directory) bundle; a \"cleartext\" vs \"encrypted-for-backup\" option (encrypted reuses the sync-store envelope).\n**Out:** the crypto envelope internals ({{SN-CRY-001}}); the reader ({{SN-CORE-005}}); \"Export everything\" batching ({{SN-SHR-009}}).\n\n## Acceptance criteria\n- [ ] Export -> re-import reproduces the notebook bit-for-bit: ink geometry, audio-ink timestamps, backlinks and tags all match.\n- [ ] The bundle contains MANIFEST.cbor (parsed first), the FORMAT sentinel \"sanenote/1\", per-page snapshots, content-addressed blobs and derived thumbnails/index per docs/architecture/file-format.md §1.\n- [ ] The manifest hash tree verifies (every snapshot/segment/blob/page-meta hash matches) on re-open.\n- [ ] Cleartext export decrypts on-device; encrypted export uses XChaCha20-Poly1305 / AES-256-GCM per the sync-store envelope (§6) with no key in the manifest in the clear.\n- [ ] Large audio blobs stream chunk-by-chunk without loading the whole file into memory (< 300 MB peak on reference Android).\n\n## Technical notes\nAdd `packages/sane_core/lib/src/export/sanenote_bundle_export.dart` composing the writer from {{SN-CORE-005}}; use a streaming Zip64 writer (docs/architecture/file-format.md §11 flags the `archive` package Zip64/streaming caveat — verify, else fall back to a directory bundle). Encrypted exports call {{SN-CRY-001}} for envelope wrapping; blob chunking per §5.2. Implements PRD-CO-015 and docs/architecture/file-format.md §1/§5/§6.\n\n## Security & privacy\nA cleartext `.sanenote` is a full plaintext export — confine the write path (CWE-22), never log content/path (checklist §7), and warn in-UI that it is unencrypted. Encrypted exports encrypt before write and keep only wrapped keys/refs in the manifest (checklist §3; docs/architecture/file-format.md §6.2). IDs: MASVS-STORAGE-1, MASVS-CRYPTO-1, MASVS-PRIVACY-2, CWE-22.\n\n## UX notes\nShare overlay Export \".sane (with audio)\" (design §10, toast \"Exporting .sane — keeps audio sync\") and Settings §12 \"Export everything\". An \"Encrypt this export (needs your recovery key to reopen elsewhere)\" toggle, off by default for the longevity/cleartext case. All 17 looks + dark; a11y + progress from {{SN-SHR-002}}.\n\n## Test plan\n`packages/sane_core/test/export/sanenote_bundle_export_test.dart` (bit-for-bit round-trip, manifest hash-tree verify, cleartext vs encrypted, chunked-audio streaming, FORMAT sentinel present), `app/integration_test/export_sanenote_test.dart`.\n\n## Dependencies\n{{SN-SHR-002}} (export service), {{SN-CORE-005}} (bundle reader/writer + schema). References {{SN-CRY-001}} (encrypted-export envelope), {{SN-AUD-001}} (audio blobs).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-009",
+    "title": "Implement \"Export everything\" ZIP of every notebook as PDF and .sanenote",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "privacy"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "CWE-22",
+      "CWE-400"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-003",
+      "SN-SHR-008"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\"Export everything\" is the honesty promise: from Settings -> Privacy & export, produce a ZIP of every notebook as PDF **and** `.sanenote`, available on **Free**, runnable offline (PRD-CO-016; docs/design/screens-and-flows.md §12 \"PDF and .sane for every notebook — yours to keep, even on Free\"). It is the single-click \"leave any time with all your data\" gesture that attacks lock-in (PRD-CO-003/004). It batches the per-notebook PDF ({{SN-SHR-003}}) and `.sanenote` ({{SN-SHR-008}}) writers over the whole library.\n\n## Scope\n**In:** a batch export that iterates every notebook (across the current profile), runs the PDF + `.sanenote` writers for each, and streams them into one ZIP with per-notebook progress; cancel-safe; the Settings entry point + toast.\n**Out:** the per-notebook writers ({{SN-SHR-003}}/{{SN-SHR-008}}); cross-profile export (per-profile isolation — one profile at a time); cloud upload of the ZIP.\n\n## Acceptance criteria\n- [ ] The resulting ZIP contains exactly one PDF + one `.sanenote` per notebook in the current profile.\n- [ ] Available and fully functional on the **Free** plan and with no network (offline).\n- [ ] Toast reads \"Preparing a ZIP of every notebook (PDF + .sane)…\" (design §12), and progress reflects notebooks completed.\n- [ ] Cancel mid-run leaves no partial ZIP on disk.\n- [ ] Peak memory stays within the 4 GB Android budget (< 300 MB) by streaming one notebook at a time.\n\n## Technical notes\nAdd `app/lib/sharing/export/export_everything.dart` driving {{SN-SHR-002}} once per notebook and appending to a streaming ZIP. Scope to the active profile's notebooks only (multi-profile data isolation, {{SN-LIB-001}}). Implements PRD-CO-016.\n\n## Security & privacy\nBatches full plaintext exports — confine the write path (CWE-22), cap total wall-clock/memory (CWE-400), never log content/paths (checklist §7), and never bundle another profile's notebooks (data isolation). Baseline: no content in logs. IDs: MASVS-STORAGE-1, MASVS-PRIVACY-2, CWE-22, CWE-400.\n\n## UX notes\nSettings -> Privacy & export -> \"Export everything\" (design §12). Progress dialog with notebook count + Cancel; success hands off to the share sheet ({{SN-SHR-010}}) or a \"Saved to Files\" confirmation. All 17 looks + dark; a11y-labelled progress; keyboard-reachable on web.\n\n## Test plan\n`app/test/sharing/export_everything_test.dart` (one PDF + one .sane per notebook, Free-plan availability, offline, cancel leaves no partial, profile scoping), `app/integration_test/export_everything_test.dart`.\n\n## Dependencies\n{{SN-SHR-003}} (PDF export), {{SN-SHR-008}} (.sanenote export). Coordinates with {{SN-LIB-001}} (profile scoping) and {{SN-SHR-010}} (share sheet).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-010",
+    "title": "Offer the OS share sheet for export artefacts on every platform",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-3",
+      "MASVS-PRIVACY-2",
+      "CWE-200"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\nOnce an artefact is exported it must reach other apps through the native share UI: iOS/iPadOS `UIActivityViewController`, Android `ACTION_SEND`/`Intent.createChooser`, and Web `navigator.share()` (Web Share API level 2 with files where supported, else a download fallback) (PRD-CO-020). This is what turns \"Export PDF\" into \"AirDrop this to my professor\" or \"share to WhatsApp\". On unsupported web browsers it MUST degrade to a plain download so the user is never stuck.\n\n## Scope\n**In:** a `ShareSheet` service that takes an exported file (or bytes) + a title/MIME and invokes the platform share UI on each surface; the web capability check with download fallback; wiring from every export flow.\n**Out:** receiving shares *into* the app (import share-target, {{SN-SHR-021}}); print ({{SN-SHR-011}}); the OS share-target/file-handler *registration* deep-dive ({{SN-NOTF-001}}).\n\n## Acceptance criteria\n- [ ] The share sheet appears with the correct file type and title for a PDF/PNG/SVG/Markdown/.sanenote artefact on iPad, Android tablet, iPhone and Android phone.\n- [ ] On a web browser with Web Share API level 2 (files), `navigator.share({files})` is used; on an unsupported browser a download occurs instead (no dead button).\n- [ ] The share flow never blocks the UI thread and works for a large (>50 MB audio) `.sanenote`.\n- [ ] No note content, file path, or recipient is logged.\n\n## Technical notes\nAdd `app/lib/sharing/share_sheet.dart` over a thin platform channel (or a vetted, pinned share plugin — justify per checklist §10). Web uses `navigator.canShare({files})` before `navigator.share`; else an `<a download>`-style save via the browser. Implements PRD-CO-020. Coordinates registration with {{SN-NOTF-001}}.\n\n## Security & privacy\nHanding a file to another app is a deliberate egress: share only the user-selected artefact, strip nothing extra, and do not attach metadata beyond the file (CWE-200). Never log the artefact, path, or chosen target (checklist §7). Baseline: no content in logs, tokens only. IDs: MASVS-PLATFORM-3, MASVS-PRIVACY-2, CWE-200.\n\n## UX notes\nInvoked at the end of any export (Share overlay Export row, library `⋯`, \"Export everything\"). A brief \"Preparing…\" then the native sheet. All 17 looks + dark for the pre-share affordance; the native sheet is OS-styled. A11y: the trigger is labelled and 44pt/48dp; web trigger keyboard-reachable.\n\n## Test plan\n`app/test/sharing/share_sheet_test.dart` (correct MIME/title mapping, web canShare gating, download fallback path), `app/integration_test/share_sheet_test.dart` per platform smoke.\n\n## Dependencies\n{{SN-SHR-002}} (produces the artefact). Coordinates with {{SN-NOTF-001}} (platform registration).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-011",
+    "title": "Support system print of a page range with correct paper size and margins",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "CWE-200"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nStudents print handouts and marked-up PDFs. Sane must support system Print (AirPrint / Android Print Framework / `window.print()` on web) of a page range with the correct paper size (Auto/A4/Letter per template) and margins; PDF-backed pages print at their native size; and printed PDF-backed content is never dark-inverted (PRD-CO-021, PRD-CO-022). Print reuses the PDF export path so the paginated output matches the exported PDF exactly.\n\n## Scope\n**In:** a print service that renders the selected page range to the platform print pipeline via the PDF writer ({{SN-SHR-003}}), with paper-size selection (Auto/A4/Letter) and margins; native-size printing for PDF-backed pages; the dark-mode colour-preservation rule.\n**Out:** export-to-file ({{SN-SHR-003}}); the share sheet ({{SN-SHR-010}}).\n\n## Acceptance criteria\n- [ ] Print preview shows correct pagination for the selected range; an A4 export prints without clipping.\n- [ ] Paper size Auto/A4/Letter is honoured; PDF-backed pages print at native size.\n- [ ] A dark-mode notebook prints light PDF-backed pages (PRD-CO-022).\n- [ ] Web uses `window.print()` against the generated PDF; iOS uses `UIPrintInteractionController` (AirPrint); Android uses the Print Framework.\n- [ ] No note content or printer identity is logged.\n\n## Technical notes\nAdd `app/lib/sharing/print_service.dart` reusing {{SN-SHR-003}}'s PDF bytes as the print payload (a vetted, pinned printing plugin is acceptable — justify per checklist §10). Implements PRD-CO-021/022.\n\n## Security & privacy\nPrinting is an egress to a system service and possibly a network printer: hand off only the selected range, never log content or printer details (CWE-200, checklist §7). Baseline: no content in logs. IDs: MASVS-PRIVACY-2, CWE-200.\n\n## UX notes\nA \"Print…\" action in the library `⋯` and the Share overlay Export overflow, opening the OS print dialog with a range + paper-size picker first. All 17 looks + dark for the pre-print affordance; a11y-labelled; keyboard-reachable on web.\n\n## Test plan\n`app/test/sharing/print_service_test.dart` (range pagination, paper-size mapping, dark-mode colour preservation), manual AirPrint/Android/web print smoke documented in the PR.\n\n## Dependencies\n{{SN-SHR-003}} (PDF export payload).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-012",
+    "title": "Preserve alt-text and OCR transcripts as accessible metadata in exports",
+    "type": "task",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "a11y"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-003",
+      "SN-SHR-005",
+      "SN-SHR-006"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\nExports must stay accessible: alt-text / OCR transcripts must survive into PDF `/Alt`, SVG `<title>/<desc>`, and Markdown image alt attributes so a screen reader reading the exported artefact announces per-image alt text (PRD-CO-018; WCAG 1.1.1). This is a small cross-cutting task over the PDF/SVG/Markdown writers, and it doubles as a market wedge — Sane's on-device OCR means even handwritten pages carry a text alternative into the export (PRD-CO-310, user-pain idea #20).\n\n## Scope\n**In:** injecting the object title + on-device OCR transcript + alt text into each writer's accessible-metadata slot (PDF `/Alt` on marked content, SVG `<title>/<desc>` per group, Markdown `![alt](…)`); marking decorative strokes skip-able.\n**Out:** generating the OCR transcript ({{SN-HWR-001}}); the writers' geometry paths ({{SN-SHR-003}}/{{SN-SHR-005}}/{{SN-SHR-006}}).\n\n## Acceptance criteria\n- [ ] A screen reader reading the exported PDF announces per-image/per-object alt text.\n- [ ] Exported SVG carries `<title>` and `<desc>` for each stroke-group/shape; decorative ink is marked skip-able / omitted from the a11y tree.\n- [ ] Exported Markdown images carry a non-empty `alt` when a transcript or title exists.\n- [ ] When no transcript exists, a sensible fallback (object title / \"handwritten note\") is used, never an empty or fabricated alt.\n\n## Technical notes\nExtend {{SN-SHR-003}} (PDF marked-content `/Alt`), {{SN-SHR-005}} (SVG `<title>/<desc>`) and {{SN-SHR-006}} (Markdown alt) to read the per-object title + OCR transcript from the model. Transcript source is {{SN-HWR-001}}; degrade gracefully when absent. Implements PRD-CO-018; aligns with docs/design/accessibility.md.\n\n## Security & privacy\nThe alt text is note content (an OCR transcript) placed into the user's chosen export only — never logged (checklist §7). Baseline: no content in logs. IDs: MASVS-PRIVACY-1.\n\n## UX notes\nNo new surface; it improves the accessibility of what the export writers already produce. Verified with VoiceOver reading an exported PDF and a screen reader on an exported Markdown page.\n\n## Test plan\n`app/test/sharing/export_accessibility_test.dart` (PDF /Alt present, SVG title/desc per group, Markdown alt non-empty, decorative-skip, no fabricated alt), a11y assertion in the export golden tests.\n\n## Dependencies\n{{SN-SHR-003}}, {{SN-SHR-005}}, {{SN-SHR-006}} (the writers). References {{SN-HWR-001}} (transcripts).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

@@ -1,0 +1,405 @@
+[
+  {
+    "key": "SN-AND-001",
+    "title": "Android platform: tablet, phone, foldable & ChromeOS surface",
+    "type": "epic",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "ink"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "XL",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PLATFORM-2",
+      "MASVS-STORAGE-1"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nAndroid is the surface where competitors are weakest and least consistent, so it is Sane Notes' strategic opening (docs/platform/android.md §0). This epic owns the whole Android platform surface — phones, tablets, foldables and ChromeOS — realising the two-tier ink architecture (docs/architecture/overview.md, ADR-0008), the native plugin contract (ADR-0012), the window-size-class adaptive layout, the Android 16 (API 36) behaviour changes (predictive back, edge-to-edge, forced resizability, 16 KB pages), Credential Manager sign-in, SAF file access, hardware-backed Keystore storage, Play Integrity, and Google Play release readiness. The Android tablet ink budget is **<= 25 ms pen-to-pixel on mid-range hardware** with a Snapdragon 680-class 4 GB device as the low-end reference (locked decision 7). Most children land in M5 (Phones & Platform Parity), but the Tier-A ink surface work is pulled forward to M1 because it is the product's beating heart (docs/roadmap.md).\n\n## Scope\n**In:** Jetpack Ink / low-latency front-buffer wet-ink surface; MotionEvent capture, prediction and palm rejection; S Pen / USI / Chromebook stylus; stylus handwriting into text fields; window size classes, foldables and desktop windowing; predictive back and edge-to-edge; Material 3 dynamic-colour interplay with the 17 looks; Credential Manager; SAF/Files; Keystore + biometric at-rest; Play Integrity; 16 KB page alignment; build config (minSdk/targetSdk/ABI/AAB); foreground service + notifications for recording; home-screen widgets; App Links; Play store readiness; low-end device validation.\n**Out:** the shared ink engine internals (SN-INK-*), the shared crypto library (SN-CRY-*), the identity abstraction (SN-AUTH-*), phone-compact UX (SN-PHN-*) — those are consumed here, not owned here.\n\n## Acceptance criteria\n- [ ] Every Tier-1 Android slot in the device lab (mid-range stylus tablet, 4 GB low-end, Samsung Galaxy Tab, an API 36 device) passes the automated functional + golden + integration suites and the decision-7 perf gates.\n- [ ] The app is fully adaptive: it never locks orientation, handles forced resizability at sw>=600 dp, reflows across compact/medium/expanded/large/extra-large without losing editor state, and survives fold/unfold.\n- [ ] Android 16 behaviour changes (predictive back, edge-to-edge, 16 KB pages) are handled with no crash or wrong back behaviour on a real API 36 device.\n- [ ] Google Play release gate passes: AAB with per-ABI splits (arm64-v8a/armeabi-v7a/x86_64), target SDK current, Data Safety form declares \"no data collected\" except opt-in crash reports, all native .so are 16 KB-aligned.\n- [ ] All child issues below are closed.\n\n## Technical notes\nFederated Kotlin plugins per ADR-0012: sane_ink_surface, sane_stylus, sane_scribble, sane_secure_store, sane_cloud_drive, sane_ml_native, sane_pdfkit. Feature->API map in docs/platform/android.md §2. Impeller defaults to Vulkan on API 29+ with legacy-GL fallback (§3). Adaptive layout driven by window size classes (§7). Do NOT use the deprecated Jetpack Security library. Children:\n\n- [ ] {{SN-AND-002}} Jetpack Ink wet-ink front-buffer surface\n- [ ] {{SN-AND-003}} GLFrontBufferedRenderer custom-brush path\n- [ ] {{SN-AND-004}} MotionEvent capture + motion prediction\n- [ ] {{SN-AND-005}} Texture composition + capability tier probe\n- [ ] {{SN-AND-006}} Palm rejection\n- [ ] {{SN-AND-007}} Stylus axis capabilities (pressure/tilt/hover)\n- [ ] {{SN-AND-008}} Barrel-button & eraser-tooltype bindings\n- [ ] {{SN-AND-009}} S Pen Remote SDK button + air actions\n- [ ] {{SN-AND-010}} USI / Chromebook / Pixel Tablet stylus + note-taker intent\n- [ ] {{SN-AND-011}} Stylus handwriting into text fields (scribble)\n- [ ] {{SN-AND-012}} Window size classes -> adaptive layout\n- [ ] {{SN-AND-013}} Foldables & desktop windowing\n- [ ] {{SN-AND-014}} Predictive back migration\n- [ ] {{SN-AND-015}} Edge-to-edge enforcement + insets\n- [ ] {{SN-AND-016}} Material 3 dynamic colour vs the 17 looks\n- [ ] {{SN-AND-017}} Credential Manager sign-in surface\n- [ ] {{SN-AND-018}} SAF / Files persistent document access\n- [ ] {{SN-AND-019}} Keystore + AES-GCM at-rest + biometric\n- [ ] {{SN-AND-020}} Play Integrity attestation\n- [ ] {{SN-AND-021}} 16 KB page-size alignment audit\n- [ ] {{SN-AND-022}} Build config: minSdk/targetSdk/ABI/AAB\n- [ ] {{SN-AND-023}} Foreground service + notifications for recording\n- [ ] {{SN-AND-024}} Home-screen widgets + quick capture\n- [ ] {{SN-AND-025}} App Links verified deep links\n- [ ] {{SN-AND-026}} Play store readiness (Data Safety)\n- [ ] {{SN-AND-027}} Low-end device validation\n- [ ] {{SN-AND-028}} R8/ProGuard rules + obfuscation\n\n## Security & privacy\nThe native bridge is real attack surface (ADR-0012 Security impact): every channel payload and every incoming intent/deep link is untrusted input, validated on both sides. Secrets stay native (Keystore/StrongBox), never crossing the channel in the clear or reaching a Dart log. Google Drive uses the narrow drive.file scope; only ciphertext leaves the device. Targets MASVS 2.x L2 and the platform/storage controls in docs/security/threat-model.md. Baseline throughout: no note content or ink coordinates in logs, tokens only in secure storage.\n\n## UX notes\nThe Sane Notes design system (17 looks, Sane Sage, tokens in docs/design/tokens.json) is the visual source of truth; Material 3 Expressive supplies the motion/interaction grammar and the fallback for platform chrome only (docs/platform/android.md §7). All chrome is TalkBack-labelled, 48 dp targets, AA contrast, keyboard-reachable on ChromeOS. Adaptive layout follows docs/design/screens-and-flows.md; input map follows docs/design/gestures-and-shortcuts.md.\n\n## Test plan\ntools/device_lab configs for the Tier-1 Android slots; golden tests pin ink across looks + light/dark and both Impeller Vulkan and GL paths; integration_test + patrol cover native permission/biometric/file dialogs; tools/perf_harness enforces the decision-7 latency/fps/memory gates on reference devices. See children for concrete test files.\n\n## Dependencies\nDepends on the ink engine (SN-INK-*), crypto (SN-CRY-*), identity (SN-AUTH-*) and foundations (SN-FND-*) landing. Child dependencies are tracked per-issue.\n\n## Definition of done\n- [ ] All child issues closed and their DoD met\n- [ ] docs/platform/android.md and docs/platform/compatibility-matrix.md reflect shipped reality\n- [ ] MASVS L2 controls for the Android surface recorded in docs/security/controls-matrix.md\n- [ ] Release gate (docs/platform/compatibility-matrix.md §7) green on every Tier-1 Android slot"
+  },
+  {
+    "key": "SN-AND-002",
+    "title": "Implement Jetpack Ink wet-ink front-buffer surface for Android",
+    "type": "feature",
+    "priority": "p0",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "ink",
+      "perf"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PLATFORM-2"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-INK-009",
+      "SN-INK-007",
+      "SN-INK-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nAndroid tablets/phones with a low-latency stylus are Tier A devices (docs/platform/android.md §3, docs/architecture/overview.md). The default wet-ink path renders the active stroke on a front buffer via Jetpack Ink (androidx.ink) InProgressStrokesView, which Google ships as the batteries-included ~4 ms path (stable 1.0.0, Dec 2025). This is the Android half of the sane_ink_surface plugin (ADR-0012) whose platform-interface and iPad twin are SN-INK-006/007, and it must meet the <= 25 ms pen-to-pixel budget on the mid-range reference (decision 7, PRD-ED-027). The M0 spike SN-INK-009 decides Tier A vs a native-view pivot; this issue delivers the Tier-A Kotlin implementation on the assumption the spike passes.\n\n## Scope\n**In:** the Android Kotlin implementation of sane_ink_surface using androidx.ink InProgressStrokesView; begin/extend/end/cancel stroke lifecycle; mapping SaneInkSurface StrokeStyle -> Ink Brush/StockBrushes; handoff of the finished Stroke to the Dart model; ink-storage serialisation bridge.\n**Out:** the custom-brush GLFrontBufferedRenderer path ({{SN-AND-003}}); MotionEvent capture/prediction ({{SN-AND-004}}); Flutter Texture composition and Tier A/B selection ({{SN-AND-005}}); palm rejection ({{SN-AND-006}}).\n\n## Acceptance criteria\n- [ ] Wet-stroke rendering uses androidx.ink InProgressStrokesView on API 29+; pen-to-pixel latency measured by tools/perf_harness is <= 25 ms on the Android-tablet-stylus reference and no frame exceeds 16.7 ms while writing.\n- [ ] beginStroke(StrokeStyle) maps to an Ink Brush/StockBrushes instance; extend(historical) feeds samples; endStroke() delivers a finished Stroke via InProgressStrokesFinishedListener to the Dart model with byte-for-byte round-trip through ink-storage.\n- [ ] Front-buffer updates are used for small handwriting updates only; pan/zoom/fullscreen commit to the double-buffered layer (no tearing).\n- [ ] Capability probe reports the surface available only when androidx.ink + a usable front-buffer exist; otherwise it reports unavailable so the editor can pick Tier B.\n- [ ] Golden tests render an identical stroke through this path and the Tier-B path with pixel parity within tolerance across all 17 looks + light/dark.\n\n## Technical notes\nKotlin: androidx.ink InProgressStrokesView, Stroke, StrokeInputBatch, Brush/StockBrushes, CanvasStrokeRenderer, ink-storage (docs/platform/android.md §2, §5). Federated plugin shape sane_ink_surface -> platform-interface -> android impl (ADR-0012 rule 1); Pigeon-typed channels; EventChannel for nativeSamples. Never make per-sample channel calls on the hot loop — the native surface repaints autonomously and composites via Texture (ADR-0012 Consequences). Impeller Vulkan default on API 29+ (§3). ADR-0008 ink pipeline.\n\n## Security & privacy\nInk coordinates are note content: the draw loop logs nothing in profile/release (CLAUDE.md §7.3, MASVS-PRIVACY-1). The Pigeon payloads crossing Dart<->Kotlin are validated on both sides; no note content is exposed via IPC to other apps (MASVS-PLATFORM-2). No new network egress. Stroke data persists only through the encrypted local blob store.\n\n## UX notes\nWet ink must feel instant and identical in feel to the iPad path — the editor surface in docs/design/screens-and-flows.md §7. Low latency benefits everyone and must NOT be disabled when Reduce Motion is on (latency is not animation, PRD-ED-027). The brush cursor, palette and rulers stay in the Dart layer over the Texture.\n\n## Test plan\nplugins/sane_ink_surface/android unit tests for the brush mapping and stroke lifecycle; plugins/sane_ink_surface/test/ink_surface_capability_test.dart for the probe; app/integration_test/editor_latency_test.dart via tools/perf_harness for the <= 25 ms gate; golden tests in packages/sane_render/test/ for Tier A vs Tier B parity across looks; patrol test exercising a real stroke on the device runner.\n\n## Dependencies\nSN-INK-009 (spike go/no-go), SN-INK-007 (Android Jetpack Ink surface plugin skeleton), SN-INK-002 (stroke capture pipeline model).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-003",
+    "title": "Add GLFrontBufferedRenderer low-latency path for custom brushes",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "ink",
+      "perf"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-002",
+      "SN-INK-005"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nJetpack Ink covers the stock brush kit, but Sane Notes ships custom brushes (grain/texture/dynamics per PRD-ED-046) that androidx.ink cannot express. For those, the wet stroke renders through androidx.graphics.lowlatency GLFrontBufferedRenderer / LowLatencyCanvasView, where Sane Notes owns the stroke geometry and paints it itself at ~4 ms (docs/platform/android.md §3). This is the second acceptable Tier-A implementation chosen by capability, complementing {{SN-AND-002}}, and reuses the incremental wet-layer renderer geometry from SN-INK-005.\n\n## Scope\n**In:** the GLFrontBufferedRenderer / LowLatencyCanvasView Kotlin path inside sane_ink_surface; onDrawFrontBufferedLayer / onDrawDoubleBufferedLayer callbacks; renderFrontBufferedLayer on DOWN/MOVE, commit() on UP, cancel() on CANCEL; selection between this path and the Jetpack Ink path by brush capability.\n**Out:** the stock-brush Jetpack Ink path ({{SN-AND-002}}); brush parameter authoring (SN-BRS-*); MotionEvent capture ({{SN-AND-004}}).\n\n## Acceptance criteria\n- [ ] A custom (non-stock) brush renders its wet stroke via GLFrontBufferedRenderer with pen-to-pixel latency <= 25 ms on the mid-range reference.\n- [ ] Front-buffer rendering is used for small handwriting updates only; pan/zoom/fullscreen redraws commit to the double-buffered layer to avoid tearing (docs/platform/android.md §3).\n- [ ] renderFrontBufferedLayer fires on DOWN/MOVE, commit() on UP, cancel() on CANCEL/palm; a cancelled stroke leaves no residue on either buffer.\n- [ ] The path is selected automatically when the active brush is not expressible by androidx.ink StockBrushes; stock brushes still use {{SN-AND-002}}.\n- [ ] Golden parity with the Tier-B CustomPainter rendering of the same custom brush across looks + light/dark.\n\n## Technical notes\nKotlin: androidx.graphics.lowlatency GLFrontBufferedRenderer, CanvasFrontBufferedRenderer, LowLatencyCanvasView (docs/platform/android.md §2, §5). API 29+ floor. Geometry from packages/sane_render / SN-INK-005 (incremental wet-layer renderer); brush stamp/grain from packages/sane_brushes. Composited via Texture ({{SN-AND-005}}). ADR-0008.\n\n## Security & privacy\nNone beyond baseline: ink coordinates are note content and the draw loop logs nothing in profile/release (MASVS-PRIVACY-1); no new IPC surface, no network egress. Custom brush assets are first-party or validated by the brush importer (PRD-ED-065) before reaching this renderer.\n\n## UX notes\nCustom brushes must feel identical to stock brushes at the pen tip; the front-buffer-vs-double-buffer switch is invisible to the user. No tearing during pan/zoom is a hard bar. Hover preview (SN-AND-007) shows the brush cursor before contact.\n\n## Test plan\nplugins/sane_ink_surface/android GL-path unit tests; app/integration_test/editor_latency_test.dart custom-brush case; golden tests in packages/sane_render/test/custom_brush_frontbuffer_test.dart; a manual tearing check on the device lab during pan while a wet stroke is active.\n\n## Dependencies\nSN-AND-002 (surface plugin + capability probe), SN-INK-005 (incremental wet-layer renderer geometry).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-004",
+    "title": "Capture MotionEvent historical samples with unbuffered dispatch & prediction",
+    "type": "feature",
+    "priority": "p0",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "ink",
+      "input-gestures"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-STORAGE-1",
+      "MASVS-PLATFORM-2"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-INK-002",
+      "SN-INK-009"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nFlutter does not surface coalesced/historical sub-samples at the framework layer (docs/platform/android.md L1), so on fast strokes the wet path would be jagged. The native sane_ink_surface therefore reads MotionEvent.getHistorical* (the Android analogue of iOS coalesced touches), calls requestUnbufferedDispatch to disable input batching for immediate delivery, and uses MotionEventPredictor to draw ahead of the pen (PRD-ED-025, PRD-ED-026, docs/design/gestures-and-shortcuts.md §4). Predicted points are transient and MUST NOT enter the committed stroke.\n\n## Scope\n**In:** MotionEvent capture in the drawing view: getHistorical* recovery of batched sub-samples, requestUnbufferedDispatch(motionEvent), MotionEventPredictor.newInstance/record/predict; feeding samples to the wet surface and the committed stroke model; discarding predicted points on the next real sample.\n**Out:** the wet-render surfaces themselves ({{SN-AND-002}}/{{SN-AND-003}}); pressure/tilt/hover axis extraction ({{SN-AND-007}}); palm rejection ({{SN-AND-006}}).\n\n## Acceptance criteria\n- [ ] Every intermediate hardware sample (up to the device's stylus rate) is recovered via getHistorical* per frame and included in the committed stroke geometry; a fast diagonal stroke shows no visible facets.\n- [ ] requestUnbufferedDispatch is called on pointer-down for the drawing view so samples arrive without input batching.\n- [ ] MotionEventPredictor produces predicted points that are rendered transiently in the wet layer and are provably discarded/replaced when real samples arrive — predicted points never appear in the persisted stroke (unit-tested).\n- [ ] Sample capture adds no measurable jank: no frame > 16.7 ms while writing on the mid-range reference.\n- [ ] Coalesced/predicted capture is read inside the event handler only (no retained MotionEvent references, which the OS recycles).\n\n## Technical notes\nKotlin: MotionEvent getHistoricalX/Y/Pressure/AxisValue, getHistorySize; View.requestUnbufferedDispatch(MotionEvent); androidx.input:input-motionprediction MotionEventPredictor (record()/predict()) (docs/platform/android.md §2, §3). Samples flow to packages/sane_ink (SN-INK-002) as the InkSample model over an EventChannel; the point model {x,y,p,tilt,azimuth,t} follows PRD-ED-024. ADR-0008, ADR-0012.\n\n## Security & privacy\nRaw pointer coordinates are note content and stay on device (MASVS-STORAGE-1); the draw loop and sample stream log nothing in profile/release (MASVS-PRIVACY-1). MotionEvent objects are OS-recycled — never retain or forward them across the channel; only extracted numeric samples cross, and are bounds-checked before entering the model (MASVS-PLATFORM-2).\n\n## UX notes\nThe perceptual result is a stroke that keeps up with the fastest handwriting and reads smooth at every zoom (vector re-tessellation, PRD-ED-008). Prediction hides latency without overshoot artefacts; if a device lacks the prediction lib, capture still works from historical samples alone (graceful degradation).\n\n## Test plan\npackages/sane_ink/test/motion_capture_test.dart (historical-sample expansion, predicted-point exclusion from committed stroke); plugins/sane_ink_surface/android instrumented test for unbuffered dispatch; app/integration_test/editor_latency_test.dart jank assertion; a golden comparing a fast stroke with/without historical recovery.\n\n## Dependencies\nSN-INK-002 (capture pipeline model), SN-INK-009 (spike confirms the native capture approach).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-005",
+    "title": "Composite native ink surface via Texture and select Tier A/B by capability",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "ink",
+      "perf"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-2"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-002",
+      "SN-AND-003",
+      "SN-INK-001"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe native front-buffer surface is composited into Flutter via the Texture widget so the palette, rulers and selection stay in the Dart layer (docs/platform/android.md §3.3, ADR-0012). Whether Sane Notes uses Tier A (native front-buffer) or Tier B (pure-Flutter CustomPainter) is decided by a capability query, not a platform check (CLAUDE.md §8, docs/architecture/overview.md ink-render-tiers). This issue wires createSurface -> texture id, the Texture widget, and the runtime tier decision that binds SN-INK-001's tier abstraction to the Android implementations.\n\n## Scope\n**In:** SaneInkSurface.createSurface returning a Flutter texture id; the Texture widget host in app/editor; dispose lifecycle; the capability probe that chooses Tier A (Jetpack Ink / GL front-buffer available) vs Tier B (fallback CustomPainter); runtime re-evaluation when a stylus connects/disconnects.\n**Out:** the native render paths ({{SN-AND-002}}/{{SN-AND-003}}); the Tier-B renderer itself (SN-INK-001); palm rejection ({{SN-AND-006}}).\n\n## Acceptance criteria\n- [ ] createSurface(SurfaceConfig) returns a valid Flutter texture id; the wet stroke renders into the Texture and composites under the Dart palette/rulers with no z-order or seam artefacts.\n- [ ] The tier is chosen by capability query: on a device with a usable front-buffer + stylus the editor uses Tier A; on a device without one (e.g. no-Vulkan legacy-GL, missing androidx.ink) it falls back to Tier B and still captures and renders ink.\n- [ ] Disposing the editor releases the native surface and texture id with no leak (verified over 100 open/close cycles).\n- [ ] A capability change at runtime (stylus plugged in on a Chromebook, fold/unfold) re-evaluates the tier without losing the current page's strokes.\n- [ ] Golden tests confirm Tier A and Tier B produce visually equivalent output for the core pen kit across looks.\n\n## Technical notes\nDart: Texture widget bound to the id from createSurface; capability descriptor per ADR-0012 rule 4 (isAvailable + descriptor). Tier abstraction from SN-INK-001 (Tier-B renderer) selected via a Riverpod provider in app/ (no package-to-package coordination, CLAUDE.md §3). Kotlin surface from {{SN-AND-002}}/{{SN-AND-003}}. Impeller GL fallback path is the Tier-B render target (docs/platform/android.md L5).\n\n## Security & privacy\nNone beyond baseline plus IPC hygiene: the texture id and config crossing the channel are validated; the native surface exposes no note content to other apps (MASVS-PLATFORM-2). No logging of stroke data; no network egress.\n\n## UX notes\nThe tier switch is invisible; the user simply gets the best available latency. On a device that can only do Tier B, ink still works and stays legible — a first-class experience, not an error state. The capability probe never blocks note-taking.\n\n## Test plan\nplugins/sane_ink_surface/test/tier_selection_test.dart (probe -> Tier A/B decision, capability-change re-evaluation); app/test/editor/texture_host_test.dart (widget, dispose/leak); golden parity tests in packages/sane_render/test/; patrol test for a Chromebook stylus-connect transition.\n\n## Dependencies\nSN-AND-002 and SN-AND-003 (native surfaces), SN-INK-001 (Tier-B renderer / tier abstraction).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-006",
+    "title": "Implement Android palm rejection with ACTION_CANCEL, FLAG_CANCELED & tool-type",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "ink",
+      "input-gestures"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-004"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nA pen-first app lives or dies on palm rejection: the pen writes, the finger navigates (docs/design/gestures-and-shortcuts.md §2, PRD-ED-029). On Android this means dropping the resting hand while honouring the Settings \"Palm rejection\" toggle (default on). The mechanism combines ACTION_CANCEL handling, the API 33+ FLAG_CANCELED check on pointer-up, and branching on getToolType, plus suppressing edge-navigation gestures during active drawing (docs/platform/android.md §3.4).\n\n## Scope\n**In:** ACTION_CANCEL handling that removes the stroke for getPointerId(getActionIndex()) and re-renders; FLAG_CANCELED (API 33+) check on pointer-up to undo palm/grip touches; getToolType branch (TOOL_TYPE_STYLUS/ERASER draw, TOOL_TYPE_FINGER gesture); edge-nav suppression while drawing; honouring the palm-rejection and finger-draw settings.\n**Out:** the finger-draw toggle logic itself (owned by editor settings; consumed here); the wet render surfaces; gesture disambiguation for multi-finger (SN-ED-*).\n\n## Acceptance criteria\n- [ ] With palm rejection on and a stylus active/hovering, a resting-palm TOOL_TYPE_FINGER contact never draws — it is treated as a gesture/scroll candidate or ignored.\n- [ ] On ACTION_CANCEL the in-progress stroke for that pointer id is removed and the surface re-rendered with no residue.\n- [ ] On API 33+ a pointer-up carrying FLAG_CANCELED undoes the unintended touch (palm/grip) without committing a stroke.\n- [ ] getToolType routes TOOL_TYPE_STYLUS/TOOL_TYPE_ERASER to draw/erase and TOOL_TYPE_FINGER to gesture, per docs/design/gestures-and-shortcuts.md §2.2.\n- [ ] While a stroke is active, edge-nav gestures are suppressed (BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE) so a wrist near the edge does not trigger system back/home.\n- [ ] With \"Draw with finger\" on and no stylus present, palm rejection relaxes so finger drawing works (documented interaction, PRD-ED-029).\n\n## Technical notes\nKotlin: MotionEvent ACTION_CANCEL, FLAG_CANCELED (API 33+), getToolType(), getPointerId/getActionIndex; WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE (docs/platform/android.md §3.4, gestures §2.2). Settings values from prefs (palmRejection default on, drawWithFinger default off, PRD-ED-029/031). Runs in the sane_ink_surface Android impl feeding SN-AND-004's capture. ADR-0008.\n\n## Security & privacy\nNone beyond baseline: rejected touches are note-adjacent input and are never logged (MASVS-PRIVACY-1). No new IPC or network surface. Edge-nav suppression is scoped to the canvas during active drawing only, never globally, so it cannot trap the user or block system gestures elsewhere.\n\n## UX notes\nA cancelled/palm stroke is removed, not committed (WCAG 2.5.2 pointer cancellation, gestures §9). With finger-draw off, fingers only scroll/pinch; with it on and no stylus, finger drawing is first-class. The behaviour is consistent with the iPad and Web palm rules so the result is identical everywhere.\n\n## Test plan\nplugins/sane_ink_surface/android instrumented tests injecting ACTION_CANCEL and FLAG_CANCELED sequences; packages/sane_ink/test/palm_rejection_test.dart (tool-type routing, setting interaction); app/integration_test/palm_rejection_test.dart on a real S Pen/USI device; a golden confirming no residue after a cancelled stroke.\n\n## Dependencies\nSN-AND-004 (MotionEvent capture provides the pointer stream this filters).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-007",
+    "title": "Expose stylus pressure, tilt, orientation & hover axes via sane_stylus",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "input-gestures",
+      "ink"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-INK-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nBrush dynamics need per-sample pressure, tilt, orientation and hover distance from the active stylus. On Android these all surface through MotionEvent axes for any active stylus or USI pen — no vendor SDK (docs/platform/android.md §4, gestures §4). The sane_stylus plugin exposes a capability descriptor plus the hover stream so the editor can feature-detect (never sniff device) and drive pencil/charcoal shading, chisel width and the hover cursor preview (PRD-ED-021..023, PRD-ED-033).\n\n## Scope\n**In:** sane_stylus Android capabilities() descriptor (which axes this stylus reports); per-sample pressure (0-1), AXIS_TILT, AXIS_ORIENTATION, AXIS_DISTANCE extraction; the hover EventChannel driven by AXIS_DISTANCE; velocity-width fallback signalling when pressure is absent.\n**Out:** barrel-button / eraser tool-type ({{SN-AND-008}}); S Pen Remote air actions ({{SN-AND-009}}); the brush engine that consumes these (SN-BRS-*); the hover-cursor UI (PRD-ED-033 UI in SN-ED-*).\n\n## Acceptance criteria\n- [ ] capabilities() returns an accurate StylusCapabilities descriptor per connected pen (pressure/tilt/orientation/hover present-or-absent), feature-detected, never inferred from device model.\n- [ ] Pressure is normalised to [0,1]; AXIS_TILT (0..pi/2) and AXIS_ORIENTATION (+/-pi) are reported in radians matching the point model (PRD-ED-024).\n- [ ] A hover stream emits HoverSample from AXIS_DISTANCE while the pen is above the surface; it stops on contact and on pen-out-of-range.\n- [ ] When a stylus reports no pressure (some generic pens), the descriptor flags it so the brush engine substitutes velocity-based width — handwriting stays alive with no dead constant line (PRD-ED-021).\n- [ ] Values match the docs/design/gestures-and-shortcuts.md §4 axis table; a USI pen reporting up to 4096 pressure levels quantises correctly.\n\n## Technical notes\nKotlin: MotionEvent getPressure()/AXIS_PRESSURE, AXIS_TILT, getOrientation()/AXIS_ORIENTATION, AXIS_DISTANCE, getToolType (docs/platform/android.md §4, gestures §4). Federated sane_stylus plugin (ADR-0012); EventChannel for hover, Pigeon for capabilities(). Samples align with packages/sane_ink InkSample (SN-INK-002). Feature-detect per ADR-0012 rule 4; degrade cleanly.\n\n## Security & privacy\nNone beyond baseline: pressure/tilt/orientation are per-stroke note content and are never logged (MASVS-PRIVACY-1). Hover position is transient UI data, not persisted. No new network egress; capabilities() payload validated on the Dart side.\n\n## UX notes\nHover shows the brush cursor (size/shape/colour) before contact, reducing \"where will my mark land\" on dense text (PRD-ED-033); the dock always shows the active brush too, so hover is additive, never the only indicator (a11y). Missing pressure never degrades legibility — velocity thinning keeps the Fountain Pen alive on any pen.\n\n## Test plan\nplugins/sane_stylus/test/capabilities_test.dart (descriptor per fake pen); packages/sane_ink/test/stylus_axes_test.dart (normalisation, radians, velocity fallback flag); app/integration_test/hover_preview_test.dart on an S Pen/USI device; golden of the hover cursor across looks.\n\n## Dependencies\nSN-INK-002 (InkSample model the axes feed).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-008",
+    "title": "Bind stylus barrel button and eraser tool-type to editor modifiers",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "input-gestures"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-007",
+      "SN-ED-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\nEvery Android stylus exposes a barrel button and (when flipped) an eraser tool type through MotionEvent, with no SDK needed (docs/platform/android.md §4, gestures §4.1). The default binding matches the platform norm: barrel-button-held = erase-while-held, and TOOL_TYPE_ERASER (pen inverted) auto-selects the eraser. Both are remappable (eraser / previous tool / lasso / pan) via the editor tool state machine (SN-ED-002).\n\n## Scope\n**In:** reading getButtonState() (BUTTON_STYLUS_PRIMARY/SECONDARY) per event; getToolType() == TOOL_TYPE_ERASER auto-eraser; the default erase-while-held modifier and its remapping surface; restoring the prior tool on button release.\n**Out:** the S Pen BLE remote button ({{SN-AND-009}}); the eraser tool implementation (PRD-ED-071); settings UI for remapping (SN-SET-*, consumed here).\n\n## Acceptance criteria\n- [ ] Holding the primary barrel button switches the active tool to eraser for the duration of the hold; releasing restores the previous tool, read per-event so a mid-stroke press/release is honoured (gestures §7).\n- [ ] Flipping the pen so getToolType() == TOOL_TYPE_ERASER selects the eraser automatically and reverts when flipped back.\n- [ ] The barrel-button action is remappable to eraser / previous tool / lasso / pan and persists per profile.\n- [ ] Button state is read from the live MotionEvent (not cached) so the modifier tracks exactly with the physical button.\n- [ ] Basic S Pen barrel presses work through this path with no S Pen Remote SDK dependency.\n\n## Technical notes\nKotlin: MotionEvent getButtonState() BUTTON_STYLUS_PRIMARY/SECONDARY, getToolType() TOOL_TYPE_ERASER (docs/platform/android.md §4). Routed to the editor tool state machine SN-ED-002 via sane_stylus; remap config in prefs. Precedence: while the barrel button is held the tool is the eraser (gestures §7 conflict rules).\n\n## Security & privacy\nNone beyond baseline: button/tool-type are input events, not content; nothing logged (MASVS-PRIVACY-1). No network or IPC-to-other-app surface. The modifier maps only to non-destructive-until-committed actions.\n\n## UX notes\nMatches the Apple double-tap-eraser muscle memory and Concepts/Notability barrel conventions (gestures §4.1). Every gesture has a non-gesture alternative (the toolbar eraser), satisfying WCAG 2.5.1. Remap options are labelled, not icon-only.\n\n## Test plan\nplugins/sane_stylus/test/barrel_button_test.dart (state routing, remap, restore-prior-tool); app/integration_test/barrel_eraser_test.dart on an S Pen device (flip-to-erase); a widget test asserting mid-stroke press/release toggles the tool.\n\n## Dependencies\nSN-AND-007 (stylus capability plumbing), SN-ED-002 (editor tool state machine).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-009",
+    "title": "Integrate Samsung S Pen Remote SDK for button and air actions",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "input-gestures"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-007"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nSamsung Galaxy devices with a BLE S Pen expose remote button presses and air gestures via the S Pen Remote SDK — a differentiator competitors barely touch (docs/platform/android.md §4.2, gestures §4.2). A single button press maps to the single highest-value action (New note or Start recording) because Android honours only ONE remote action per app via remote_action.xml; air gestures (Up/Down/Left/Right/CW/CCW) map to page turns and tool cycling. The path is Samsung-device gated and must degrade cleanly everywhere else.\n\n## Scope\n**In:** SpenRemote.initialize + SpenUnitManager wiring in sane_stylus; ButtonEvent (single/double press) -> the one configured remote action (remote_action.xml); AirMotionEvent -> page-turn/tool-cycle bindings; feature-detection and clean absence elsewhere.\n**Out:** basic barrel-button presses (those go through {{SN-AND-008}} without the SDK); USI/Chromebook stylus ({{SN-AND-010}}); the recording service ({{SN-AND-023}}) and note-creation flow (consumed here).\n\n## Acceptance criteria\n- [ ] On a Galaxy device with a BLE S Pen, a single remote button press fires the single configured action (default: New note; alternative: Start recording) — exactly one action, per the remote_action.xml constraint.\n- [ ] Air gestures Left/Right map to previous/next page; Up/Down and CW/CCW map to configurable tool cycling; each fires once per gesture with no repeat storm.\n- [ ] SpenRemote is feature-detected via initialize(Context) + feature query; on a non-Samsung device or a pen without gyro the SDK path is absent and the app behaves normally (no crash, no missing-feature error).\n- [ ] Extra RemoteActions beyond the one allowed are not registered (they would be silently ignored) and the UI reflects the single-action limit.\n- [ ] Air-gesture handling is disabled while a text field is focused so it cannot fire during typing.\n\n## Technical notes\nKotlin: SpenRemote.initialize(context), SpenUnitManager, ButtonEvent, AirMotionEvent (docs/platform/android.md §2, §4.2, §5). Guarded behind Samsung-device + feature checks (ADR-0012 rule 4). BLE permission requested in-context with rationale (ADR-0012 rule 6). remote_action.xml declares the single action. New-note/record actions call app/ intents.\n\n## Security & privacy\nThe remote is a BLE input source: validate incoming ButtonEvent/AirMotionEvent before acting (MASVS-PLATFORM-1); a remote press lands in a view/confirm or a non-destructive action, never an irreversible mutation. BLE permission is least-privilege and in-context. Nothing about pen input is logged (MASVS-PRIVACY-1).\n\n## UX notes\nSingle press to start a note or a lecture recording is the headline S Pen convenience (gestures §4.2); air-gesture page turns feel like a presenter remote. Because only one remote action is honoured, Settings makes the choice explicit with a clear single-select. All actions have on-screen equivalents (a11y).\n\n## Test plan\nplugins/sane_stylus/test/spen_remote_test.dart (event routing, single-action enforcement, absence on non-Samsung fake); app/integration_test/spen_air_actions_test.dart on a Galaxy device; a test asserting air gestures are suppressed while a text field is focused.\n\n## Dependencies\nSN-AND-007 (sane_stylus capability plumbing).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-010",
+    "title": "Support USI & Chromebook stylus and register as ChromeOS note-taker",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "input-gestures",
+      "compat"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-007"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nUSI 2.0 pens on Chromebooks and the Pixel Tablet surface through the same MotionEvent stylus axes as any active stylus — no separate SDK (docs/platform/android.md §4.3, gestures §4.3). To be a first-class ChromeOS citizen, Sane Notes registers as the default note-taker via an intent filter for org.chromium.arc.intent.action.CREATE_NOTE (blank-note and annotate-image entry points), and supports keyboard/mouse/stylus as first-class input in freely resizable desktop windows.\n\n## Scope\n**In:** verifying USI/Pixel-Tablet pens flow through the {{SN-AND-007}} axis path (pressure up to 4096, tilt, hardware palm rejection); the ChromeOS CREATE_NOTE intent filter with blank-note and annotate-image handlers; entry-point routing to a new note vs annotate-an-image.\n**Out:** general adaptive layout ({{SN-AND-012}}); desktop windowing/foldables ({{SN-AND-013}}); the App Links deep-link handler ({{SN-AND-025}}).\n\n## Acceptance criteria\n- [ ] A USI 2.0 pen on a Chromebook or Pixel Tablet draws with correct pressure/tilt through the {{SN-AND-007}} path with no USI-specific code branch (feature-detected).\n- [ ] The app declares an intent filter for org.chromium.arc.intent.action.CREATE_NOTE and appears as a note-taking option in ChromeOS; selecting it opens a blank note.\n- [ ] The annotate-image entry point (a supplied image) opens a new note with that image placed for annotation, with the image validated/size-capped before decode.\n- [ ] Launched via CREATE_NOTE the app opens directly into the editor in a resizable desktop window; keyboard (Ctrl+S/Ctrl+Z), mouse right-click menus/hover/drag-and-drop and stylus all work.\n- [ ] On non-ChromeOS devices the intent filter is inert and nothing regresses.\n\n## Technical notes\nAndroidManifest intent filter action org.chromium.arc.intent.action.CREATE_NOTE (docs/platform/android.md §4.3, §7). USI pens via existing MotionEvent axes ({{SN-AND-007}}) — no SDK. Incoming image handled off the UI isolate, MIME/size validated, imported into a new isolated note (CLAUDE.md §7.8). Keyboard/mouse map from docs/design/gestures-and-shortcuts.md §6.\n\n## Security & privacy\nThe CREATE_NOTE intent and any supplied image URI are untrusted input (MASVS-PLATFORM-1): validate the action, canonicalise/confine the path, cap and validate the image before decode, and land in a new isolated notebook — never auto-mutate an existing note. No network egress.\n\n## UX notes\nOn ChromeOS, Sane Notes should feel like a native note-taker: pen-tap-to-capture, right-click context menus, keyboard shortcuts, drag-and-drop images (gestures §6.4). USI pens get the full brush experience. Desktop windows use the expanded/large window-class layout (compat matrix §5).\n\n## Test plan\nplugins/sane_stylus/test/usi_axes_test.dart (axis parity with a USI fake); app/integration_test/chromeos_create_note_test.dart (intent entry points, blank vs annotate); a security test that a malformed annotate-image fails closed; manual smoke on a Chromebook (Tier 2, compat matrix §2).\n\n## Dependencies\nSN-AND-007 (stylus axis capability path).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-011",
+    "title": "Enable stylus handwriting into text fields and disable it over the canvas",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "input-gestures",
+      "text",
+      "ocr-hwr"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PRIVACY-2"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-FND-002",
+      "SN-TXT-001"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nAndroid 14+ gives EditText/WebView free stylus handwriting: the OS converts pen strokes over a text field into typed text (docs/platform/android.md §2, §6). Sane Notes wants this for search/title/text-box entry, but MUST disable it over the ink canvas or the OS would try to convert note-body strokes to text. The sane_scribble plugin owns setAutoHandwritingEnabled, handwriting bounds offsets, and handwriting delegation so a search bar can hand off to the real editor (gestures §10 handwriting-to-text-field row).\n\n## Scope\n**In:** sane_scribble Android impl exposing setAutoHandwritingEnabled, setHandwritingBoundsOffsets, and registerDelegate for handwriting delegation; enabling it on Sane text fields (title, search, text boxes); explicitly disabling it over the ink canvas; the default 40dp V / 10dp H bounds.\n**Out:** ML Kit Digital Ink note-body recognition (that is the sane_ml_native / recognition path, SN-HWR-*); the text tool itself (SN-TXT-001, consumed here).\n\n## Acceptance criteria\n- [ ] Over the ink canvas, setAutoHandwritingEnabled(false) is set so pen strokes are never converted to text by the OS (verified: a stroke on the canvas produces ink, not a keystroke).\n- [ ] In the notebook title, universal search and text boxes, stylus handwriting is enabled and writes typed text into the field on Android 14+.\n- [ ] Handwriting bounds offsets default to 40dp vertical / 10dp horizontal and are configurable per field.\n- [ ] Handwriting delegation lets the search bar hand off to the real editor field via registerDelegate(placeholderId, editorId).\n- [ ] Password fields are excluded (OS behaviour) and the app does not attempt to enable handwriting on them; on pre-Android-14 devices the feature is simply absent with no regression.\n\n## Technical notes\nKotlin: View.setAutoHandwritingEnabled, setHandwritingBoundsOffsets, handwriting delegation (Android 14 / API 34+) (docs/platform/android.md §5, §6). Federated sane_scribble plugin (ADR-0012). Applied to Flutter text inputs via the platform view / embedding; disabled on the canvas host view. Two-path handwriting: this is path 1 (text fields); path 2 (note-body ML Kit) is separate (§6).\n\n## Security & privacy\nHandwriting into fields must respect field sensitivity: never enable it on password fields (MASVS-PLATFORM-1 / MASVS-PRIVACY-2); the recognised text is field input, handled like any typed text and not logged. Disabling it over the canvas prevents an unintended OS text-conversion of private note content.\n\n## UX notes\nUsers can write with the pen straight into search and titles without switching to the keyboard — a natural pen-first convenience (docs/design/screens-and-flows.md search + title). The canvas stays pure ink. Delegation means tapping/writing near the search bar just works. A keyboard alternative always remains (a11y).\n\n## Test plan\nplugins/sane_scribble/test/auto_handwriting_test.dart (enable/disable per field, bounds, delegation); app/integration_test/scribble_text_fields_test.dart on an Android 14+ device (write into search; canvas produces ink not text); a test asserting password fields are never enabled.\n\n## Dependencies\nSN-FND-002 (app scaffold), SN-TXT-001 (text tool / fields).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-012",
+    "title": "Drive adaptive layout from Android window size classes",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "design-system"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-FND-002",
+      "SN-DS-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nSane Notes is adaptive by locked decision 1: one layout that reflows from phone (~400 px) to desktop window. On Android the class comes from window size classes with breakpoints Compact <600 dp, Medium 600-839 dp, Expanded 840-1199 dp, Large 1200-1599 dp, Extra-large >=1600 dp (docs/platform/android.md §7, compat matrix §5). The class changes AT RUNTIME on rotation, multi-window and fold/unfold, and the library list/detail two-pane and editor chrome must be driven off it without losing editor state.\n\n## Scope\n**In:** computing the current window size class at runtime and exposing it to the app; mapping each class to the library and editor layouts (single-pane/bottom-nav in Compact -> two-pane+rail in Expanded/Large -> multi-column in Extra-large); re-layout on class change without state loss.\n**Out:** foldable fold/unfold specifics and ChromeOS desktop windowing ({{SN-AND-013}}); edge-to-edge insets ({{SN-AND-015}}); the phone-compact UX detail (SN-PHN-*).\n\n## Acceptance criteria\n- [ ] The app computes the size class from the current window metrics and re-derives it on every configuration change (rotation, multi-window resize, fold/unfold).\n- [ ] Compact (<600 dp) shows a single-pane library with bottom nav; Medium/Expanded show list/detail and the editor page rail; Large/Extra-large show two-pane + rail / multi-column per compat matrix §5.\n- [ ] A class change mid-edit re-lays-out without losing the open note, current page, active tool, selection or unsaved strokes.\n- [ ] The page rail collapses in the narrow (<900 px) class per CLAUDE.md §9 and PRD-ED-012.\n- [ ] Layout uses tokens only (docs/design/tokens.json via sane_ui) and renders correctly in all 17 looks + light/dark.\n\n## Technical notes\nCompute size class from Flutter MediaQuery/window metrics mapped to the Android breakpoints (docs/platform/android.md §7); a Riverpod provider exposes it (ADR-0003). Layouts assembled from sane_ui components (SN-DS-003). Follows docs/design/screens-and-flows.md adaptive rules. Do not lock orientation (§7 forced resizability).\n\n## Security & privacy\nNone beyond baseline. Layout carries no secrets; no logging of content; no network egress. State preservation on re-layout must not spill note content into any crash/rotation log.\n\n## UX notes\nReflow is seamless — the user never loses their place when they rotate, split-screen or unfold (compat matrix §5, a hard bar competitors fail). All chrome stays TalkBack-labelled and 48 dp across classes; the two-pane and multi-column layouts keep AA contrast in every look. Keyboard focus order is preserved across the reflow.\n\n## Test plan\napp/test/layout/window_size_class_test.dart (breakpoint mapping); app/integration_test/adaptive_reflow_test.dart (rotate/split/resize mid-edit preserves state); golden tests per class per look in app/test/golden/; a manual multi-window smoke on a tablet.\n\n## Dependencies\nSN-FND-002 (app scaffold), SN-DS-003 (component library).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-013",
+    "title": "Handle foldable transitions and ChromeOS desktop windowing",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-012"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nFoldables flip between compact (cover), medium (unfolded) and expanded (trifold/desktop) instantly, and Android 16 on displays with smallest width >=600 dp ignores screenOrientation/resizableActivity/aspect-ratio locks — the app fills the window regardless (docs/platform/android.md §7). On ChromeOS the app runs in freely resizable desktop windows. Fold/unfold and window-class changes must reflow without state loss (roadmap M5 exit criterion), building on the size-class plumbing in {{SN-AND-012}}.\n\n## Scope\n**In:** reacting to fold/unfold posture and hinge/fold features; instant compact<->medium<->expanded transitions preserving editor state; ChromeOS freely-resizable desktop window support; NOT locking orientation; keyboard/mouse/stylus as first-class on large screens.\n**Out:** the base size-class mapping ({{SN-AND-012}}); the CREATE_NOTE note-taker intent ({{SN-AND-010}}); edge-to-edge insets ({{SN-AND-015}}).\n\n## Acceptance criteria\n- [ ] Folding/unfolding a foldable reflows the layout to the new window class with zero loss of the open note, page, tool, selection and unsaved strokes.\n- [ ] The app never calls setRequestedOrientation and does not declare a locked orientation; at sw>=600 dp on API 36 it fills the window in any posture without letterboxing.\n- [ ] On ChromeOS the window is freely resizable; resizing continuously re-derives the size class and re-lays-out at 60 fps with no jank spikes.\n- [ ] A tabletop/half-open posture (where detectable) is handled sensibly (e.g. canvas above, tools below) or falls back to the medium layout without breaking.\n- [ ] The app does not rely on PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY (removed at API 37).\n\n## Technical notes\nUse the fold/posture signals available to the Flutter embedding (WindowManager/Jetpack WindowInfoTracker equivalents) plus display metrics; feed the same size-class provider as {{SN-AND-012}} (docs/platform/android.md §7). No orientation lock in the manifest. ChromeOS windows use the expanded/large/extra-large layouts (compat matrix §5). Verify the Flutter Android embedding handles the transitions (docs/platform/android.md L2).\n\n## Security & privacy\nNone beyond baseline. Posture/window signals carry no secrets; state carried across a transition must not be written to any log. No network egress.\n\n## UX notes\nA student folding a Galaxy Z Fold mid-sentence keeps their exact stroke and cursor; a Chromebook user drags the window edge and the canvas grows smoothly (compat matrix §5). Half-open postures get a sensible tools-below arrangement. Every layout keeps AA contrast and TalkBack labels across looks.\n\n## Test plan\napp/integration_test/foldable_transition_test.dart (fold/unfold mid-edit preserves state) on a foldable or emulator posture; app/integration_test/chromeos_resize_test.dart; a golden per posture; manual smoke on a Galaxy Z Fold and a Chromebook (Tier 2, compat matrix §2).\n\n## Dependencies\nSN-AND-012 (size-class plumbing this extends).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-014",
+    "title": "Migrate to predictive back with OnBackInvokedCallback",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "input-gestures"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-FND-002",
+      "SN-ED-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nTargeting API 36 on Android 16 makes predictive back the default: onBackPressed / KEYCODE_BACK are no longer called, so the app must migrate to OnBackPressedCallback / OnBackInvokedCallback for discard-changes confirmations and nested editor panels (docs/platform/android.md §7, L2). Getting this wrong crashes or produces wrong back behaviour on Android 16 — a real integration risk that must be validated on a real API 36 device. It interacts with unsaved strokes and the undo model (SN-ED-003).\n\n## Scope\n**In:** registering OnBackInvokedCallback/OnBackPressedCallback for the back gesture; back-preview animations where the platform provides them; discard-changes confirmation from a nested panel/overlay; dismiss-overlay vs exit-editor precedence; verifying the Flutter Android embedding is migrated.\n**Out:** the undo/redo model (SN-ED-003, consumed here); edge-to-edge insets ({{SN-AND-015}}); general adaptive layout ({{SN-AND-012}}).\n\n## Acceptance criteria\n- [ ] On an API 36 device, the system back gesture is handled via OnBackInvokedCallback/OnBackPressedCallback — never via a stale onBackPressed override — with no crash and no wrong navigation.\n- [ ] Back inside a nested editor panel/overlay dismisses that panel first (predictive-back preview shown where supported), and only exits the editor once no overlay is open (Esc-equivalent precedence, gestures §6.3).\n- [ ] Leaving a note with unsaved intent surfaces a discard-changes confirmation; because Sane Notes autosaves locally, the default is safe-keep, and the confirmation is reachable by keyboard/screen reader.\n- [ ] The predictive-back preview animation runs where the OS supports it and respects Reduce Motion.\n- [ ] The Flutter Android embedding is confirmed migrated to OnBackInvokedCallback (docs/platform/android.md L2) and the app declares android:enableOnBackInvokedCallback appropriately.\n\n## Technical notes\nKotlin/embedding: OnBackInvokedDispatcher.registerOnBackInvokedCallback / androidx OnBackPressedCallback (docs/platform/android.md §7). Coordinate with the Flutter navigator/go_router (ADR-0003) so route pops and overlay dismissals map onto the back callback. Unsaved-state signal from the editor/undo model (SN-ED-003). Verify engine support at integration (L2).\n\n## Security & privacy\nA back gesture must not silently discard or corrupt note data (data-integrity): local autosave means back is non-destructive; any explicit discard is confirmed (MASVS-PLATFORM-1). No content in logs during the transition; no network egress.\n\n## UX notes\nPredictive back gives users the OS-native peek-to-previous animation, matching platform muscle memory (docs/platform/android.md §7). Nested panels close in the expected order; the discard prompt is friendly and never loses work. Motion respects Reduce Motion.\n\n## Test plan\napp/integration_test/predictive_back_test.dart on an API 36 device (panel dismissal order, no crash, discard confirm); app/test/navigation/back_callback_test.dart (callback registration, overlay precedence); manual predictive-back-preview check on Android 16 (compat matrix Android-A16 slot).\n\n## Dependencies\nSN-FND-002 (app scaffold/embedding), SN-ED-003 (undo/redo & unsaved-state signal).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  }
+]

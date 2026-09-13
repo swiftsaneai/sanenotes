@@ -1,0 +1,421 @@
+[
+  {
+    "key": "SN-AND-015",
+    "title": "Handle enforced edge-to-edge display and window insets",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-FND-002",
+      "SN-AND-012"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\nAndroid 16 (API 36) enforces edge-to-edge: the opt-out is disabled, so the app draws behind the system bars and MUST handle insets everywhere (docs/platform/android.md §7, L2). Chrome, the palette dock, the page rail and the canvas must respect status/navigation/IME/cutout insets so nothing important sits under a system bar or a display cutout, on phones, tablets and foldables. This is bounded, well-specified inset plumbing on top of the adaptive layout ({{SN-AND-012}}).\n\n## Scope\n**In:** consuming WindowInsets (status, navigation, IME, display cutout, system gestures) across all Sane Notes chrome and the canvas; keeping the drawable canvas area clear of cutouts; IME-inset handling for text entry; a minimum 16 px side gutter maintained under insets.\n**Out:** predictive back ({{SN-AND-014}}); the base adaptive layout ({{SN-AND-012}}); edge-nav suppression during drawing ({{SN-AND-006}}).\n\n## Acceptance criteria\n- [ ] On an API 36 device the app draws edge-to-edge with no clipped or bar-obscured controls; the palette dock, page rail and toolbar clear the status/navigation bars and display cutout.\n- [ ] The IME inset pushes focused text fields into view; the canvas is not permanently shrunk by a transient keyboard.\n- [ ] A display cutout never overlaps drawable canvas content the user is inking on; content reflows around it.\n- [ ] A >=16 px side gutter is preserved at every width under insets (matches the app's responsive gutter rule).\n- [ ] Renders correctly in all 17 looks + light/dark, portrait and landscape, on phone, tablet and foldable.\n\n## Technical notes\nConsume WindowInsetsCompat via the Flutter embedding / MediaQuery.viewPadding + viewInsets; apply SafeArea/padding at the app chrome layer, not per-widget (docs/platform/android.md §7). Coordinate with the size-class layout ({{SN-AND-012}}). Do not re-enable the removed edge-to-edge opt-out. Tokens for spacing (docs/design/tokens.json).\n\n## Security & privacy\nNone beyond baseline: pure layout, no secrets, no logging, no network.\n\n## UX notes\nEdge-to-edge makes the canvas feel expansive while every control stays reachable — no button hidden behind a gesture bar or notch (docs/platform/android.md §7). Insets keep 48 dp targets and AA contrast intact; the >=16 px gutter matches the design's breathing room across looks.\n\n## Test plan\napp/test/layout/insets_test.dart (inset application, gutter minimum); app/integration_test/edge_to_edge_test.dart on an API 36 device (no obscured controls, IME behaviour); golden tests with simulated cutout/nav-bar insets across looks.\n\n## Dependencies\nSN-FND-002 (app scaffold), SN-AND-012 (adaptive layout).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-016",
+    "title": "Reconcile Material 3 dynamic colour with the 17 Sane Notes looks",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "theming",
+      "design-system"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-DS-002",
+      "SN-AND-012"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nAndroid 16 ships Material 3 Expressive with dynamic colour (wallpaper-derived), spring motion and shape morph. The Sane Notes visual identity — 17 looks, Sane Sage, tokens in docs/design/tokens.json — is the source of truth; M3 Expressive is the underlying motion/interaction grammar and the fallback for platform chrome (system dialogs, share sheets), NOT a re-skin of the brand (docs/platform/android.md §7). This issue defines exactly where dynamic colour is allowed to bleed in and where the looks win.\n\n## Scope\n**In:** adopting M3 Expressive spring motion and component grammar where it does not conflict with the design system; letting dynamic colour theme only platform chrome (system dialogs, share sheets, notification styling); ensuring the 17 looks fully own the in-app surfaces regardless of the device's dynamic palette.\n**Out:** the token->ThemeExtension encoding itself (SN-DS-002, consumed here); the look-switcher UI (SN-SET-*); non-Android theming.\n\n## Acceptance criteria\n- [ ] In-app surfaces render strictly from the selected look's tokens (SN-DS-002) — the device's wallpaper-derived dynamic palette never changes an in-app colour.\n- [ ] Platform chrome that Android themes automatically (share sheet, system dialogs, notification accents) may use dynamic colour without clashing with the active look.\n- [ ] M3 Expressive spring motion is adopted for platform-consistent transitions only where it does not override a design-system-specified motion, and respects Reduce Motion.\n- [ ] All 17 looks + light/dark render identically to the iPad/Web surfaces (golden parity); enabling Android dynamic colour system-wide does not alter any golden.\n- [ ] The interplay is documented so future work knows what dynamic colour may and may not touch.\n\n## Technical notes\nDart theming from docs/design/tokens.json via the sane_ui ThemeExtension (SN-DS-002); do not derive in-app ColorScheme from dynamicColorScheme. Platform chrome uses the OS theme. M3 Expressive motion via the design system's motion tokens (docs/design/design-system.md). docs/platform/android.md §7.\n\n## Security & privacy\nNone beyond baseline: theming only, no secrets, no logging, no network egress.\n\n## UX notes\nThe brand stays consistent across every device and look — a user's Sane Notes looks like Sane Notes, not like their wallpaper (docs/platform/android.md §7). Platform surfaces still feel native. Contrast stays AA in every look; motion honours the user's Reduce Motion setting.\n\n## Test plan\napp/test/theming/dynamic_colour_isolation_test.dart (in-app colours unaffected by a simulated dynamic palette); golden tests across all 17 looks + light/dark with dynamic colour toggled; a manual comparison of the share sheet vs an in-app surface on Android 16.\n\n## Dependencies\nSN-DS-002 (tokens as ThemeExtension), SN-AND-012 (adaptive layout host).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-017",
+    "title": "Build Credential Manager sign-in surface (passkeys, passwords, Google)",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "auth",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-AUTH-2",
+      "MASVS-NETWORK-1",
+      "OWASP-A07",
+      "CWE-287"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-AUTH-003"
+    ],
+    "labels_extra": [
+      "needs-credentials"
+    ],
+    "body": "## Context\nIdentity in Sane Notes is optional (guest mode is first-class) and used only for profile, sharing/collab and entitlements — never required to take notes (locked decision 5, docs/platform/android.md §8). The Android sign-in surface is Credential Manager (androidx.credentials): passkeys (recommended primary), passwords and Sign in with Google through one bottom-sheet API. This issue wires the Android surface into the shared auth abstraction (SN-AUTH-002) and Sign in with Google (SN-AUTH-003). It needs maintainer-supplied OAuth client IDs, so it carries needs-credentials.\n\n## Scope\n**In:** the Android Credential Manager integration behind the auth abstraction; passkey create/get and Sign in with Google via the bottom sheet; OIDC PKCE + state + nonce; storing tokens in sane_secure_store; guest-mode-preserving flow (sign-in is never forced).\n**Out:** the cross-platform auth abstraction (SN-AUTH-002); Sign in with Microsoft/Apple/phone OTP (SN-AUTH-004..006); the dev auth-bypass guard (SN-AUTH-002).\n\n## Acceptance criteria\n- [ ] Sign-in is offered through the Credential Manager bottom sheet with passkeys as the primary option, plus passwords and Sign in with Google; the user can dismiss it and keep using the app as a guest.\n- [ ] The OIDC flow uses PKCE + state + nonce; tokens are stored only in sane_secure_store (Keystore-backed), never in logs, prefs or a Dart provider (CLAUDE.md §7).\n- [ ] TLS 1.2+ is enforced for auth endpoints with certificate pinning for our own endpoints; no cleartext traffic (MASVS-NETWORK-1).\n- [ ] A failed or cancelled sign-in returns to guest mode cleanly; note-taking is never blocked by auth state.\n- [ ] Client IDs come from --dart-define / CI secrets (never committed); the issue is blocked on those being supplied (needs-credentials).\n\n## Technical notes\nKotlin: androidx.credentials CredentialManager (passkeys, passwords, Sign in with Google) (docs/platform/android.md §2, §8). Behind the SN-AUTH-002 abstraction; Sign in with Google shares config with SN-AUTH-003. Tokens via sane_secure_store ({{SN-AND-019}}). OIDC PKCE/state/nonce per roadmap M4 exit criteria. No secrets in code (CLAUDE.md §7.2).\n\n## Security & privacy\nAuthentication surface (MASVS-AUTH-1/2, OWASP-A07, CWE-287): PKCE+state+nonce defeat code interception/CSRF/replay; tokens live only in hardware-backed storage; cert pinning + TLS 1.2+ (MASVS-NETWORK-1) stop MITM; client IDs are injected secrets, never committed (CLAUDE.md §7.2). Guest-first means auth is never a note-taking gate.\n\n## UX notes\nOne tap opens the familiar Android credential bottom sheet; passkeys make sign-in fast and phishing-resistant (docs/platform/android.md §8). Dismissing keeps you in guest mode with no nag. The flow is TalkBack-labelled and keyboard-reachable; errors are friendly and never lose local notes.\n\n## Test plan\napp/test/auth/credential_manager_test.dart (flow states, guest fallback, token-in-secure-store assertion); app/test/security/auth_no_token_in_logs_test.dart; patrol integration test for the real Credential Manager sheet on a device; a negative test that a cancelled sign-in leaves guest state intact.\n\n## Dependencies\nSN-AUTH-002 (auth abstraction + dev bypass guard), SN-AUTH-003 (Sign in with Google config). Blocked on maintainer OAuth client IDs.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-018",
+    "title": "Implement SAF document access with persistable URI permissions",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "storage",
+      "sync",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-STORAGE-2",
+      "MASVS-PLATFORM-3",
+      "CWE-22"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-SYNC-004"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nNotes need no broad storage permission: the Storage Access Framework handles user-owned file access (docs/platform/android.md §5, §9). The sane_cloud_drive Android impl opens a document tree, persists the permission, and reads/writes ciphertext blobs only — supporting the user's own Google Drive sync and local import/export without a Sane Notes note-storage server (locked decision 3). Prefer OPEN_DOCUMENT/OPEN_DOCUMENT_TREE (persistent handle) over GET_CONTENT (copy) for editable notes.\n\n## Scope\n**In:** ACTION_OPEN_DOCUMENT_TREE + takePersistableUriPermission; read/write of ciphertext blobs to a user-picked location; ACTION_OPEN_DOCUMENT / ACTION_CREATE_DOCUMENT for single-file import/export; path canonicalisation/confinement of any URI from file content.\n**Out:** the Google Drive REST/Changes API sync engine (SN-SYNC-004, consumed here); encryption itself (SN-CRY-*); the iCloud adapter (SN-SYNC-003).\n\n## Acceptance criteria\n- [ ] The app requests no broad READ/WRITE_EXTERNAL_STORAGE permission; all file access goes through SAF pickers.\n- [ ] OPEN_DOCUMENT_TREE returns a tree Uri and takePersistableUriPermission keeps a durable handle across restarts; the app degrades gracefully if the permission is later revoked.\n- [ ] Only ciphertext blobs are written to user-picked locations — plaintext note content never leaves sane_crypto (verified by a test that inspects written bytes).\n- [ ] A URI or path derived from imported file content is canonicalised and confined; a traversal attempt (../, symlink) is rejected (CWE-22).\n- [ ] Editable notes use a persistent OPEN_DOCUMENT handle, not a GET_CONTENT copy.\n\n## Technical notes\nKotlin: Intent ACTION_OPEN_DOCUMENT_TREE / ACTION_OPEN_DOCUMENT / ACTION_CREATE_DOCUMENT, ContentResolver.takePersistableUriPermission, DocumentFile (docs/platform/android.md §5, §8). sane_cloud_drive federated plugin (ADR-0012); consumed by sane_sync (SN-SYNC-004). Bytes are ciphertext from sane_crypto. Least-privilege, in-context permission (ADR-0012 rule 6).\n\n## Security & privacy\nSAF avoids broad storage scope (MASVS-STORAGE-1/2); only ciphertext leaves the device (locked decision 3). Any path from file content is untrusted: canonicalise and confine to prevent traversal (CWE-22, MASVS-PLATFORM-3). Persisted URI permissions are the minimum needed; a revoked permission fails closed, never crashing or exposing data.\n\n## UX notes\nThe user picks exactly where their (encrypted) notes live via the system file picker — transparent, revocable, no scary storage prompt (docs/platform/android.md §9). Import/export lands in a view/confirm flow, never auto-overwriting. Errors (revoked access, missing file) are friendly and recoverable.\n\n## Test plan\nplugins/sane_cloud_drive/test/saf_permission_test.dart (persist/revoke handling); plugins/sane_cloud_drive/test/ciphertext_only_test.dart (written bytes are ciphertext); a security test rejecting a traversal path; patrol integration test driving the real SAF picker on a device.\n\n## Dependencies\nSN-SYNC-004 (Google Drive adapter consumes this SAF layer).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-019",
+    "title": "Store keys at rest with Android Keystore, StrongBox & BiometricPrompt",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "security",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CRYPTO-1",
+      "MASVS-CRYPTO-2",
+      "MASVS-STORAGE-1",
+      "OWASP-A02",
+      "CWE-312"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-CRY-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nSane Notes is zero-knowledge: per-notebook keys are wrapped by a user master key stored in hardware (locked decision 3, docs/platform/android.md §8). The sane_secure_store Android impl encrypts with AES-GCM using a hardware-backed Keystore key — NOT the deprecated Jetpack Security library (EncryptedFile/EncryptedSharedPreferences/MasterKey are deprecated as of 1.1.0, docs/platform/android.md §2 \"Deprecated\"). It requests StrongBox and tolerates its absence (TEE fallback), and gates key-unwrap with BiometricPrompt + a Keystore CryptoObject. This realises the Android half of the key hierarchy (SN-CRY-002).\n\n## Scope\n**In:** createKey(alias, strongBox, auth) via KeyGenParameterSpec; AES-GCM encrypt/decrypt; keySecurityLevel() reporting STRONGBOX/TEE; BiometricPrompt + CryptoObject gate on decrypt; setInvalidatedByBiometricEnrollment handling.\n**Out:** the cross-platform key hierarchy and recovery code (SN-CRY-002/003, consumed here); the app/notebook lock UI (PRD-LOCK-005/006); iOS Keychain (SN-CRY-*).\n\n## Acceptance criteria\n- [ ] Keys are generated with KeyGenParameterSpec (AES-GCM, no ECB, CSPRNG); the deprecated Jetpack Security APIs are not used anywhere (grep-enforced).\n- [ ] setIsStrongBoxBacked(true) is requested; when StrongBox is absent the code falls back to TEE and keySecurityLevel() reports the actual level (STRONGBOX vs TEE).\n- [ ] Decrypt of an auth-bound key requires BiometricPrompt success via a CryptoObject; a failed/cancelled auth fails closed and reveals no plaintext.\n- [ ] Key material never crosses the Pigeon channel in the clear, never lands on disk/logs/backups, and never enters a long-lived Dart provider (CLAUDE.md §7.3, §7.7).\n- [ ] AEAD tag is verified before any decrypted byte is used; a tampered ciphertext fails closed (MASVS-CRYPTO-2).\n\n## Technical notes\nKotlin: KeyGenParameterSpec.Builder(...).setIsStrongBoxBacked(true), setUserAuthenticationParameters(duration, AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL), setInvalidatedByBiometricEnrollment(false), BiometricPrompt + CryptoObject, KeyInfo.getSecurityLevel() (docs/platform/android.md §5, §8). sane_secure_store federated plugin (ADR-0012); consumed by sane_crypto (SN-CRY-002, ADR-0007). Approved crypto only (CLAUDE.md §7.7).\n\n## Security & privacy\nCore at-rest control (MASVS-CRYPTO-1/2, MASVS-STORAGE-1, OWASP-A02, CWE-312): hardware-backed AES-GCM, StrongBox where available, biometric-gated unwrap, fail-closed AEAD verification, no key material in logs/channel/backups. Never EncryptedFile. This is a p0 data-protection control — a mistake here breaks the zero-knowledge guarantee.\n\n## UX notes\nThe biometric prompt appears only when unwrapping a protected key (opening a locked notebook or first sync), with a clear reason string; device-credential fallback is offered. Nothing about keys is ever shown or logged. On devices without StrongBox the experience is identical (TEE), just a different security-level readout in the privacy dashboard.\n\n## Test plan\nplugins/sane_secure_store/test/keystore_test.dart (AES-GCM round-trip, StrongBox/TEE reporting, fail-closed on tamper); app/test/security/no_key_material_in_logs_test.dart; app/test/security/jetpack_security_absent_test.dart (grep gate); patrol biometric-prompt test on a device; a negative test that cancelled biometric yields no plaintext.\n\n## Dependencies\nSN-CRY-002 (key hierarchy that this Android store backs).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-020",
+    "title": "Attest stateless services with Play Integrity without gating notes",
+    "type": "security",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "security"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-RESILIENCE-1",
+      "MASVS-AUTH-1",
+      "CWE-807"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-BILL-001"
+    ],
+    "labels_extra": [
+      "needs-credentials"
+    ],
+    "body": "## Context\nPlay Integrity replaces SafetyNet and provides app/device/account verdicts for anti-abuse (docs/platform/android.md §2, §8). Sane Notes uses it ONLY for the stateless entitlement and relay services — never to gate note-taking (locked decision, docs/platform/android.md §8). Verdicts are not cached, enforcement is tiered, and the client stays non-authoritative (Dart AOT is reversible, L6). It supports the billing/entitlements service (SN-BILL-001) and needs a Play Console / cloud project, so it carries needs-credentials.\n\n## Scope\n**In:** requesting standard (and classic where needed) Play Integrity tokens on the client; passing them to the stateless entitlement/relay services for server-side verification; tiered enforcement that degrades to the free tier and never blocks local note-taking; not caching verdicts.\n**Out:** the entitlement service itself (SN-BILL-001); the relay (SN-COL-*); auth sign-in ({{SN-AND-017}}).\n\n## Acceptance criteria\n- [ ] The client requests a Play Integrity token only for entitlement/relay calls; note-taking, the editor and local storage never invoke or depend on it.\n- [ ] Verdicts are verified server-side by the stateless service; the client is non-authoritative and enforces nothing security-critical locally.\n- [ ] Verdicts are not cached client-side; each protected call obtains a fresh token.\n- [ ] Enforcement is tiered: a failed/undetermined verdict degrades to the free tier or a retry, and NEVER blocks opening or editing local notes (fail-open to free, roadmap M8).\n- [ ] The cloud project number / API config comes from CI secrets, never committed (needs-credentials).\n\n## Technical notes\nKotlin: Play Integrity API (StandardIntegrityManager / classic requests) (docs/platform/android.md §2, §8). Token consumed by services/entitlements (SN-BILL-001) and services/relay; server-authoritative model (L6). No verdict caching; tiered enforcement per docs/platform/android.md §8. Config via CI secrets (CLAUDE.md §7.2).\n\n## Security & privacy\nAnti-abuse/resilience (MASVS-RESILIENCE-1, MASVS-AUTH-1, CWE-807 reliance-on-untrusted-input): verdicts are verified server-side, never trusted on-device; the client cannot be the security decision point (Dart AOT reversible, L6). Play Integrity never becomes a note-taking gate, preserving guest-first and offline use.\n\n## UX notes\nCompletely invisible in the happy path; users never see an integrity prompt while taking notes. If a verdict fails, the app quietly degrades to the free tier or retries — it never shows a wall that stops someone from writing. Offline and rooted-but-honest users can still take notes.\n\n## Test plan\nservices/entitlements/test/play_integrity_verify_test.dart (server-side verification, tiered enforcement); app/test/integrity/no_note_gate_test.dart (note-taking never calls integrity); a negative test that a failed verdict degrades to free without blocking local edits.\n\n## Dependencies\nSN-BILL-001 (entitlements service that consumes verdicts). Blocked on maintainer Play Console / cloud project config.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-021",
+    "title": "Ensure all native libraries are 16 KB page-aligned with a CI gate",
+    "type": "infra",
+    "priority": "p0",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "ci-cd"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-CODE-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-FND-002",
+      "SN-AND-022"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nAndroid is moving to 16 KB memory pages, and Play requires all native code to be 16 KB-aligned; an unaligned .so causes Play rejection or crashes on 16 KB devices (docs/platform/android.md §9, L3). This must cover the Flutter engine plus EVERY native dependency — pdfium, ML Kit natives, any ObjectBox-style natives, and each plugin's .so. A CI check must fail the build if any shipped .so is not 16 KB-aligned, and the Android-A16 lab slot validates on-device.\n\n## Scope\n**In:** building with a 16 KB-aligned NDK/toolchain; auditing every shipped .so (Flutter engine, plugins, pdfium, ML Kit) for 16 KB alignment; a CI check that fails on any unaligned .so; on-device validation on the Android-A16 slot.\n**Out:** the general build config / ABI splits ({{SN-AND-022}}); the PDF engine choice (SN-PDF-*); ML Kit integration (sane_ml_native).\n\n## Acceptance criteria\n- [ ] The app builds with a 16 KB-aligned NDK/toolchain; the resulting AAB's native libs are all 16 KB-aligned across arm64-v8a and x86_64.\n- [ ] A CI step enumerates every .so in the bundle and fails the build if any is not 16 KB page-aligned (Flutter engine, pdfium, ML Kit, ObjectBox-style, and each plugin included).\n- [ ] The app launches and takes a note with no crash on a real 16 KB-page device (Android-A16 lab slot, compat matrix §2).\n- [ ] Any dependency that ships an unaligned .so is flagged with a tracked upgrade/rebuild action; the build does not silently ship it.\n- [ ] The check is documented so new native dependencies are audited on introduction.\n\n## Technical notes\nCI: inspect ELF program headers / use the alignment-check tooling on each .so in the AAB; wire into .github/workflows/devsecops.yml as an Android build gate. Build with the 16 KB-aligned NDK. Verify current Play requirement date (docs/platform/android.md §9 \"(verify)\"). Depends on the build config ({{SN-AND-022}}). L3 mitigation.\n\n## Security & privacy\nSupply-chain/build integrity (MASVS-CODE-1): auditing every native artifact and failing closed on misalignment prevents shipping a broken or unvetted .so; the enumeration doubles as an inventory of native code entering the app, feeding the SBOM.\n\n## UX notes\nInvisible to users when correct; the payoff is that the app installs and runs on 16 KB-page devices instead of being rejected by Play or crashing on launch (docs/platform/android.md L3).\n\n## Test plan\nA CI job asserting alignment on a known-good and a deliberately-unaligned fixture .so (the gate must fail on the bad one); app/integration_test/smoke_test.dart on the Android-A16 slot (launch + take a note); the alignment report attached to the build artifact.\n\n## Dependencies\nSN-FND-002 (build scaffold), SN-AND-022 (Android build config / NDK).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-022",
+    "title": "Configure Android build: minSdk 29, target SDK 36, ABI splits & App Bundle",
+    "type": "infra",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "ci-cd",
+      "compat"
+    ],
+    "milestone": "M0 Foundations",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-CODE-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-FND-002",
+      "SN-FND-005"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe Android build must pin the supported matrix: minSdk = 29 (Android 10, the front-buffer + Impeller-Vulkan floor), targetSdk = 36 (Android 16, or Play's current requirement at ship time), ABIs arm64-v8a/armeabi-v7a/x86_64, shipped as an App Bundle with per-ABI/-density/-language splits (docs/platform/android.md §1, §9, compat matrix §3). This foundational config is a prerequisite for the 16 KB audit ({{SN-AND-021}}), Play readiness ({{SN-AND-026}}) and the API-36 behaviour work, and must compose with the build flavours from SN-FND-005.\n\n## Scope\n**In:** Gradle config for minSdk 29 / targetSdk 36 / compileSdk; the three ABIs; AAB output with per-ABI splits; alignment with the dev/beta/release flavours (SN-FND-005) and --dart-define matrix; ensuring arm64-v8a is the perf-enforced primary and armeabi-v7a is Tier-3 best-effort.\n**Out:** the 16 KB alignment gate ({{SN-AND-021}}); ProGuard/R8 rules ({{SN-AND-028}}); signing keys / store upload ({{SN-AND-026}}).\n\n## Acceptance criteria\n- [ ] minSdk = 29, targetSdk = 36 (or Play's current window at ship time), compileSdk current; the app installs on Android 10 and runs on Android 16.\n- [ ] The build outputs an AAB with per-ABI splits for arm64-v8a, armeabi-v7a and x86_64; installing on a 32-bit device delivers only the v7a slice.\n- [ ] Build flavours dev/beta/release (SN-FND-005) each produce a correct AAB; the release flavour cannot enable the dev auth bypass (compile-time guard, CLAUDE.md §7.5).\n- [ ] Orientation is not locked and no restricted-resizability opt-out is declared (API 36 forced resizability, docs/platform/android.md §7).\n- [ ] CI builds all three ABIs and fails on any ABI-specific compile error.\n\n## Technical notes\nGradle (app/android/app/build.gradle): defaultConfig minSdk 29, targetSdk 36; splits.abi for arm64-v8a/armeabi-v7a/x86_64; bundle config; productFlavors mapped to SN-FND-005; --dart-define matrix (SN-FND-005). arm64-v8a is the primary 64-bit perf target (compat matrix §3). docs/platform/android.md §1, §9.\n\n## Security & privacy\nTargeting the current SDK keeps platform hardening current (MASVS-PLATFORM-1); the release flavour compile-time-strips the dev auth bypass (CLAUDE.md §7.5). No secrets in Gradle/config (CLAUDE.md §7.2). The ABI/AAB inventory feeds the SBOM (MASVS-CODE-1).\n\n## UX notes\nUsers on Android 10 through 16, on 32- and 64-bit devices, all get an install tailored to their device (smaller download via splits). No orientation lock means the app fills any window on tablets and foldables (docs/platform/android.md §7).\n\n## Test plan\nA CI matrix build across the three ABIs; app/test/build/flavour_config_test.dart or a CI assertion that release cannot enable SANE_AUTH_BYPASS; a smoke install on Android 10 and Android 16 devices (compat matrix Android-lowend and Android-A16 slots).\n\n## Dependencies\nSN-FND-002 (monorepo/app scaffold), SN-FND-005 (build flavours & --dart-define matrix).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-023",
+    "title": "Add foreground service and notifications for background recording & sync",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "audio",
+      "notifications"
+    ],
+    "milestone": "M3 Audio & Recognition",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AUD-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nAudio recording synced to ink is an M3 headline (roadmap M3, PRD-ED-035): a lecture keeps recording while the app is backgrounded and survives interruptions. On Android that requires a correctly-typed foreground service with a persistent notification, plus the microphone foreground-service type and justification for Play (docs/platform/android.md §9). Long background sync uses the same mechanism. This wraps the shared audio recorder service (SN-AUD-002).\n\n## Scope\n**In:** a foreground service with the microphone service type for recording (and a data-sync type for long sync) with a persistent, content-free notification; runtime mic permission in-context; surviving app background and interruption; notification actions (pause/stop).\n**Out:** the audio recorder/playback pipeline (SN-AUD-002, consumed here); the sync engine (SN-SYNC-*); reminders/other notifications (SN-NOTF-*).\n\n## Acceptance criteria\n- [ ] Starting a recording starts a foreground service with the microphone foreground-service type and a persistent notification; recording continues when the app is backgrounded and survives an interruption (call, doze) then resumes/finalises cleanly.\n- [ ] The notification shows recording state and pause/stop actions but contains NO note content, transcript text or file path.\n- [ ] The mic permission is requested in-context with a rationale, only when the user starts recording — never at launch (ADR-0012 rule 6).\n- [ ] Recording never blocks the UI isolate; audio capture runs off the root isolate (CLAUDE.md §8).\n- [ ] Long background sync uses a data-sync foreground service with the correct type and justification; both service types are declared for Play with justifications (docs/platform/android.md §9).\n\n## Technical notes\nKotlin: a foregroundServiceType=microphone (and dataSync) service, NotificationCompat persistent notification, runtime RECORD_AUDIO permission (docs/platform/android.md §9). Wraps sane_audio recorder (SN-AUD-002, ADR-0015). Notification content redacted (CLAUDE.md §7.3). Manifest declares service types + justifications for the Play form.\n\n## Security & privacy\nForeground-service correctness and least-privilege permissions (MASVS-PLATFORM-1): mic requested in-context, declared with justification. No PII in the notification or logs — no transcript, content or path (MASVS-PRIVACY-1, CLAUDE.md §7.3). Audio is note content, encrypted at rest, never uploaded except via the user's E2EE sync.\n\n## UX notes\nA student can start a lecture recording, lock the phone, and it keeps going with a clear ongoing notification and pause/stop controls (PRD-ED-035). The mic prompt appears exactly when they hit record, with a plain-language reason. Notification respects Do Not Disturb styling and is TalkBack-labelled.\n\n## Test plan\nplugins or app/test/audio/foreground_service_test.dart (service lifecycle, notification content is redacted); app/integration_test/background_recording_test.dart on a device (background + interruption survival); a test asserting the notification carries no content/path; a permission-in-context test.\n\n## Dependencies\nSN-AUD-002 (audio recorder service).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-024",
+    "title": "Build home-screen widgets and quick-capture entry points",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "notifications"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-2",
+      "MASVS-PRIVACY-2"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-FND-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nQuick capture — jump straight into a new note or a specific action from the home screen — is a phones/platform-parity feature (roadmap M5, PRD-04 widgets/shortcuts area, compat matrix §6 \"Quick capture\"). Android App Widgets and shortcut entry points let a user start writing in one tap, aligning with the S Pen single-press-to-new-note action ({{SN-AND-009}}). Widgets must never leak note content on the home/lock screen.\n\n## Scope\n**In:** an App Widget offering New note / New in <recent notebook> / Start recording; deep-linking those into the editor; dynamic shortcuts for the same actions; guarding widget content so no note text/preview appears where it could be seen when locked.\n**Out:** App Links / verified deep links from the web ({{SN-AND-025}}); the S Pen remote action ({{SN-AND-009}}); the recording service ({{SN-AND-023}}).\n\n## Acceptance criteria\n- [ ] A home-screen widget provides at least New note and Start recording; tapping opens the app directly into the correct action (new note in editor / recording started).\n- [ ] Dynamic shortcuts (long-press app icon) offer the same quick actions.\n- [ ] The widget shows NO note content, thumbnail or preview text that would leak information on the home or lock screen (MASVS-PRIVACY-2); at most a notebook name the user opted to pin.\n- [ ] Quick-capture actions respect guest mode and app/notebook locks — a locked target prompts for unlock rather than exposing content.\n- [ ] The widget renders correctly in light/dark and does not hard-code colours (tokens via sane_ui where a widget theme applies).\n\n## Technical notes\nKotlin: AppWidgetProvider / Jetpack Glance widget; ShortcutManager dynamic shortcuts; launch intents routed through the app's internal navigation (go_router, ADR-0003) into the editor. Quick-capture creates a new document via the document model (SN-CORE-002 entities) in app/. No content in widget RemoteViews. docs/platform/android.md §7 (compat matrix §6).\n\n## Security & privacy\nWidgets are visible on unlocked home and sometimes lock screens: never render note content or previews (MASVS-STORAGE-2 no sensitive data in widget, MASVS-PRIVACY-2). Quick-capture into a locked notebook must honour the lock (PRD-LOCK-005). Launch intents are internal; no untrusted-URI handling here (that is {{SN-AND-025}}).\n\n## UX notes\nOne tap from the home screen and you are writing — the fastest capture path on Android (compat matrix §6). Actions match the S Pen single-press choice so the mental model is consistent. Widget is TalkBack-labelled with clear action names and 48 dp targets.\n\n## Test plan\napp/test/widgets/quick_capture_test.dart (action routing, no-content-in-widget assertion); app/integration_test/home_widget_test.dart on a device (tap -> correct editor state); a security test that a locked notebook target prompts for unlock; golden of the widget in light/dark.\n\n## Dependencies\nSN-FND-002 (app scaffold + navigation + document model access).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-025",
+    "title": "Handle verified App Links that land in view/confirm, never auto-mutate",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "notifications",
+      "security"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PLATFORM-3",
+      "CWE-601",
+      "OWASP-A01"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-FND-002",
+      "SN-CORE-005"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nDeep links (shared notes, open-a-file, OAuth redirects) must be handled safely: only verified App Links, and a link lands in a view/confirm context — never auto-mutating state (CLAUDE.md §7.8, ADR-0012 Security impact). On Android this means autoVerify App Links with a Digital Asset Links file and defensive validation of every incoming intent/URI before acting. This is a classic mobile vuln class (intent redirection, open redirect) and must fail closed.\n\n## Scope\n**In:** autoVerify App Link intent filters + assetlinks.json coordination; parsing and validating incoming URIs (scheme/host/path/params) before acting; routing a valid link to a view/confirm screen; rejecting/ignoring unverified or malformed links; import-a-file links opening into a new isolated notebook.\n**Out:** the sharing feature and share-key semantics (SN-SHR-*); OAuth redirect specifics ({{SN-AND-017}}); the ChromeOS CREATE_NOTE intent ({{SN-AND-010}}).\n\n## Acceptance criteria\n- [ ] App Links are autoVerify with a Digital Asset Links (assetlinks.json) association; only verified links open the app directly.\n- [ ] Every incoming URI is validated (scheme, host allow-list, path, params, size) before any action; a malformed or unexpected link is ignored/rejected, not acted upon (CWE-601, MASVS-PLATFORM-1).\n- [ ] A valid link lands in a view/confirm context (e.g. \"Open shared note?\") and NEVER auto-mutates existing data or auto-imports without confirmation (CLAUDE.md §7.8).\n- [ ] A file-open/import link parses the file off the UI isolate, size/MIME-capped, and imports into a new isolated notebook (never overwriting an existing one).\n- [ ] A forged deep link cannot mutate state — proven by a negative/abuse test.\n\n## Technical notes\nAndroidManifest intent filters with android:autoVerify=\"true\"; assetlinks.json served from the site (coordinate with SN-SITE-*); URI validation in the deep-link handler before routing via go_router (ADR-0003). Import path canonicalised/confined (CWE-22-adjacent); parse off-isolate (CLAUDE.md §7.8). .sanenote reader from SN-CORE-005. docs/platform/android.md §7, ADR-0012.\n\n## Security & privacy\nDeep-link/intent-redirection hardening (MASVS-PLATFORM-1/3, CWE-601 open redirect, OWASP-A01): verified links only, defensive URI validation, view/confirm landing, no auto-mutation, import into an isolated notebook off the UI isolate. This is an explicit abuse-case surface in the threat model — negative tests are mandatory (CLAUDE.md §10).\n\n## UX notes\nTapping a shared-note link opens Sane Notes to a clear confirm screen (\"Open this shared note?\"), never silently changing the user's notebooks (CLAUDE.md §7.8). Verified links skip the disambiguation chooser. Errors on a bad link are quiet and safe.\n\n## Test plan\napp/test/deeplink/app_link_validation_test.dart (URI allow-list, malformed rejection); app/test/security/forged_deeplink_cannot_mutate_test.dart (abuse test); app/integration_test/app_link_open_test.dart on a device (verified link -> confirm screen); a test that a hostile import link fails closed.\n\n## Dependencies\nSN-FND-002 (app scaffold + navigation), SN-CORE-005 (.sanenote reader for import links).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-026",
+    "title": "Prepare Google Play readiness: Data Safety, permissions rationale & gate",
+    "type": "infra",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "release",
+      "privacy"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "M",
+    "sdlc": "release",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-3"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-022",
+      "SN-PRV-001",
+      "SN-FND-003"
+    ],
+    "labels_extra": [
+      "needs-credentials"
+    ],
+    "body": "## Context\nGoogle Play gates release on an accurate Data Safety form, minimal permissions with runtime rationale, target-SDK compliance, 16 KB alignment and AAB delivery (docs/platform/android.md §9, compat matrix §7). Sane Notes declares \"no data collected\" except opt-in crash reports (locked decision 8) — and this declaration must match actual behaviour and every linked SDK. This assembles the Play-side release checklist and needs a Play developer account, so it carries needs-credentials.\n\n## Scope\n**In:** the Data Safety form declaring \"no data collected\" except opt-in crash reports, verified against every linked SDK; a permissions inventory with in-context runtime rationale (mic for voice notes, camera for scan — no broad storage); a store-readiness gate composing the target-SDK, 16 KB and AAB checks; Play Data Safety reflecting the zero-knowledge reality.\n**Out:** signing keys / staged rollout / SLSA provenance (SN-REL-*, referenced); the privacy dashboard in-app (SN-PRV-001, consumed here); the 16 KB gate ({{SN-AND-021}}) and build config ({{SN-AND-022}}) which this depends on.\n\n## Acceptance criteria\n- [ ] The Data Safety form declares \"no data collected\" except opt-in crash reports and matches actual behaviour and every linked SDK (no analytics SDK, no silent collection).\n- [ ] The permission set is minimal: no broad storage permission (SAF handles files); mic declared only for voice notes and camera only for scan/import, each with a runtime rationale shown in-context.\n- [ ] A store-readiness gate confirms target-SDK compliance, 16 KB alignment ({{SN-AND-021}}) and AAB delivery ({{SN-AND-022}}) before a release build is accepted.\n- [ ] Foreground-service types (mic/dataSync) are declared with justifications matching {{SN-AND-023}}.\n- [ ] The Play console configuration and the store listing are prepared; the actual account/keys are supplied by the maintainer (needs-credentials).\n\n## Technical notes\nPlay Console Data Safety + App content; manifest permission audit; runtime rationale flows (in-context, ADR-0012 rule 6); a CI/release checklist composing {{SN-AND-021}}/{{SN-AND-022}} outputs, wired to .github/workflows (SN-FND-003 CI). Mirrors the privacy dashboard truth (SN-PRV-001). docs/platform/android.md §9.\n\n## Security & privacy\nPrivacy-by-design and truthful disclosure (MASVS-PRIVACY-1/2/3): the store declaration must reflect the zero-knowledge, no-collection reality; every SDK is audited so the form cannot be silently falsified. Least-privilege permissions with in-context rationale. Opt-in crash reporting only (locked decision 8).\n\n## UX notes\nUsers see a Play listing that honestly says \"no data collected\", and in-app permission prompts appear only when a feature needs them with a plain reason (docs/platform/android.md §9). This transparency is a selling point for the privacy-first persona.\n\n## Test plan\nA release checklist test/script that fails if a non-declared SDK is linked or a broad permission is present; app/test/privacy/permission_inventory_test.dart (declared permissions match features); manual Play pre-launch report review; cross-check against the in-app privacy dashboard (SN-PRV-001).\n\n## Dependencies\nSN-AND-022 (build config), SN-PRV-001 (privacy dashboard truth), SN-FND-003 (CI). Also composes the 16 KB gate ({{SN-AND-021}}) and recording service ({{SN-AND-023}}). Blocked on maintainer Play account.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-027",
+    "title": "Validate performance on the 4 GB Snapdragon 680-class low-end device",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "perf",
+      "compat",
+      "qa"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-005",
+      "SN-AND-002",
+      "SN-FND-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe low-end reference is a 4 GB RAM, Snapdragon 680-class device on Android 10-13; it is a Tier-1 CI slot and gates memory, fps and cold-start floors (docs/platform/android.md §1, §11, compat matrix §2). The decision-7 budgets that apply here: memory < 300 MB, 60 fps floor while writing, cold start < 2 s, and the Impeller GL fallback path must be exercised (this device is the most likely to hit it, L5). A regression on this slot blocks the release (compat matrix §7).\n\n## Scope\n**In:** wiring the low-end device into the CI perf gates via tools/perf_harness; asserting memory < 300 MB, 60 fps while writing, cold start < 2 s; validating the Impeller GL fallback rendering; exercising a large notebook and a long writing session on the device.\n**Out:** the perf harness engine and reference-device latency budgets on high-end slots (SN-PERF-*, referenced); the ink surface implementation ({{SN-AND-002}}/{{SN-AND-005}}, exercised here).\n\n## Acceptance criteria\n- [ ] On the 4 GB Snapdragon-680-class slot, memory stays < 300 MB during a typical editing session (decision 7).\n- [ ] Writing sustains a 60 fps floor with no frame > 16.7 ms on this device; the Tier chosen is the Impeller-GL-fallback Tier B where no usable front-buffer exists, and it still holds 60 fps.\n- [ ] Cold start is < 2 s on this device (decision 7).\n- [ ] Opening a large notebook and scrolling behave within budget (no OOM, no ANR) on 4 GB.\n- [ ] These checks run as a Tier-1 CI gate; a regression blocks the release (compat matrix §7).\n\n## Technical notes\ntools/device_lab config for the low-end slot; tools/perf_harness scenarios for memory/fps/cold-start; Impeller GL fallback validated (docs/platform/android.md §3, L5). Exercises the Tier A/B selection ({{SN-AND-005}}) and the ink surface ({{SN-AND-002}}). Wired into CI (SN-FND-003). docs/platform/performance-budgets.md.\n\n## Security & privacy\nNone beyond baseline: perf validation only; no content in logs/traces captured by the harness; no network egress. Any captured trace must be scrubbed of note content before it leaves the runner.\n\n## UX notes\nThe payoff is that a student on an inexpensive 4 GB phone gets the same lag-proof pen experience as someone on a flagship — the product thesis on Android's weakest hardware (docs/platform/android.md §0). No jank, no OOM, fast start.\n\n## Test plan\napp/integration_test/lowend_perf_test.dart run on the low-end slot via tools/perf_harness (memory/fps/cold-start assertions); a golden confirming Impeller GL fallback rendering matches Vulkan across looks; a large-notebook open/scroll scenario asserting no OOM/ANR.\n\n## Dependencies\nSN-AND-005 (tier selection), SN-AND-002 (ink surface), SN-FND-003 (CI). Uses the shared perf harness / device lab (SN-PERF-*).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  },
+  {
+    "key": "SN-AND-028",
+    "title": "Add R8/ProGuard rules and obfuscation for the Kotlin/plugin layer",
+    "type": "infra",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "security",
+      "ci-cd"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-RESILIENCE-2",
+      "MASVS-CODE-2"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-022"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\nFlutter's --obfuscate renames Dart symbols only; the Kotlin/plugin layer needs R8/ProGuard shrinking and obfuscation, with keep rules for the classes Flutter and each plugin require (docs/platform/android.md L6). This raises the reverse-engineering bar on the native side (which, unlike the Dart AOT snapshot, is directly analysable) while keeping the app working. The security model stays server-authoritative with no client secrets, so this is defence-in-depth, not a substitute for it.\n\n## Scope\n**In:** enabling R8 with minify + resource shrinking for release; ProGuard keep rules for Flutter engine + every plugin (sane_ink_surface, sane_stylus, sane_scribble, sane_secure_store, sane_cloud_drive, sane_ml_native, sane_pdfkit); combining with Dart --obfuscate; verifying no runtime ClassNotFound/reflection breakage.\n**Out:** the general build config ({{SN-AND-022}}); native .so alignment ({{SN-AND-021}}); any attempt to hide secrets in the client (there are none — CLAUDE.md §7.2).\n\n## Acceptance criteria\n- [ ] The release build runs R8 with minification and resource shrinking; the app functions with no ClassNotFound, missing-reflection or plugin-init failures.\n- [ ] Keep rules preserve the required Flutter and per-plugin classes; a smoke run exercises ink, stylus, secure store, cloud drive, ML and PDF plugins without crash.\n- [ ] Dart --obfuscate is enabled for release and a symbol map is retained for crash de-obfuscation (stored as a CI secret/artifact, not committed).\n- [ ] No secret, key or client-secret is present in the client to obfuscate in the first place (grep-enforced) — obfuscation is defence-in-depth only (L6).\n- [ ] The R8 config is documented so new plugins add their keep rules on introduction.\n\n## Technical notes\nGradle: minifyEnabled/shrinkResources for release; proguard-rules.pro with keep rules per plugin; flutter build --obfuscate --split-debug-info; store the mapping.txt + Dart symbol map as CI artifacts (docs/platform/android.md L6). Server-authoritative model; Play Integrity on the backend ({{SN-AND-020}}). Depends on the build config ({{SN-AND-022}}).\n\n## Security & privacy\nResilience/anti-reversing (MASVS-RESILIENCE-2, MASVS-CODE-2): R8 obfuscation raises the native reverse-engineering bar; it is explicitly NOT relied upon for confidentiality (no client secrets, CLAUDE.md §7.2). Symbol/mapping files are secrets-adjacent artifacts kept in CI, never committed.\n\n## UX notes\nInvisible to users; the benefit is a smaller, harder-to-tamper release build. Crash reports (opt-in) still de-obfuscate correctly via the retained mapping, so diagnostics are not lost.\n\n## Test plan\nA CI release build with R8 that runs app/integration_test/plugin_smoke_test.dart exercising every plugin (no ClassNotFound); a test/grep asserting no secret exists to protect; a crash-symbolication check using the retained mapping.\n\n## Dependencies\nSN-AND-022 (Android build config).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)\n- [ ] CodeQL runs over the Kotlin/native layer with no new high findings\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled"
+  }
+]

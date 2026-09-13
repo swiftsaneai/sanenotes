@@ -1,0 +1,263 @@
+[
+  {
+    "key": "SN-SHR-021",
+    "title": "Build the import pipeline: entry points, isolation, and per-import report",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "library"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-CODE-4",
+      "ASVS-V5",
+      "OWASP-A08",
+      "CWE-20",
+      "CWE-22"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-CORE-004"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nImport kills switching cost: it must be reachable from Library (\"Import\" alongside \"Import PDF\"), the OS share sheet / file-open handlers, and web file drop; imports create new notebooks (or append pages) and never overwrite existing notebooks (PRD-CO-070). Every importer runs off the UI isolate into a **new isolated notebook** and produces an **import report** listing what was preserved vs approximated, with unsupported elements flattened to image, never silently discarded (PRD-CO-078; checklist §1). This issue builds the shared pipeline that the per-format importers plug into; format-specific parsing is delegated to sibling issues.\n\n## Scope\n**In:** the import entry points (Library button, share-target receive, file-open/open-with, web drop); the `ImportJob` runner (off-isolate, into a fresh isolated notebook); the `ImportReport {preserved, approximated, flattened, unsupported}` model + UI; format detection/dispatch to the registered importers; append-vs-new-notebook choice.\n**Out:** the per-format parsers ({{SN-SHR-022}}..{{SN-SHR-026}}); the security-hardening gate details ({{SN-SHR-027}}); the PDF import path ({{SN-PDF-006}}, referenced); OS share-target *registration* ({{SN-NOTF-001}}).\n\n## Acceptance criteria\n- [ ] Dropping/opening a supported file creates a **new** notebook with a progress indicator; an existing notebook is never overwritten.\n- [ ] Import is reachable from Library, the OS share sheet/file-open, and web file drop.\n- [ ] Every import produces an import report listing preserved / approximated / flattened / unsupported elements (e.g. \"12 pages, 3,410 strokes, 1 audio track; 2 unsupported widgets flattened to image\").\n- [ ] Unsupported elements are flattened to image, never silently discarded.\n- [ ] Parsing runs off the UI isolate; a hostile large file adds no jank to the editor (no frame > 16.7 ms).\n- [ ] Import into a new notebook is fully offline; no note bytes leave the device (PRD-CO-079).\n\n## Technical notes\nAdd `app/lib/import/import_pipeline.dart` + `import_report.dart`; run parsers via `Isolate.run` writing into a new notebook through {{SN-CORE-004}} (drift + blob store). Format detection by sniffed MIME/magic, not extension (checklist §1). Register importers ({{SN-SHR-022}}..{{SN-SHR-026}}). Share-target receive coordinates with {{SN-NOTF-001}}. Implements PRD-CO-070/078.\n\n## Security & privacy\nEvery imported byte is hostile (checklist §1): validate MIME/size/schema before use, parse off-isolate with bounded memory, canonicalise/confine any path from file content, and import into a new isolated notebook so no path from content can overwrite an existing note (TM-T-06, CWE-22). Deserialize into explicit validated models, never arbitrary types (MASVS-CODE-4, OWASP-A08). The deep hardening (caps, fuzzing) is {{SN-SHR-027}}. IDs: MASVS-PLATFORM-1, MASVS-CODE-4, ASVS-V5, OWASP-A08, CWE-20, CWE-22.\n\n## UX notes\nLibrary \"Import\" entry + a receive flow from the share sheet; a progress sheet during import; the import report shown as a reviewable summary (\"Here's what we brought over\") with a \"Some things were flattened to image\" note when lossy. All 17 looks + dark; a11y-labelled; keyboard-reachable on web; drag-drop target on web has a visible focus/hover state.\n\n## Test plan\n`app/test/import/import_pipeline_test.dart` (new-notebook-not-overwrite, MIME dispatch, off-isolate, report contents, flatten-not-drop), `app/integration_test/import_entry_points_test.dart` (Library / share-target / web drop).\n\n## Dependencies\n{{SN-CORE-004}} (drift + blob store for the new notebook). Coordinates with {{SN-PDF-006}} (PDF import), {{SN-NOTF-001}} (share-target), and hardened by {{SN-SHR-027}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-022",
+    "title": "Implement Markdown import (front-matter, wiki-links, GFM, embedded images)",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "text"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "ASVS-V5",
+      "CWE-20",
+      "CWE-79"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-021"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nMarkdown import is the Obsidian/Notion escape hatch. It MUST parse CommonMark + GFM (tables, task lists, footnotes), map YAML front-matter to note properties/tags, resolve `[[wikilinks]]` and standard links to backlinks, and import referenced images as embedded blobs; unknown HTML passes through as a raw block rather than being dropped (PRD-CO-076). An Obsidian vault Markdown file must import with tags, backlinks and images intact, and it round-trips with the Markdown exporter ({{SN-SHR-006}}).\n\n## Scope\n**In:** a Markdown importer registered into {{SN-SHR-021}}: CommonMark + GFM block/inline parsing to typed blocks (headings, lists, tables, task-lists, quotes, code, callouts), front-matter -> properties/tags, `[[wikilinks]]`/links -> backlinks, referenced images -> blobs, unknown HTML -> raw block (sanitised).\n**Out:** the pipeline/report ({{SN-SHR-021}}); Notion's specific export shape ({{SN-SHR-024}}); Markdown export ({{SN-SHR-006}}); the backlinks/graph model ({{SN-AI-001}}/core).\n\n## Acceptance criteria\n- [ ] An Obsidian vault Markdown file imports with tags, backlinks and images intact.\n- [ ] GFM tables and `- [ ]`/`- [x]` task lists map to Sane tables and checkboxes.\n- [ ] `[[wikilinks]]` and standard links resolve to backlinks; a broken link imports as an unresolved-link placeholder, not a crash.\n- [ ] Referenced images import as embedded blobs (path-confined; no fetch of remote images without consent).\n- [ ] Unknown/raw HTML is preserved as a sanitised raw block, never silently dropped.\n- [ ] Round-trip with {{SN-SHR-006}} preserves headings, lists, links and image references.\n\n## Technical notes\nAdd `app/lib/import/markdown_import.dart` using a maintained, pinned CommonMark/GFM parser (justify per checklist §10). Normalise text to NFC; sanitise any embedded HTML before storing/rendering (checklist §6). Write blocks/blobs via {{SN-SHR-021}} -> {{SN-CORE-004}}. Implements PRD-CO-076.\n\n## Security & privacy\nMarkdown/HTML is untrusted: sanitise embedded HTML (no script, no remote auto-fetch) before it can reach any render surface (CWE-79, checklist §6), confine referenced-image paths and never auto-fetch remote URLs without explicit consent (CWE-20), validate/bound field lengths (ASVS-V5). IDs: MASVS-PLATFORM-1, ASVS-V5, CWE-20, CWE-79.\n\n## UX notes\nReachable from the Import entry ({{SN-SHR-021}}); the import report notes any raw-HTML blocks or unresolved links. All 17 looks + dark; imported content is immediately editable. A11y: imported images get alt from any Markdown alt attribute.\n\n## Test plan\n`app/test/import/markdown_import_test.dart` (GFM tables/task-lists, front-matter tags, wikilink/backlink resolution, image-as-blob, raw-HTML sanitised-not-dropped), round-trip test with {{SN-SHR-006}}, malicious-HTML sanitisation negative test.\n\n## Dependencies\n{{SN-SHR-021}} (import pipeline). Round-trips with {{SN-SHR-006}}; hardened by {{SN-SHR-027}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-023",
+    "title": "Implement image import with on-device OCR and camera-scan auto-crop",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "images-media"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PLATFORM-1",
+      "ASVS-V5",
+      "CWE-20"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-021",
+      "SN-HWR-001"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nImage import (JPG/PNG/HEIC/WEBP) places an image on a page (or one image per page for a batch) and runs on-device OCR to attach a searchable/alt-text transcript (PRD-CO-077). Camera-scan import auto-crops and straightens (design Import sources \"Scan with camera — Auto-crop & straighten\"). An imported photo of a page becomes searchable by its printed text and carries alt text — a genuine accessibility and search win that many competitors lack.\n\n## Scope\n**In:** an image importer registered into {{SN-SHR-021}}: decode JPG/PNG/HEIC/WEBP with resource caps, strip EXIF (privacy), place as an image object (batch -> one image per page), run on-device OCR ({{SN-HWR-001}}) to attach a searchable transcript + alt text; camera-scan auto-crop/straighten.\n**Out:** the OCR engine itself ({{SN-HWR-001}}); the pipeline/report ({{SN-SHR-021}}); the image-object editing model ({{SN-MED-001}}); the search index ({{SN-SRCH-001}}).\n\n## Acceptance criteria\n- [ ] An imported photo of a page is searchable by its printed text and has non-empty alt text.\n- [ ] JPG/PNG/HEIC/WEBP decode with dimension/size caps; an oversized or malformed image fails closed with a user-safe error.\n- [ ] EXIF metadata (incl. GPS) is stripped before the image is stored (privacy).\n- [ ] Camera-scan import auto-crops and straightens the page.\n- [ ] OCR runs on-device; any cloud OCR escalation is per-request opt-in with the data-leaves-device banner (decision 6).\n- [ ] A batch of images imports as one image per page with a progress indicator.\n\n## Technical notes\nAdd `app/lib/import/image_import.dart` using platform image decoders (checklist §1 \"prefer maintained decoders\") with caps; EXIF strip before store; OCR via {{SN-HWR-001}} (Apple Vision / ML Kit / Tesseract per platform); auto-crop via the scan pipeline ({{SN-MED-001}}). Implements PRD-CO-077.\n\n## Security & privacy\nImages are untrusted: cap dimensions/size before decode, decode off the UI isolate, fail closed on malformed input (CWE-20, checklist §1). Strip EXIF/GPS (MASVS-PRIVACY-1). OCR on-device by default; cloud opt-in only with the banner (TM-I-08). Recognised text is note content — never logged (checklist §7). IDs: MASVS-PRIVACY-1, MASVS-PLATFORM-1, ASVS-V5, CWE-20.\n\n## UX notes\nReachable from Import ({{SN-SHR-021}}) and \"Scan with camera\". A per-image OCR indicator; the on-device recognition posture is visible; the import report notes how many pages were recognised. All 17 looks + dark; imported images get alt text for screen readers (PRD-CO-310).\n\n## Test plan\n`app/test/import/image_import_test.dart` (format decode + caps, EXIF strip, batch one-per-page, on-device OCR default, malformed fails closed), OCR-searchability integration test.\n\n## Dependencies\n{{SN-SHR-021}} (pipeline), {{SN-HWR-001}} (OCR). Coordinates with {{SN-MED-001}} (scan/auto-crop) and {{SN-SRCH-001}} (index); hardened by {{SN-SHR-027}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-024",
+    "title": "Implement Notion import from Markdown+CSV and HTML zip exports",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "text"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "ASVS-V5",
+      "CWE-20",
+      "CWE-79"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-022"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nNotion is a major source to migrate from. Sane must import Notion's **Markdown+CSV** and **HTML (zip)** exports (docs research notion.md), mapping: pages -> notes (nested pages -> sections), Markdown blocks -> typed blocks, checkboxes/toggles/callouts/quotes/code -> equivalents, database CSV -> tables + tags (Select/Multi-select -> tags, Status -> property), inline `[[`/`@page` links -> backlinks, KaTeX `$$` -> math blocks; images/attachments import as blobs (PRD-CO-074). A Notion workspace export must import with its page hierarchy, checkboxes, tables-as-tags and working internal links. Notion export is the user's own data, so no legality gate applies (unlike proprietary competitor bundles).\n\n## Scope\n**In:** a Notion importer registered into {{SN-SHR-021}}, reusing the Markdown engine ({{SN-SHR-022}}) for block parsing and adding: the zip layout walker (nested-page -> section hierarchy), CSV database -> tables + tags mapping, KaTeX `$$` -> math blocks, Notion internal-link resolution across the export.\n**Out:** the base Markdown parser ({{SN-SHR-022}}); the pipeline/report ({{SN-SHR-021}}); math rendering ({{SN-SHP-001}}/core); zip-bomb hardening ({{SN-SHR-027}}).\n\n## Acceptance criteria\n- [ ] A Notion Markdown+CSV export imports with page hierarchy (nested pages -> sections), checkboxes, and database CSV mapped to tables + tags (Select/Multi-select -> tags, Status -> property).\n- [ ] Internal `@page`/link references resolve to backlinks across the imported set; unresolved links import as placeholders.\n- [ ] KaTeX `$$…$$` blocks import as Sane math blocks.\n- [ ] The HTML-zip export path imports with equivalent structure (sanitised HTML).\n- [ ] Images/attachments import as embedded blobs (path-confined).\n\n## Technical notes\nAdd `app/lib/import/notion_import.dart` composing {{SN-SHR-022}} for Markdown blocks and adding the Notion-specific zip/CSV/link mapping. Walk the zip via the pipeline's confined extractor ({{SN-SHR-027}} caps). Sanitise HTML from the HTML-zip path (checklist §6). Implements PRD-CO-074.\n\n## Security & privacy\nZip + HTML + CSV are untrusted: extract with entry/size caps and path confinement (via {{SN-SHR-027}}; CWE-22), sanitise HTML (CWE-79, checklist §6), validate CSV field bounds (ASVS-V5, CWE-20), no remote auto-fetch. IDs: MASVS-PLATFORM-1, ASVS-V5, CWE-20, CWE-79.\n\n## UX notes\nReachable from Import ({{SN-SHR-021}}); the import report notes page/section counts, tables-as-tags conversions, and any unresolved links. All 17 looks + dark; imported content is editable; math blocks render inline.\n\n## Test plan\n`app/test/import/notion_import_test.dart` (nested-page -> section, CSV -> tables+tags, KaTeX -> math, internal-link resolution, HTML-zip path sanitised, images-as-blob), fixture Notion export in `test/fixtures/notion/`.\n\n## Dependencies\n{{SN-SHR-022}} (Markdown engine), {{SN-SHR-021}} (pipeline). Hardened by {{SN-SHR-027}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-025",
+    "title": "Implement Goodnotes and Notability import (tier-A best-effort + tier-B PDF fallback)",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "pdf"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-CODE-4",
+      "ASVS-V5",
+      "OWASP-A08",
+      "CWE-20",
+      "CWE-22"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-021",
+      "SN-PDF-006"
+    ],
+    "labels_extra": [
+      "needs-decision",
+      "innovation"
+    ],
+    "body": "## Context\nGoodnotes (`.goodnotes`, legacy v5/v6) and Notability (`.note`, legacy `.ntb`) are the biggest sources students switch from. The strategy is two tiers: **tier-A faithful** (pages, strokes as editable ink, embedded PDFs/images, and — for Notability — **audio + audio-ink timestamps** mapped to Sane's audio-ink model) where the container is readable and legally reverse-engineerable; and **tier-B fallback** (import the source's own PDF export as annotatable pages + OCR), which is always available so no user is blocked (PRD-CO-071/072). Preserving Notability's audio-ink timestamps is a headline win over rivals. Tier-A extraction of proprietary/DRM-bearing formats is legally gated — hence `needs-decision` (CLAUDE.md §13 \"competitor tier-A import legality\").\n\n## Scope\n**In:** the tier-B PDF-export fallback for both sources (always available, via {{SN-PDF-006}} + OCR); best-effort tier-A extraction of pages/strokes/embedded PDFs/images where the container is readable; Notability audio + audio-ink timestamp mapping to Sane's audio-ink anchors; the import report flagging tier-A vs tier-B and any lossy conversions.\n**Out:** the pipeline/report ({{SN-SHR-021}}); PDF import internals ({{SN-PDF-006}}); the audio-ink anchor model ({{SN-AUD-001}}); the legality decision (deferred, `needs-decision`); zip/bundle hardening ({{SN-SHR-027}}).\n\n## Acceptance criteria\n- [ ] A Goodnotes/Notability **PDF export** imports as annotatable pages + on-device OCR (tier-B, always works).\n- [ ] Where the container is readable, strokes import as editable ink and embedded PDFs stay vector.\n- [ ] An imported Notability note plays its audio; where timestamps recover, tap-to-seek (audio-ink) works.\n- [ ] The import report states tier-A vs tier-B and lists anything flattened/approximated.\n- [ ] Tier-A extraction of a DRM-bearing/reverse-engineering-restricted format stays disabled until the maintainer legality decision is recorded (`needs-decision`); tier-B is unaffected.\n- [ ] All parsing is off-isolate and fails closed on malformed input.\n\n## Technical notes\nAdd `app/lib/import/goodnotes_import.dart` + `notability_import.dart` registered into {{SN-SHR-021}}. Tier-B reuses {{SN-PDF-006}} + {{SN-HWR-001}} OCR. Tier-A parses the bundle container (best-effort, behind a flag pending legality); Notability audio maps to {{SN-AUD-001}} audio-ink anchors. Document format-access/legality per source (PRD-CO-079 verify). Implements PRD-CO-071/072.\n\n## Security & privacy\nCompetitor bundles are hostile archives: extract with entry/size caps + path confinement (via {{SN-SHR-027}}; CWE-22), deserialize into explicit validated models (MASVS-CODE-4, OWASP-A08), fail closed on malformed input (CWE-20). Do not send bundle content to any cloud converter (PRD-CO-079). IDs: MASVS-PLATFORM-1, MASVS-CODE-4, ASVS-V5, OWASP-A08, CWE-20, CWE-22.\n\n## UX notes\nReachable from Import ({{SN-SHR-021}}); a clear \"Best we could bring over\" report distinguishing faithful ink vs a flattened PDF page. Notability audio imports show the audio bar with working tap-to-seek. All 17 looks + dark. `needs-decision` note surfaced to the maintainer, not the end user.\n\n## Test plan\n`app/test/import/goodnotes_import_test.dart` + `notability_import_test.dart` (tier-B PDF path, tier-A stroke extraction where readable, Notability audio-ink tap-to-seek, report tier labelling, malformed fails closed), fixtures under `test/fixtures/competitors/`.\n\n## Dependencies\n{{SN-SHR-021}} (pipeline), {{SN-PDF-006}} (PDF import for tier-B). Coordinates with {{SN-AUD-001}} (audio-ink), {{SN-HWR-001}} (OCR); hardened by {{SN-SHR-027}}. Maintainer legality decision pending (CLAUDE.md §13).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-026",
+    "title": "Implement OneNote import (PDF/.docx tier-B and Graph/.one tier-A, keep PDFs vector)",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "pdf"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-CODE-4",
+      "ASVS-V5",
+      "OWASP-A08",
+      "CWE-611",
+      "CWE-22"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-021",
+      "SN-PDF-006"
+    ],
+    "labels_extra": [
+      "needs-decision",
+      "needs-credentials"
+    ],
+    "body": "## Context\nOneNote users migrate via **exported PDF/Word (.docx)** (tier-B, always) and, where available, via the **Microsoft Graph** OneNote API export or `.onepkg`/`.one` (tier-A best-effort), mapping Notebook->Notebook, Section->subject/section, Page->page, ink->ink, tags/to-dos->checkboxes/tags (PRD-CO-073). Critically, OneNote rasterises imported PDFs; Sane MUST NOT — imported PDFs stay **true vector pages** (research onenote.md §5; a genuine \"beat them on real PDF annotation\" win). The Graph path needs maintainer OAuth credentials (`needs-credentials`) and the tier-A format access is legality-gated (`needs-decision`); tier-B is unblocked.\n\n## Scope\n**In:** the tier-B PDF/.docx import (always available, via {{SN-PDF-006}} + a .docx reader) mapping structure to sections/checkboxes and keeping imported PDFs vector; best-effort tier-A via Graph export / `.one`/`.onepkg` (behind credentials + legality); the import report.\n**Out:** the pipeline/report ({{SN-SHR-021}}); PDF import internals ({{SN-PDF-006}}); the Graph OAuth client credentials (maintainer, `needs-credentials`); the legality decision (`needs-decision`); archive hardening ({{SN-SHR-027}}).\n\n## Acceptance criteria\n- [ ] A OneNote **PDF/.docx export** imports with section structure and checkboxes; imported PDFs remain **vector** (not rasterised).\n- [ ] Section->subject/section and Page->page structure is preserved; to-dos/tags map to checkboxes/tags.\n- [ ] The tier-A Graph/`.one` path is gated behind maintainer OAuth credentials + the legality decision; tier-B works without them.\n- [ ] The import report lists preserved vs approximated structure.\n- [ ] All parsing is off-isolate and fails closed on malformed input; XML entities are safely handled (no XXE).\n\n## Technical notes\nAdd `app/lib/import/onenote_import.dart` registered into {{SN-SHR-021}}. Tier-B: {{SN-PDF-006}} for PDF (kept vector) + a pinned .docx (OOXML) reader (justify per checklist §10) with a hardened XML parser (disable external entities; CWE-611). Tier-A: Microsoft Graph OneNote export (needs OAuth client id/secret via CI secrets, never committed) / `.one` container best-effort. Implements PRD-CO-073.\n\n## Security & privacy\nOOXML/`.onepkg` are zip+XML: disable external entity resolution (CWE-611 XXE), extract with caps + path confinement (via {{SN-SHR-027}}; CWE-22), deserialize into explicit models (MASVS-CODE-4, OWASP-A08), fail closed (ASVS-V5). Graph OAuth uses PKCE + state + nonce; tokens in `sane_secure_store`; no secrets committed (checklist §0/§4). IDs: MASVS-PLATFORM-1, MASVS-CODE-4, ASVS-V5, OWASP-A08, CWE-611, CWE-22.\n\n## UX notes\nReachable from Import ({{SN-SHR-021}}); a report emphasising \"your PDFs stayed vector and annotatable\". The tier-A Graph sign-in is offered only when credentials are configured; otherwise only tier-B is shown (never a dead button). All 17 looks + dark.\n\n## Test plan\n`app/test/import/onenote_import_test.dart` (PDF-stays-vector, .docx section/checkbox mapping, XXE-safe XML, malformed fails closed, tier-A gated when no creds), fixtures under `test/fixtures/competitors/onenote/`.\n\n## Dependencies\n{{SN-SHR-021}} (pipeline), {{SN-PDF-006}} (vector PDF import). Hardened by {{SN-SHR-027}}. Maintainer OAuth credentials + legality decision pending (CLAUDE.md §13).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-027",
+    "title": "Harden competitor and bundle import against malicious files",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "security"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-CODE-4",
+      "MASVS-STORAGE-1",
+      "ASVS-V5",
+      "OWASP-A05",
+      "OWASP-A08",
+      "CWE-22",
+      "CWE-409",
+      "CWE-611",
+      "CWE-20"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-021"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nImport is the largest untrusted-input surface in the app: competitor bundles, zips, Markdown/HTML, images and `.sanenote` files can be hostile (zip bombs, path traversal, XXE, oversized media, malformed containers). The secure-coding checklist §1 makes hardening a **gate**: validate type/MIME/size/schema before use; cap resources before decompress/decode; canonicalise and confine every path from file content; parse off the UI isolate; import into a new isolated notebook; fail closed. This issue is the shared hardening gate every importer ({{SN-SHR-021}}..{{SN-SHR-026}}, and the `.sanenote` reader) runs through, plus its negative-test suite.\n\n## Scope\n**In:** a hardened extractor/validator used by all importers: MIME/magic sniffing (not extension trust), per-format size/entry/dimension/duration caps + wall-clock timeout, decompression-ratio limits (zip/decompression-bomb defence), path canonicalisation + confinement (reject `..`/absolute/symlink), XML external-entity disabling (XXE), strict-schema parsing that rejects unknown fields, off-isolate execution, and fail-closed `Failure` on any violation; the abuse/negative test corpus.\n**Out:** the format parsers themselves ({{SN-SHR-022}}..{{SN-SHR-026}}); the PDF-specific fuzz corpus ({{SN-PDF-024}}, referenced); the pipeline shell ({{SN-SHR-021}}).\n\n## Acceptance criteria\n- [ ] A zip/decompression bomb is rejected before exhausting memory/disk (entry count, uncompressed-size, and ratio caps enforced).\n- [ ] A bundle entry with `..`, an absolute path, or a symlink is rejected; extraction writes only under the app's chosen directory.\n- [ ] An XML-bearing import (OOXML/`.one`/SVG) resolves no external entities (XXE-safe).\n- [ ] Oversized images/audio (dimensions/duration/size beyond caps) fail closed with a user-safe error.\n- [ ] Any malformed/unknown-field input produces a user-safe `Failure`, never a partial import, crash, or raw exception surfaced to the user.\n- [ ] All import parsing runs off the UI isolate; a hostile file adds no jank to the editor.\n\n## Technical notes\nAdd `app/lib/import/import_guard.dart` (caps, path confinement, MIME sniff) and a hardened XML/zip wrapper, consumed by every importer via {{SN-SHR-021}}. Enforce caps before decode; use `Isolate.run`; return `Result<T, Failure>` (never throw across boundaries). Implements docs/security/secure-coding-checklist.md §1 and threat-model TM-D-01/TM-T-06/TM-E-04/TM-I-06. Feed the corpus into the verification-stage fuzz job alongside {{SN-PDF-024}}.\n\n## Security & privacy\nThis is the input-validation gate. Threats: TM-D-01 (zip/decompression bomb -> DoS), TM-T-06 (path traversal overwrite), TM-E-04 (parser memory-safety), TM-I-06 (XSS via imported HTML). Controls: resource caps (CWE-409), path confinement (CWE-22), XXE off (CWE-611), strict validation (CWE-20, ASVS-V5), safe deserialization (MASVS-CODE-4, OWASP-A08), secure defaults (OWASP-A05), off-isolate parse (MASVS-PLATFORM-1). IDs listed in security array.\n\n## UX notes\nFailures surface as a single user-safe message (\"This file couldn't be imported safely\") with no stack trace or internal path (checklist §7). Partial/hostile imports never land content; the notebook is only created on a clean parse. No new visible chrome beyond the error state; consistent across all 17 looks + dark.\n\n## Test plan\n`app/test/security/import_guard_test.dart` + a corpus under `test/fixtures/malicious/`: zip bomb, path-traversal entry, symlink entry, XXE payload, oversized image/audio, truncated/malformed container, unknown-field schema. Assert fail-closed, no partial write, no jank. Wire into the CI fuzz job.\n\n## Dependencies\n{{SN-SHR-021}} (pipeline). Used by {{SN-SHR-022}}..{{SN-SHR-026}} and the `.sanenote` reader; complements {{SN-PDF-024}} (PDF fuzz) and {{SN-SEC-001}} (threat model IDs).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SHR-028",
+    "title": "Build the export/import round-trip and fidelity test suite",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "qa"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "L",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "CWE-20"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-003",
+      "SN-SHR-005",
+      "SN-SHR-006",
+      "SN-SHR-008",
+      "SN-SHR-022"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nExport and import are only trustworthy if fidelity is proven: PRD-CO-013/015 require lossless `.sanenote` round-trips and lossy-but-honest Markdown/PDF/SVG round-trips, and every importer must preserve or explicitly approximate content (PRD-CO-078). This issue builds the cross-format fidelity suite: golden exports, byte-for-byte `.sanenote` round-trips, Markdown export->import->export stability, and importer preservation assertions — the verification gate that stops a regression from silently dropping a user's strokes, tags, or audio timestamps.\n\n## Scope\n**In:** golden export files per format across the 17 looks where visual (PNG/SVG/PDF); a byte-for-byte `.sanenote` export->import round-trip; a Markdown export->import->export stability check; importer preservation assertions (strokes/tags/backlinks/audio-ink counts match the report); a fidelity report the CI publishes.\n**Out:** the writers/importers themselves; the malicious-input corpus ({{SN-SHR-027}}); PDF perf tests ({{SN-PDF-026}}).\n\n## Acceptance criteria\n- [ ] A `.sanenote` export -> import -> re-export is byte-for-byte identical for a reference notebook (ink, audio-ink timestamps, backlinks, tags).\n- [ ] Markdown export -> {{SN-SHR-022}} import -> export preserves headings, lists, task-lists, links and image references (stable).\n- [ ] Golden tests cover PDF/PNG/SVG exports of a reference page across a representative set of looks + dark, and fail on visual regression.\n- [ ] Each importer's preservation is asserted: imported stroke/tag/backlink/audio-ink counts match the import report; nothing is silently dropped.\n- [ ] The suite runs in CI as a verification gate and blocks merge on a fidelity regression.\n\n## Technical notes\nAdd `app/integration_test/export_import_fidelity_test.dart` + golden fixtures under `test/goldens/export/` and reference notebooks under `test/fixtures/notebooks/`. Drive the real writers ({{SN-SHR-003}}/{{SN-SHR-005}}/{{SN-SHR-006}}/{{SN-SHR-008}}) and importers ({{SN-SHR-022}} et al). Follows docs/architecture/file-format.md §10 (size/round-trip expectations) and CLAUDE.md §10 (golden tests for painted output).\n\n## Security & privacy\nTest fixtures MUST contain only synthetic content — no real PII, tokens, or secrets (checklist §0). Validate exported artefacts do not leak metadata beyond the documented cleartext routing headers (file-format.md §6). Baseline: no content/tokens in logs. IDs: MASVS-STORAGE-1, MASVS-PRIVACY-2, CWE-20.\n\n## UX notes\nNo user-facing surface; this is a verification harness. Golden diffs are the reviewer's visual evidence in the PR (attach on failure).\n\n## Test plan\nThis issue *is* the test plan: `app/integration_test/export_import_fidelity_test.dart`, per-format golden tests in `packages/*/test/export/`, and the `.sanenote` byte-round-trip in `packages/sane_core/test/export/sanenote_roundtrip_test.dart`. Wire into CI as a gate.\n\n## Dependencies\n{{SN-SHR-003}}, {{SN-SHR-005}}, {{SN-SHR-006}}, {{SN-SHR-008}} (writers), {{SN-SHR-022}} (Markdown import). Coordinates with {{SN-QA-001}} (test strategy).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

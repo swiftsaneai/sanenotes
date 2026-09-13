@@ -1,0 +1,414 @@
+[
+  {
+    "key": "SN-SYNC-001",
+    "title": "Build sane_sync engine and user-cloud-drive adapters",
+    "type": "epic",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "XL",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-CRYPTO-2",
+      "MASVS-NETWORK-1",
+      "MASVS-CODE-4",
+      "MASVS-PRIVACY-2",
+      "OWASP-A02",
+      "OWASP-A08",
+      "ASVS-V8",
+      "CWE-311",
+      "CWE-354"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nsane_sync is the package that moves already-encrypted bytes between a device local store and the user own iCloud Drive / Google Drive so notes converge across devices with no Sane server ever touching content. It implements [ADR-0006](docs/adr/0006-sync-over-user-cloud-drives.md) and [ADR-0004](docs/adr/0004-local-first-zero-server.md) and the normative spec [docs/architecture/sync.md](docs/architecture/sync.md), and it satisfies the M4 exit criteria: everything in the cloud is ciphertext only, two devices editing offline converge with no data loss, large attachments chunk-sync without loading whole files, and quota/auth-expiry are first-class recoverable states. The design principle is that the drive is dumb, encrypted transport and single-writer append-only op-log segments mean the cloud never makes a conflict copy (sync.md section 0). Merge is the CRDT job (SN-CORE-003), encryption is the crypto job (SN-CRY-001); this package owns transport, change detection, conflict avoidance, integrity, and the honest sync-status UX. This epic is called out as coordination-heavy (manifest sharding, compaction leasing, adapter differences) so its convergence/soak harness is an early deliverable.\n\n## Scope\n**In:** the child issues below — the sync-store layout, the CloudDriveAdapter contract and a fake, the reconciliation state machine, iCloud/Google Drive/SAF adapters, change detection + backoff, blob lazy-fetch + resumable transfers, integrity verification, silent conflict resolution, compaction coordination, returning-device catch-up, multi-device pairing/management, auto-sync/Wi-Fi-only/provider prefs, sync-status UI, quota handling, auth-expiry recovery, version history, metadata minimisation, and soak/chaos + offline-first tests.\n**Out:** CRDT merge semantics (SN-CORE-001), encryption/key hierarchy (SN-CRY-001), byte layout of .sanenote (SN-CORE-005), real-time collaboration transport (SN-COL-001), and OneDrive/Dropbox/WebDAV production adapters (Backlog).\n\n## Acceptance criteria\n- [ ] All child issues below are merged and their DoD met.\n- [ ] sane_sync stays pure Dart (no package:flutter import) except the federated plugin implementations under plugins/sane_cloud_drive; arch-lint green.\n- [ ] Two devices editing the same page offline then syncing converge byte-for-identical folded state with zero user-visible conflict file (verified by {{SN-SYNC-025}}).\n- [ ] The adapter layer only ever handles opaque ciphertext; a test asserts no plaintext field crosses the CloudDriveAdapter boundary.\n- [ ] The editor never blocks on sync: reads/writes always hit the local store first (verified by {{SN-SYNC-026}}).\n\n## Technical notes\nPackage packages/sane_sync (pure Dart) + federated plugin plugins/sane_cloud_drive (Dart platform-interface, Swift iCloud impl, Kotlin/Dart Drive impl, web impl). sane_sync may import sane_core (CRDT/model) and sane_crypto (encryption/hash) only, never other feature packages. Children: {{SN-SYNC-002}} {{SN-SYNC-003}} {{SN-SYNC-004}} {{SN-SYNC-005}} {{SN-SYNC-006}} {{SN-SYNC-007}} {{SN-SYNC-008}} {{SN-SYNC-009}} {{SN-SYNC-010}} {{SN-SYNC-011}} {{SN-SYNC-012}} {{SN-SYNC-013}} {{SN-SYNC-014}} {{SN-SYNC-015}} {{SN-SYNC-016}} {{SN-SYNC-017}} {{SN-SYNC-018}} {{SN-SYNC-019}} {{SN-SYNC-020}} {{SN-SYNC-021}} {{SN-SYNC-022}} {{SN-SYNC-023}} {{SN-SYNC-024}} {{SN-SYNC-025}} {{SN-SYNC-026}}. Implements PRD-SYNC-001..015.\n\n## Security & privacy\nThis package is the zero-knowledge boundary in motion. Threats: cloud provider or a malicious drive reading, tampering, reordering or rolling back bytes (CWE-354, CWE-345); metadata leakage of titles/paths/sizes (CWE-212, MASVS-PRIVACY-2); cleartext egress (CWE-319, MASVS-NETWORK-1); OAuth token theft (MASVS-STORAGE-2). Controls: E2EE of every byte before it reaches an adapter (fail closed if the AEAD tag fails), opaque random ids and size padding, manifest BLAKE3 hash tree + hash-chain rollback detection, TLS 1.2+ with pinning for our own endpoints, least-privilege drive.file scope. MASVS-STORAGE-1, MASVS-CRYPTO-2, MASVS-NETWORK-1, MASVS-CODE-4, MASVS-PRIVACY-2, OWASP-A02, OWASP-A08, ASVS V8.\n\n## UX notes\nSync is a first-class honest UI surface because latency is the provider (seconds to hours on iCloud). Per the sync.md section 10 contract and Settings Sync & backup ([docs/design/screens-and-flows.md](docs/design/screens-and-flows.md) section 12), expose per-page and global states, an always-available Sync now, and clear quota/auth-expiry recovery — never a spinner that blocks writing. All chrome must render across the 17 looks + dark mode and meet a11y (labels, 44pt targets, contrast). Baseline privacy: no cloud file paths, tokens, keys, or note content in logs.\n\n## Test plan\nAggregate of children under packages/sane_sync/test/** and plugins/sane_cloud_drive/*/test: the convergence/soak/chaos harness ({{SN-SYNC-025}}), the offline-first guarantee suite ({{SN-SYNC-026}}), adapter contract tests against the fake ({{SN-SYNC-005}}), and integrity fuzz. CI green before M4 hardening.\n\n## Dependencies\nSN-CORE-001 (document model, op-log, .sanenote format) and SN-CRY-001 (E2EE, keys) must exist; SN-AUTH-001 supplies identity/tokens for Drive; SN-FND-002 supplies the monorepo scaffold. This epic reconciles against, but does not block on, SN-COL-001 (collaboration).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-002",
+    "title": "Implement sync-store layout writer and reader",
+    "type": "feature",
+    "priority": "p0",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-CRYPTO-2",
+      "MASVS-PRIVACY-2",
+      "OWASP-A02",
+      "CWE-311",
+      "CWE-212"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-CORE-005",
+      "SN-CRY-001"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nThe sync store is the .sanenote bundle exploded per page and per device with opaque random ids and ciphertext bodies, as specified in [docs/architecture/sync.md](docs/architecture/sync.md) section 1 and [docs/architecture/file-format.md](docs/architecture/file-format.md) section 0/1. This layer maps the local system-of-record (SN-CORE-004 drift DB + blob store, SN-CORE-005 file writer) onto the on-drive tree: manifest.cbor plus per-device manifest.cbor.deviceId shards, pages/pageId/snapshot.gen.snap, pages/pageId/ops/deviceId.seq.oplog, blobs/blobId.blob, keys/keyId.wrap. It is the single design choice (single-writer files) that makes zero-server merge robust (ADR-0006 decision 2), so it must be exact.\n\n## Scope\n**In:** a SyncStore abstraction over a CloudDriveAdapter that (a) enumerates the on-drive tree, (b) writes this device single-writer files only (its ops segments, its manifest shard, and — when compacting — a new snapshot generation via atomic publish), (c) reads and merges all manifest shards into an effective manifest (LWW/OR-Set over manifest CRDT fields), (d) rotates op-log segments at the 4 MB cap (file-format section 3.4), and (e) maps opaque random 16-byte drive ids to local ObjectIds via an encrypted id-map that never leaves as plaintext.\n**Out:** the adapter transport itself ({{SN-SYNC-005}}), encryption primitives (SN-CRY-001; this layer calls them), change detection ({{SN-SYNC-007}}), and CRDT folding ({{SN-SYNC-006}}).\n\n## Acceptance criteria\n- [ ] Writing a page produces exactly the sync.md section 1 tree: one snapshot generation (when compacted), this device op-log segment(s), blob files, and this device manifest shard — and never writes another device files.\n- [ ] Drive ids are opaque random 16 bytes, never content- or name-derived; a test asserts no page title, tag, or content hash appears in any path.\n- [ ] Reading merges N manifest shards into one effective manifest deterministically regardless of shard arrival order.\n- [ ] Op-log segments rotate to seq+1 at 4 MB cleartext; a partially-uploaded torn tail is ignored until complete (length+CRC per file-format section 3.2) and never corrupts state.\n- [ ] A consolidated manifest.cbor rewrite by the compacting device bounds shard count and is published atomically (temp-then-rename / adapter atomic publish) only after the new members are durable.\n\n## Technical notes\npackages/sane_sync/lib/src/store/*.dart. Reuse the framing from file-format.md sections 2-4 (SNSN/SNOL/SNBL magics, CBOR manifest with integer keys). Cleartext routing headers only (magic, versions, ids, generation, HLC watermark); bodies are AEAD ciphertext produced by sane_crypto. appDataFolder holds device-local state (cursors) only, never notes (sync.md section 1). Manifest fields that are human-meaningful (titles, tags) are stored as separately-encrypted values (file-format section 6.2). Implements PRD-SYNC-004, PRD-SYNC-007.\n\n## Security & privacy\nThreats: metadata leakage via paths/names (CWE-212), missing encryption of a body (CWE-311), integrity loss on partial sync (CWE-354). Controls: opaque ids, encrypted manifest fields + name-to-id map inside ciphertext, every authoritative byte ciphertext before write, length+CRC + BLAKE3 hashes recorded for {{SN-SYNC-013}} to verify, fail closed on any framing mismatch. MASVS-STORAGE-1, MASVS-CRYPTO-2, MASVS-PRIVACY-2, OWASP-A02.\n\n## UX notes\nNo direct UI. Correctness here is what makes the invisible-sync promise real: the user sees notebooks converge, never a conflicted-copy file (design Sync & backup, [docs/design/screens-and-flows.md](docs/design/screens-and-flows.md) section 12). Baseline privacy: no drive paths or ids logged in the clear (ids as opaque short hashes only).\n\n## Test plan\npackages/sane_sync/test/store/layout_test.dart (tree shape, single-writer invariant), shard_merge_test.dart (order-independent effective manifest), segment_rotation_test.dart (4 MB cap, torn-tail ignore), path_opacity_test.dart (no content in paths). Runs headlessly against the in-memory fake adapter ({{SN-SYNC-005}}).\n\n## Dependencies\nSN-CORE-005 (.sanenote writer/reader, framing), SN-CRY-001 (AEAD/hash). Adapter contract {{SN-SYNC-005}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-003",
+    "title": "Implement iCloud Drive cloud-drive adapter",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "sync"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PLATFORM-1",
+      "MASVS-NETWORK-1",
+      "OWASP-A08",
+      "CWE-354",
+      "CWE-362"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-005",
+      "SN-SYNC-002"
+    ],
+    "labels_extra": [
+      "needs-credentials"
+    ],
+    "body": "## Context\nOn Apple platforms the sync store lives in an iCloud Drive ubiquity container the user can see in the Files app, accessed only through the document/coordination stack, per [docs/architecture/sync.md](docs/architecture/sync.md) section 5 and PRD-SYNC-005. iCloud cannot be force-synced and evicts files to placeholders, so the adapter must coordinate with the sync daemon (never raw FileManager) and tolerate seconds-to-hours latency. This is the iCloud implementation of the federated plugins/sane_cloud_drive plugin exposing the narrow Dart CloudDriveAdapter API ({{SN-SYNC-005}}).\n\n## Scope\n**In:** a Swift plugin implementation that (a) resolves the ubiquity container from the app entitlement, (b) wraps every write in NSFileCoordinator.coordinate(writingItemAt:) and every read in the reading variant, (c) registers at most one NSFilePresenter per open page (they are expensive), (d) observes NSMetadataQuery for add/modify/remove and download state as the change stream, (e) handles placeholders via isUbiquitousItem / startDownloadingUbiquitousItem / ubiquitousItemDownloadingStatus and evicts under cache pressure with evictUbiquitousItem, and (f) exposes NSFileVersion unresolvedConflictVersionsOfItem for the rare snapshot conflict.\n**Out:** the CRDT merge of conflict variants ({{SN-SYNC-014}}), CloudKit (explicitly not the engine — sync.md section 5.4), and lazy blob policy ({{SN-SYNC-011}}, which calls this adapter).\n\n## Acceptance criteria\n- [ ] All reads/writes go through NSFileCoordinator/NSFilePresenter; a code review + test asserts no direct FileManager access to the container.\n- [ ] watch() emits DriveChange events sourced from NSMetadataQuery; a newly-added remote segment surfaces without a manual poll.\n- [ ] read() on a placeholder triggers startDownloadingUbiquitousItem and completes only after the item is materialised; download failures surface as a recoverable state, not a crash.\n- [ ] The adapter never assumes it can force a sync; Sync now issues download requests + runs the loop best-effort and returns without blocking.\n- [ ] conflictVariants() returns all NSFileVersion variants for a snapshot and resolveConflict() writes one resolved generation via a coordinated atomic write, marking others isResolved = true.\n\n## Technical notes\nplugins/sane_cloud_drive/ios (Swift) + the Dart platform-interface. Requires the iCloud container entitlement and an App ID configured in the Apple Developer account (maintainer-supplied — needs-credentials). Register one presenter per open page at most (sync.md section 5.1). Implements the CloudDriveAdapter methods from sync.md section 9. [ADR-0012](docs/adr/0012-native-plugin-strategy.md) governs the federated plugin structure. Implements PRD-SYNC-005.\n\n## Security & privacy\nThreats: races with the sync daemon corrupting a write (CWE-362), a tampering/rolling-back store (CWE-354), placeholder read exposing partial bytes. Controls: mandatory file coordination, integrity verified downstream by {{SN-SYNC-013}}, TLS is Apple-managed for the container, adapter only ever moves opaque ciphertext (no plaintext, no keys). MASVS-PLATFORM-1, MASVS-STORAGE-1, OWASP-A08.\n\n## UX notes\nFeeds the sync-status surface ({{SN-SYNC-020}}): placeholder/downloading maps to pendingDownload, stuck iCloud maps to Offline — will sync later, never an error. Files-app visibility of the encrypted bundle is the user-control promise (they keep it after uninstall). Baseline: no container paths in logs.\n\n## Test plan\nplugins/sane_cloud_drive/ios unit tests for coordination wrappers; a Dart integration test app/integration_test/sync_icloud_test.dart exercising placeholder download + conflict-variant resolution on a real device/simulator (gated on the iCloud entitlement). Contract test reuses {{SN-SYNC-005}}.\n\n## Dependencies\n{{SN-SYNC-005}} (adapter contract), {{SN-SYNC-002}} (store layout). Maintainer must supply the Apple Developer team + iCloud container id.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-004",
+    "title": "Implement Google Drive REST v3 cloud-drive adapter",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-NETWORK-1",
+      "MASVS-AUTH-2",
+      "MASVS-STORAGE-2",
+      "OWASP-A01",
+      "OWASP-A02",
+      "CWE-319",
+      "CWE-522"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-005",
+      "SN-AUTH-003"
+    ],
+    "labels_extra": [
+      "needs-credentials"
+    ],
+    "body": "## Context\nGoogle Drive is the cross-platform sync target and the only one on Android/web/desktop, hitting the Drive REST API v3 (the Drive Android API is retired), per [docs/architecture/sync.md](docs/architecture/sync.md) section 6 and PRD-SYNC-006. Notes go in a visible app folder under the least-privilege drive.file scope so the user keeps the encrypted bundle even after uninstall; appDataFolder is reserved for device-local cursors only. This is the Drive implementation of the CloudDriveAdapter contract ({{SN-SYNC-005}}).\n\n## Scope\n**In:** a Dart Drive REST client (lean on googleapis/googleapis_auth for v1, verify maintenance per sync.md section 12) that (a) connects with an OAuth token carrying only drive.file (+ drive.appdata for cursors), (b) creates/reads/updates files in the visible SaneNotesRoot folder, (c) uses resumable uploads for anything over a few hundred KB (audio/PDF blobs), (d) rotates op-log segments to new files at the size cap so each upload is small and written once, (e) publishes snapshots atomically (upload snapshot.gen+1.snap, confirm, commit manifest shard, then delete old generation — never overwrite in place), and (f) exposes competing revisions via revisions.list/get for the rare snapshot conflict.\n**Out:** change detection/polling ({{SN-SYNC-008}}), watch push ({{SN-SYNC-009}}), the SAF backend-less path ({{SN-SYNC-010}}), and backoff policy ({{SN-SYNC-007}}, applied here).\n\n## Acceptance criteria\n- [ ] The adapter requests only drive.file and drive.appdata scopes; a test asserts the broad drive scope is never requested.\n- [ ] Notes are written to a visible folder in the user Drive; cursors/config go to appDataFolder; no note bytes ever go to appDataFolder.\n- [ ] Uploads over the threshold use resumable upload sessions and survive an interrupted connection (resume, not restart — see {{SN-SYNC-012}}).\n- [ ] Snapshot publish is atomic-by-construction: old generation is deleted only after the manifest referencing the new one is durable; a mid-publish failure leaves a usable older generation.\n- [ ] All requests are HTTPS; OAuth access tokens are short-lived and read from sane_secure_store, never logged, never written to the notes DB or the synced store.\n\n## Technical notes\nplugins/sane_cloud_drive Dart/Kotlin impl. OAuth tokens come from the Sign in with Google flow (SN-AUTH-003) via the auth abstraction (SN-AUTH-002); an optional Kotlin SyncAdapter can run background sync on Android. drive.file file naming uses opaque random ids ({{SN-SYNC-002}}). Requires a Google Cloud OAuth client id (maintainer-supplied — needs-credentials). Implements PRD-SYNC-006. See [ADR-0006](docs/adr/0006-sync-over-user-cloud-drives.md) decision 5.\n\n## Security & privacy\nThreats: over-privileged scope (OWASP-A01), cleartext transmission (CWE-319), OAuth token theft (CWE-522, MASVS-STORAGE-2). Controls: least-privilege drive.file, TLS-only, token in secure store with refresh rotation, adapter only handles ciphertext so a stolen token still yields no plaintext (ADR-0006 threats table). MASVS-NETWORK-1, MASVS-AUTH-2, MASVS-STORAGE-2, OWASP-A02.\n\n## UX notes\nAuth-expiry maps to the Attention needed / authNeeded state ({{SN-SYNC-020}}, {{SN-SYNC-022}}); quota-full maps to driveFull ({{SN-SYNC-021}}). The visible folder is the user-control promise. Baseline: no tokens, file ids, or paths in logs.\n\n## Test plan\nplugins/sane_cloud_drive/test/gdrive_adapter_test.dart against a mocked Drive REST endpoint (resumable upload, atomic snapshot publish, scope assertion); an opt-in live integration test gated on a maintainer OAuth client id. Contract test reuses {{SN-SYNC-005}}.\n\n## Dependencies\n{{SN-SYNC-005}} (adapter contract), SN-AUTH-003 (Sign in with Google tokens). Maintainer must supply the OAuth client id/secret.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-005",
+    "title": "Define CloudDriveAdapter interface and in-memory fake",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "design",
+    "security": [
+      "MASVS-CODE-1",
+      "ASVS-V1",
+      "CWE-1059"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-FND-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\nEvery backend (iCloud, Drive, SAF, later OneDrive/Dropbox/WebDAV) is a CloudDriveAdapter so a new backend is a small plugin, not a core change, per [docs/architecture/sync.md](docs/architecture/sync.md) section 9 and [ADR-0006](docs/adr/0006-sync-over-user-cloud-drives.md) decision 8. The adapter is deliberately dumb: no CRDT, no crypto, just opaque bytes and change events. Defining the contract and a deterministic in-memory fake first unblocks the store layer ({{SN-SYNC-002}}) and the engine ({{SN-SYNC-006}}) to be built and tested with no real cloud account.\n\n## Scope\n**In:** the abstract CloudDriveAdapter from sync.md section 9 — id, connect(AuthContext), currentCursor(), watch() stream, pollSince(cursor), read(path, range), writeNew(path, bytes), appendOrReplace(path, tail), atomicPublish(tmp, final), delete(path), conflictVariants(path), resolveConflict(path, resolved), and a DriveLimits value (quota hints, max upload, backoff policy); plus DrivePath, DriveCursor, DriveChange, Bytes, Range types; plus a FakeCloudDriveAdapter that simulates latency, out-of-order delivery, placeholder/eviction, partial-tail arrival, quota exhaustion, and conflict variants for tests.\n**Out:** the real adapters ({{SN-SYNC-003}}, {{SN-SYNC-004}}, {{SN-SYNC-010}}) and backoff logic ({{SN-SYNC-007}}).\n\n## Acceptance criteria\n- [ ] The interface matches sync.md section 9 exactly (method names, signatures, DriveLimits fields) with /// dartdoc on every member.\n- [ ] read() accepts an optional Range for chunked blob range reads; writeNew() supports resumable semantics via the returned handle.\n- [ ] The fake is deterministic under a seeded RNG and can inject: configurable latency, reordered change events, a torn/partial tail, driveFull, authNeeded, and N conflict variants.\n- [ ] A shared adapter-contract test suite (parameterised) runs against the fake and is reusable by every real adapter.\n- [ ] The interface exposes no plaintext-typed field; all payloads are Bytes (opaque).\n\n## Technical notes\npackages/sane_sync/lib/src/adapter/cloud_drive_adapter.dart + test doubles under packages/sane_sync/test/fakes/. Pure Dart, no package:flutter. AuthContext is passed in (OAuth token / SAF grant / ubiquity entitlement handle) but the adapter treats it opaquely. Implements the contract underpinning PRD-SYNC-002..006.\n\n## Security & privacy\nThreats: an over-broad interface leaking plaintext or key types across the boundary (MASVS-CODE-1, insecure API design). Controls: bytes-only payloads, no crypto/CRDT types in signatures, dartdoc stating the adapter must never receive plaintext. ASVS V1, CWE-1059.\n\n## UX notes\nNone beyond baseline. No user-facing surface; baseline privacy is that the contract carries no content and the fake never logs payload bytes.\n\n## Test plan\npackages/sane_sync/test/adapter/contract_test.dart (the parameterised suite) + fake_adapter_test.dart (fault-injection determinism). Headless, no widgets.\n\n## Dependencies\nSN-FND-002 (monorepo scaffold so packages/sane_sync exists).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-006",
+    "title": "Implement the sync reconciliation state machine",
+    "type": "feature",
+    "priority": "p0",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CRYPTO-2",
+      "MASVS-CODE-4",
+      "OWASP-A04",
+      "OWASP-A08",
+      "ASVS-V8",
+      "CWE-354"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-002",
+      "SN-SYNC-005",
+      "SN-CORE-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe engine runs one reconciliation loop per configured backend — a state machine, not a stream — implementing [docs/architecture/sync.md](docs/architecture/sync.md) section 2: pull manifest shards + changed segments/snapshots, verify hashes, decrypt and CRDT-merge, lazily fetch only needed blobs, push this device new appends + manifest shard, update the cursor/HLC watermark, schedule the next wake. It touches only files this device may write (single-writer), so there is never a read-modify-write race on a shared file. This is the heart of sane_sync and a data-loss-critical component.\n\n## Scope\n**In:** a SyncEngine with explicit states (idle, pulling, verifying, merging, pushing, backingOff, offline, paused) triggered on change-signal, foreground, manual Sync now, and interval backoff; orchestration of encryption (calls sane_crypto), hash verification (delegates to {{SN-SYNC-013}}), CRDT merge (calls SN-CORE-003), lazy blob fetch (delegates to {{SN-SYNC-011}}), and cursor/HLC-watermark persistence; per-backend isolation so one failing backend does not stall another.\n**Out:** the specific change-detection transports ({{SN-SYNC-007}}, {{SN-SYNC-008}}), conflict-variant merge ({{SN-SYNC-014}}), catch-up replay ({{SN-SYNC-016}}), and all UI ({{SN-SYNC-020}}).\n\n## Acceptance criteria\n- [ ] The push step writes only single-writer files (this device ops segments, its manifest shard, and — if compacting — a new snapshot); a test asserts no write targets another device file.\n- [ ] Each pulled member is hash-verified against the merged manifest before use; a partial/tampered member is dropped and re-fetched, never merged.\n- [ ] Out-of-order and delayed delivery converge to identical folded state (HLC total order); a randomised delivery-order test passes.\n- [ ] The engine runs off the UI isolate (storage/sync isolate) and never blocks reads/writes to the local store (offline-first, {{SN-SYNC-026}}).\n- [ ] On any decrypt/keying failure the engine enters paused (no key) and uploads nothing, drops nothing, and surfaces no partial content (PRD-KEY-009 fail-closed).\n\n## Technical notes\npackages/sane_sync/lib/src/engine/*.dart, run on the sync isolate ([docs/architecture/overview.md](docs/architecture/overview.md) isolate model, CLAUDE.md section 8). Encryption via sane_crypto, merge via sane_core CRDT (SN-CORE-003), verification via {{SN-SYNC-013}}. Exposes a SyncStatus stream consumed by app/ Riverpod providers. Implements PRD-SYNC-003, PRD-SYNC-009, PRD-SYNC-010, PRD-KEY-009. See [ADR-0006](docs/adr/0006-sync-over-user-cloud-drives.md).\n\n## Security & privacy\nThreats: merging a tampered/partial member (CWE-354, OWASP-A08), fail-open on a keying error leaking or dropping data (OWASP-A04). Controls: verify-then-use, fail closed to paused, encrypt before push, no note content/coords/ids in logs (object ids as opaque short hashes). MASVS-CRYPTO-2, MASVS-CODE-4, ASVS V8.\n\n## UX notes\nDrives {{SN-SYNC-020}} status states; must tolerate seconds-to-hours latency without a blocking spinner (sync.md section 10, no-spinners ideal). Baseline: hot-path and loop code logs nothing in profile/release beyond opaque state transitions.\n\n## Test plan\npackages/sane_sync/test/engine/loop_test.dart (state transitions), reorder_convergence_test.dart (randomised delivery), fail_closed_test.dart (keying error to paused), single_writer_test.dart. Uses the fake adapter ({{SN-SYNC-005}}).\n\n## Dependencies\n{{SN-SYNC-002}}, {{SN-SYNC-005}}, SN-CORE-003 (CRDT merge).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-007",
+    "title": "Add change-detection scheduling with backoff and jitter",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-NETWORK-1",
+      "OWASP-A05",
+      "CWE-799",
+      "CWE-770"
+    ],
+    "parent": "SN-SYNC-006",
+    "depends_on": [
+      "SN-SYNC-005"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\nChange detection is push where available, poll where not, always with backoff, per [docs/architecture/sync.md](docs/architecture/sync.md) section 4 and the threats table (provider quota exhaustion / throttling). This task provides the shared scheduler: wake sources (change-signal, foreground, app-background-refresh windows, manual Sync now, interval) and the mandatory exponential-backoff-with-jitter that every adapter uses on 403 rateLimitExceeded/userRateLimit and 429, respecting Retry-After.\n\n## Scope\n**In:** a WakeScheduler that multiplexes the wake sources into engine ticks; a BackoffPolicy (exponential base, cap, full jitter, Retry-After override) surfaced through DriveLimits; a foreground/background lifecycle hook; and a debounce so a burst of local edits coalesces into one push (per the 250 ms / 64 KB batching in file-format section 3.4).\n**Out:** the Drive Changes API specifics ({{SN-SYNC-008}}), the iCloud NSMetadataQuery source (in {{SN-SYNC-003}}), and watch push ({{SN-SYNC-009}}).\n\n## Acceptance criteria\n- [ ] On a simulated 429 with Retry-After, the next attempt waits at least Retry-After; without it, waits base*2^n +/- full jitter, capped.\n- [ ] Backoff resets to base after a successful round.\n- [ ] A burst of 100 local edits within the debounce window produces one push, not 100.\n- [ ] Manual Sync now bypasses the interval timer but still respects an active backoff window (does not hammer a throttling provider).\n- [ ] The scheduler never busy-loops; between wakes it consumes no CPU (timer-driven).\n\n## Technical notes\npackages/sane_sync/lib/src/engine/scheduler.dart + backoff.dart. Pure Dart, deterministic under an injected clock + RNG for tests. Drive quota/QPS numbers and watch-channel TTL are verify-before-shipping (sync.md section 12) — keep intervals configurable, not hard-coded. Feeds {{SN-SYNC-006}}. Implements PRD-SYNC-011 (backoff), supports PRD-SYNC-006.\n\n## Security & privacy\nThreats: unbounded retry causing self-inflicted rate-limit / battery drain (CWE-770), or a thundering-herd on a shared provider (CWE-799). Controls: full-jitter backoff, Retry-After respect, configurable caps, no secrets in scheduler state. MASVS-NETWORK-1, OWASP-A05.\n\n## UX notes\nBackoff maps to the transient Syncing/Offline states, never a hard error toast ({{SN-SYNC-020}}). Sync now remains responsive (queues a tick) even while backing off. Baseline: no logging of endpoints or tokens.\n\n## Test plan\npackages/sane_sync/test/engine/backoff_test.dart (Retry-After, jitter bounds, reset), scheduler_test.dart (debounce coalescing, Sync-now-during-backoff) with injected clock/RNG.\n\n## Dependencies\n{{SN-SYNC-005}} (DriveLimits/backoff policy surface).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-008",
+    "title": "Implement Google Drive incremental change polling",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-NETWORK-1",
+      "OWASP-A05",
+      "CWE-799"
+    ],
+    "parent": "SN-SYNC-004",
+    "depends_on": [
+      "SN-SYNC-004",
+      "SN-SYNC-007"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe reliable, zero-server change-detection baseline for Google Drive is incremental polling of the Changes collection, per [docs/architecture/sync.md](docs/architecture/sync.md) section 6.3 and [ADR-0006](docs/adr/0006-sync-over-user-cloud-drives.md) decision 7: v1 ships Drive polling; push is an optimisation ({{SN-SYNC-009}}). This gives every platform a correct wake source without a public webhook endpoint.\n\n## Scope\n**In:** call changes.getStartPageToken once to seed the cursor, then changes.list(pageToken) incrementally, persisting newStartPageToken as this device cursor in appDataFolder (device-local state, never notes); translate Drive change entries into DriveChange events for the adapter watch()/pollSince() surface; page through large change sets; apply the {{SN-SYNC-007}} backoff on 403/429.\n**Out:** the watch push channel ({{SN-SYNC-009}}), iCloud change detection (in {{SN-SYNC-003}}), and SAF change detection ({{SN-SYNC-010}}).\n\n## Acceptance criteria\n- [ ] The device cursor (startPageToken/newStartPageToken) is stored in appDataFolder and survives reinstall-less restarts; it is never stored with note bytes.\n- [ ] changes.list returns are paged fully; a change set spanning multiple pages yields every DriveChange exactly once.\n- [ ] A remote edit from device B appears as a DriveChange on device A within one poll interval (configurable).\n- [ ] On 403 rateLimitExceeded/429 the poller backs off with jitter (via {{SN-SYNC-007}}) and resumes from the persisted cursor with no lost changes.\n- [ ] The exact Drive QPS/quota numbers are read from config, not hard-coded (verify per sync.md section 12).\n\n## Technical notes\nplugins/sane_cloud_drive Drive impl + packages/sane_sync wiring. Uses the OAuth session from {{SN-SYNC-004}}. Cursor lives in drive.appdata. This is the pollSince() implementation of the CloudDriveAdapter for Drive. Implements PRD-SYNC-006.\n\n## Security & privacy\nThreats: rate-limit self-DoS (CWE-799), cursor stored where it could reveal structure. Controls: appDataFolder cursor (opaque token only, no content), backoff, HTTPS. MASVS-NETWORK-1, OWASP-A05.\n\n## UX notes\nPoll latency is expected; the UI shows Up to date between polls and Syncing during a round ({{SN-SYNC-020}}). Baseline: no page tokens or file ids logged in the clear.\n\n## Test plan\nplugins/sane_cloud_drive/test/gdrive_changes_test.dart against a mocked Changes API (paging, cursor persistence, exactly-once, backoff on 429).\n\n## Dependencies\n{{SN-SYNC-004}} (Drive adapter + OAuth), {{SN-SYNC-007}} (backoff).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-009",
+    "title": "Add optional content-free Drive push notifier",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-NETWORK-1",
+      "MASVS-PRIVACY-2",
+      "OWASP-A02",
+      "CWE-359"
+    ],
+    "parent": "SN-SYNC-004",
+    "depends_on": [
+      "SN-SYNC-008"
+    ],
+    "labels_extra": [
+      "needs-decision"
+    ],
+    "body": "## Context\nchanges.watch registers a Drive watch channel (webhook) that posts change notifications, avoiding tight polling — but a webhook needs a public HTTPS endpoint we do not want to make note-content-aware, per [docs/architecture/sync.md](docs/architecture/sync.md) section 6.3 and [ADR-0006](docs/adr/0006-sync-over-user-cloud-drives.md) decision 7. Options, in order: rely on polling only (v1 default), or run a tiny stateless notifier that receives Drive content-free something-changed pings and forwards a wake via push notification, holding no keys and seeing no note content (same posture as the ciphertext-only relay). This issue is needs-decision: the maintainer must confirm whether the notifier ships in v1 or stays polling-only.\n\n## Scope\n**In (if adopted):** a minimal stateless notifier service (services/relay-adjacent) that registers/renews watch channels, receives Drive change pings (which carry no note content), maps a channel to a device push token, and sends a wake; client code to subscribe/unsubscribe and to fall back to polling on channel expiry; channel-TTL renewal handling.\n**Out:** any content awareness in the notifier, key handling (it holds none), and the polling baseline ({{SN-SYNC-008}}, which remains the fallback).\n\n## Acceptance criteria\n- [ ] Maintainer decision recorded in [ADR-0006](docs/adr/0006-sync-over-user-cloud-drives.md) notes before implementation (polling-only vs notifier).\n- [ ] If adopted: the notifier receives only Drive change pings and a device push token; a test/inspection confirms it never receives note bytes, file names, or keys.\n- [ ] Watch channels are renewed before expiry; on expiry or a sync message the client falls back to polling with no lost changes.\n- [ ] Disabling push cleanly unregisters the channel and reverts to {{SN-SYNC-008}} polling.\n\n## Technical notes\nservices/ notifier (stateless, no note store — consistent with [ADR-0013](docs/adr/0013-collaboration-transport.md) ciphertext-only posture). Watch-channel max TTL is verify-before-shipping (sync.md section 12). This is an optimisation layer over {{SN-SYNC-008}}. Implements the push option of PRD-SYNC-006.\n\n## Security & privacy\nThreats: a new server becoming a content/metadata sink (MASVS-PRIVACY-2, CWE-359 exposure of private info). Controls: content-free by construction, holds no keys, documented as a new egress in the threat model with purpose + data sent (CLAUDE.md section 7 rule 4). MASVS-NETWORK-1, OWASP-A02.\n\n## UX notes\nLower sync latency when enabled; the sync-status surface is unchanged ({{SN-SYNC-020}}). Users can leave it off (polling-only) with no feature loss. Baseline: no note metadata in the notifier or its logs.\n\n## Test plan\nservices/notifier tests (channel register/renew/expire, content-free assertion) + client fallback test packages/sane_sync/test/engine/push_fallback_test.dart.\n\n## Dependencies\n{{SN-SYNC-008}} (polling baseline it optimises). Blocked on the maintainer polling-vs-push decision.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-010",
+    "title": "Implement Storage Access Framework backend-less adapter",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "sync",
+      "compat"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-STORAGE-1",
+      "OWASP-A01",
+      "CWE-276"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-005",
+      "SN-SYNC-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nOn Android the Storage Access Framework gives a no-OAuth, user-chosen-provider path that works with Drive/Dropbox/OneDrive/local uniformly, per [docs/architecture/sync.md](docs/architecture/sync.md) section 6.1. The user picks a folder and the app reads/writes the encrypted single-writer tree there via DocumentsProvider/DocumentFile — attractive for users who do not want to grant Drive OAuth. It is a CloudDriveAdapter implementation ({{SN-SYNC-005}}).\n\n## Scope\n**In:** ACTION_OPEN_DOCUMENT_TREE to grant a directory, takePersistableUriPermission() to persist it across reboots, read/write of the sync-store tree through DocumentFile, and an etag/mtime scan (SAF has no push) for change detection; prefer ACTION_OPEN_DOCUMENT (live handle) over ACTION_GET_CONTENT (which imports a copy).\n**Out:** the REST Drive path ({{SN-SYNC-004}}), push detection (SAF has none), and cross-provider quota specifics ({{SN-SYNC-021}}).\n\n## Acceptance criteria\n- [ ] After ACTION_OPEN_DOCUMENT_TREE, the grant persists across reboots via takePersistableUriPermission and is re-validated on launch.\n- [ ] Reads/writes go through the granted tree only; the adapter never touches paths outside the grant (least privilege).\n- [ ] Change detection uses a PROPFIND-style etag/mtime scan on an interval (with {{SN-SYNC-007}} backoff); a remote change is detected on the next scan.\n- [ ] A revoked or document-id-churned grant surfaces as authNeeded and prompts re-pick, never a silent failure (verify SAF long-handle stability per sync.md section 12).\n- [ ] The tree written matches {{SN-SYNC-002}} exactly so a device can switch between SAF and REST access to the same folder.\n\n## Technical notes\nplugins/sane_cloud_drive/android (Kotlin) SAF impl of the adapter. No OAuth. Implements PRD-SYNC-002 (provider choice) for the backend-less case. See sync.md section 6.1/7.\n\n## Security & privacy\nThreats: over-broad file access (OWASP-A01), incorrect grant scoping (CWE-276 incorrect default permissions). Controls: single granted tree, persistable-permission re-validation, ciphertext-only bytes. MASVS-PLATFORM-1, MASVS-STORAGE-1.\n\n## UX notes\nProvider choice ({{SN-SYNC-019}}) offers a Choose a folder option for SAF alongside Drive; the picked folder path is shown but treated as a grant, not a path. Grant loss maps to Attention needed ({{SN-SYNC-020}}). Baseline: no document uris in logs. Meets a11y for the picker entry (label, 48dp target).\n\n## Test plan\nplugins/sane_cloud_drive/android test for grant persistence + tree read/write; app/integration_test/sync_saf_test.dart on an Android device exercising folder pick, restart, and revocation.\n\n## Dependencies\n{{SN-SYNC-005}} (contract), {{SN-SYNC-002}} (identical tree).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-011",
+    "title": "Implement lazy attachment-blob sync with LRU cache",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-CRYPTO-2",
+      "OWASP-A02",
+      "CWE-770",
+      "CWE-400"
+    ],
+    "parent": "SN-SYNC-006",
+    "depends_on": [
+      "SN-SYNC-006",
+      "SN-CORE-004"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nAudio dominates a page by roughly 10x (a 60-minute lecture page is 12-16 MB, audio-heavy), so attachments must be lazily fetched — only the blobs the UI needs now — never force-downloaded, per [docs/architecture/document-model.md](docs/architecture/document-model.md) section 7 and [docs/architecture/sync.md](docs/architecture/sync.md) section 2 step 4. This lets a 1,000-page notebook open instantly with structure and stream contents on demand.\n\n## Scope\n**In:** a BlobSyncManager that fetches a content-addressed blob only when an object references it and enters view; a bounded LRU disk cache with an eviction policy under local cache pressure; range reads for chunked blobs (decrypt-and-stream from any offset, file-format section 5.2); reference-counting via the folded state so an evicted blob is re-fetchable; blob dedup (a blob never changes, so identical bytes converge on one file).\n**Out:** resumable transfer mechanics ({{SN-SYNC-012}}), the chunk crypto (sane_crypto), and blob GC (SN-CORE tombstone/GC).\n\n## Acceptance criteria\n- [ ] Opening a page fetches its snapshot + ops but NOT its audio blob until playback starts; a test asserts audio bytes are not requested on page open.\n- [ ] Range read fetches only the chunk(s) needed to seek/stream, not the whole blob.\n- [ ] The LRU cache respects a configurable byte cap and evicts least-recently-used blobs; an evicted blob is transparently re-fetched on next use.\n- [ ] Two objects referencing the same blob hash share one cached/synced file (dedup).\n- [ ] Each fetched chunk AEAD tag is verified before use; a failed tag aborts the fetch (fail closed), it is not shown.\n\n## Technical notes\npackages/sane_sync/lib/src/blob/*.dart, backed by the SN-CORE-004 content-addressed blob store. Uses adapter read(path, range). Chunk framing per file-format section 5 (256 KiB default). Feeds the audio player (SN-AUD) and PDF renderer (SN-PDF) via the engine. Implements PRD-STOR-008, supports PRD-SYNC-008 (holding large blobs).\n\n## Security & privacy\nThreats: OOM from downloading a huge blob whole (CWE-770/CWE-400), showing an unverified chunk. Controls: streamed range reads, bounded cache, per-chunk AEAD verify-before-use, ciphertext at rest. MASVS-STORAGE-1, MASVS-CRYPTO-2, OWASP-A02.\n\n## UX notes\nDownloading a blob shows Syncing with progress for large blobs ({{SN-SYNC-020}}); a not-yet-downloaded attachment shows a tap-to-download affordance rather than blocking the page. Baseline: no blob ids or content in logs.\n\n## Test plan\npackages/sane_sync/test/blob/lazy_fetch_test.dart (no audio on open), lru_cache_test.dart (cap + eviction + re-fetch), range_read_test.dart, dedup_test.dart, against the fake adapter.\n\n## Dependencies\n{{SN-SYNC-006}} (engine), SN-CORE-004 (blob store).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-012",
+    "title": "Add resumable transfers for large attachment uploads",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-NETWORK-1",
+      "OWASP-A08",
+      "CWE-354"
+    ],
+    "parent": "SN-SYNC-011",
+    "depends_on": [
+      "SN-SYNC-011"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nAudio and PDF blobs are large and mobile networks drop, so uploads must resume rather than restart, per [docs/architecture/sync.md](docs/architecture/sync.md) section 6.4 (use resumable uploads for anything over a few hundred KB). Combined with Wi-Fi-only gating ({{SN-SYNC-019}}), this keeps large transfers cheap and reliable.\n\n## Scope\n**In:** a ResumableTransfer layer over the adapter that starts a resumable upload session for a blob above a size threshold, persists the session state (offset, session handle) durably, resumes from the last confirmed offset after an interruption or app restart, verifies the final object hash against the manifest, and cooperates with the Wi-Fi-only hold ({{SN-SYNC-019}}) and backoff ({{SN-SYNC-007}}); mirrors resumable download for range fetches ({{SN-SYNC-011}}).\n**Out:** the LRU cache/lazy policy ({{SN-SYNC-011}}), and provider-specific resumable API wiring beyond Drive (later backends).\n\n## Acceptance criteria\n- [ ] An upload interrupted at 60 percent resumes from ~60 percent after reconnect/app-restart, not from 0.\n- [ ] Session state persists across app restart; a resumed upload produces a byte-identical object whose hash matches the manifest entry.\n- [ ] Uploads above the threshold are held when Wi-Fi-only is on and no unmetered network is available, then resume automatically.\n- [ ] A never-completing transfer backs off and surfaces pendingUpload(n), not a hard failure.\n- [ ] The final published object is hash-verified; a mismatch discards and retries (fail closed).\n\n## Technical notes\npackages/sane_sync/lib/src/blob/resumable.dart. Uses Drive resumable-upload sessions via {{SN-SYNC-004}}; session state stored in appDataFolder / local device state. Integrity check delegates to {{SN-SYNC-013}}. Implements PRD-SYNC-008 (hold large uploads) mechanics.\n\n## Security & privacy\nThreats: a truncated/corrupted resumed upload accepted as complete (CWE-354, OWASP-A08). Controls: final-object hash verification, TLS-only transport, session handles are not secrets but are not logged. MASVS-NETWORK-1, OWASP-A08.\n\n## UX notes\nLarge-blob progress and Waiting for Wi-Fi are first-class states ({{SN-SYNC-020}}); a paused transfer shows a resumable indicator, never a lost-progress restart. Baseline: no blob ids/paths in logs.\n\n## Test plan\npackages/sane_sync/test/blob/resumable_test.dart (interrupt+resume, restart-persistence, wifi-hold, hash-verify) against a fault-injecting fake adapter ({{SN-SYNC-005}}).\n\n## Dependencies\n{{SN-SYNC-011}} (blob sync). Uses {{SN-SYNC-004}} resumable sessions and {{SN-SYNC-007}} backoff.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-013",
+    "title": "Implement integrity verification of synced members",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CRYPTO-2",
+      "MASVS-RESILIENCE-2",
+      "OWASP-A08",
+      "ASVS-V8",
+      "CWE-354",
+      "CWE-345",
+      "CWE-354"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-002",
+      "SN-CRY-001"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nA cloud drive is untrusted transport that can silently corrupt, truncate, reorder, or roll back bytes, so every synced member must be integrity-checked before use, per [docs/architecture/sync.md](docs/architecture/sync.md) section 3/11 and [docs/architecture/file-format.md](docs/architecture/file-format.md) section 4.4. Three independent layers defend it: the manifest BLAKE3 hash tree, per-record length+CRC on op-log segments, and AEAD tags + position-bound AAD on every encrypted record. The manifest hash-chain (prev links) makes rollback detectable.\n\n## Scope\n**In:** a verifier that (a) checks each snapshot/segment/blob/page-meta member hash against the merged manifest before the engine trusts it, (b) validates op-log record length+CRC and stops at the first torn record (treating the file valid up to that point, re-reading later), (c) verifies each AEAD tag and its AAD (magic || formatVersion || deviceId || segmentSeq || recordIndex) so a cut-and-paste-moved record is rejected, and (d) verifies the manifest hash-chain to detect rollback/regression by a malicious drive; on any failure it drops the member and waits/re-fetches (fail closed).\n**Out:** producing the hashes/tags (SN-CRY-001 / SN-CORE-005 write them), and the merge itself ({{SN-SYNC-006}}).\n\n## Acceptance criteria\n- [ ] A bit-flip inside any member is detected (hash or AEAD tag) and the member is not merged.\n- [ ] A truncated op-log segment is accepted only up to the last valid CRC-checked record; the rest is ignored until it arrives.\n- [ ] A record moved to a different file/position fails AAD verification and is rejected.\n- [ ] A rolled-back manifest (prev chain regresses) is detected and refused; the last known-good manifest is retained.\n- [ ] Every failure path is fail-closed: no partial/garbled content reaches the CRDT or the UI.\n\n## Technical notes\npackages/sane_sync/lib/src/integrity/*.dart. BLAKE3-256 via the confirmed blake3 package (fallback SHA-256 multihash — verify per file-format section 11); crc32c for record framing; AEAD verify via sane_crypto. Consumed by {{SN-SYNC-006}} pull step. Implements the sync.md section 11 mitigations and PRD-SYNC-003/007 integrity guarantees.\n\n## Security & privacy\nThreats: silent data corruption (CWE-354), tampering/reordering/rollback by a malicious drive (CWE-345), accepting unauthenticated bytes (OWASP-A08). Controls: hash tree + hash chain + AEAD + position-bound AAD, verify-before-use, fail closed. MASVS-CRYPTO-2, MASVS-RESILIENCE-2, OWASP-A08, ASVS V8.\n\n## UX notes\nA rejected/partial member is invisible to the user (the engine waits and re-fetches); persistent tamper/rollback surfaces as Attention needed with a safe message, never garbled notes ({{SN-SYNC-020}}). Baseline: failures logged as opaque member ids + reason codes only, no content.\n\n## Test plan\npackages/sane_sync/test/integrity/verify_test.dart (bit-flip, truncation, moved-record AAD, rollback), plus a fuzz corpus under test/integrity/fuzz/ feeding malformed members. Must be clean before merge (parser-fuzz gate).\n\n## Dependencies\n{{SN-SYNC-002}} (framing + recorded hashes), SN-CRY-001 (AEAD/BLAKE3).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

@@ -1,0 +1,340 @@
+[
+  {
+    "key": "SN-AI-001",
+    "title": "Build Sane Sage on-device AI (sane_ml runtime, RAG, assistant, defences)",
+    "type": "epic",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "ai"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "XL",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-2",
+      "MASVS-NETWORK-1",
+      "MASVS-CODE-4",
+      "OWASP-A05",
+      "CWE-1427",
+      "CWE-200"
+    ],
+    "depends_on": [
+      "SN-CORE-002",
+      "SN-HWR-001",
+      "SN-SRCH-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\n\"Sane Sage\" is the AI layer of Sane Notes: summaries, Q&A over your own notebook, flashcards/quizzes, explain-my-handwriting, math steps, writing tools and translation. The non-negotiable is **on-device by default, cloud only on explicit per-request opt-in with a visible data-leaves-device indicator** (locked decision 6; docs/adr/0016-on-device-ml-and-ai.md; PRD-CO-001). This epic delivers `packages/sane_ml` (pure-Dart `TextGenerator`/`Embedder`/`Translator` capability interfaces + an on-device-first runtime registry), the `plugins/sane_ml_native` LLM/embedding bindings (Apple Foundation Models, Android ML Kit GenAI / Gemini Nano, web WebLLM), an EmbeddingGemma + sqlite-vec local RAG index for \"chat with your notes\", the Sage assistant overlay UI (design Search/Ask panel, screens-and-flows.md §11), and the prompt-injection / exfiltration defences that treat note content as untrusted data (PRD-CO-170..176). It builds on the recognition pipeline (SN-HWR, ADR-0016 §5) and audio transcription (ADR-0015) but owns only the generation/retrieval/assistant layers, not the recognizers themselves.\n\n## Scope\n**In:** capability interfaces + mock, on-device-first registry, feature flags + cloud master gate, the three platform LLM adapters, model download/integrity, EmbeddingGemma embeddings, sqlite-vec store + incremental indexing, RAG retrieval with notebook/profile scoping, summaries, Ask-my-notes Q&A, flashcard/quiz generation, explain-handwriting, math steps, writing tools, translation, the output-insertion contract, the Sage overlay UI + mascot states, the data-leaves-device indicator + per-request consent + master switch, injection isolation, exfiltration guardrails + output sanitisation + egress allow-list, and the evals/red-team CI harness.\n**Out:** handwriting/OCR/math **recognition** engines and transcription (SN-HWR / audio areas — consumed here); FTS keyword index internals ({{SN-SRCH-002}}); spaced-repetition scheduling/review UI ({{SN-STDY-001}}); collaboration transport; billing/entitlement checks (consumed for the Free/Pro gates).\n\n## Acceptance criteria\n- [ ] All child issues below are closed and CI is green.\n- [ ] With `SANE_AI_CLOUD_ENABLED=false` (default) every capability resolves to a local engine or degrades gracefully; a network capture during any default flow shows **zero** note content leaving the device (ADR-0016 verify 1).\n- [ ] Every cloud escalation is per-request, consent-gated and shows the data-leaves-device indicator (verify 2).\n- [ ] A document containing adversarial instructions does not change Sage behaviour and cannot trigger an outbound request or a permission change (PRD-CO-170/171/172).\n- [ ] No prompt, transcript, embedding, recognised text or model I/O is ever written to logs (ADR-0016 §Security).\n\n## Technical notes\nPackages: `packages/sane_ml` (pure Dart, no package:flutter), plugin `plugins/sane_ml_native`, `packages/sane_search` (sqlite-vec next to FTS), `packages/sane_ui` + `app/lib/sage/` for UI/state (Riverpod, ADR-0003). DAG: feature packages depend on `sane_core` only, never on each other (CLAUDE.md §3). Lead ADR docs/adr/0016-on-device-ml-and-ai.md; supporting ADR-0012 (native plugins), ADR-0015 (transcription hand-off), ADR-0010 (web constraints), ADR-0011 (telemetry off by default). PRD range PRD-CO-150..176. Children:\n- [ ] {{SN-AI-002}} capability interfaces + mock\n- [ ] {{SN-AI-003}} on-device-first registry & resolver\n- [ ] {{SN-AI-004}} feature flags + cloud master gate\n- [ ] {{SN-AI-005}} Apple Foundation Models adapter\n- [ ] {{SN-AI-006}} Android ML Kit GenAI / Gemini Nano adapter\n- [ ] {{SN-AI-007}} Web WebLLM adapter\n- [ ] {{SN-AI-008}} model download + integrity\n- [ ] {{SN-AI-009}} EmbeddingGemma embeddings adapter\n- [ ] {{SN-AI-010}} sqlite-vec store + incremental indexing\n- [ ] {{SN-AI-011}} RAG retrieval + notebook/profile scoping\n- [ ] {{SN-AI-012}} summaries\n- [ ] {{SN-AI-013}} Ask-my-notes Q&A + citations\n- [ ] {{SN-AI-014}} flashcard & quiz generation\n- [ ] {{SN-AI-015}} explain-handwriting + math steps\n- [ ] {{SN-AI-016}} writing tools + translation\n- [ ] {{SN-AI-017}} Sage output insertion contract\n- [ ] {{SN-AI-018}} Sage assistant overlay UI + mascot states\n- [ ] {{SN-AI-019}} data-leaves-device indicator + per-request consent + master switch\n- [ ] {{SN-AI-020}} prompt-injection isolation + provenance\n- [ ] {{SN-AI-021}} exfiltration defences (no autonomous tools + output sanitise + egress allow-list)\n- [ ] {{SN-AI-022}} Sage evals + injection red-team CI + cost/perf budgets\n\n## Security & privacy\nThis epic is a top LINDDUN surface: note content is stored plaintext locally, is E2E-encryptable on sync, and MUST NOT leak via logs, silent cloud calls, or model output. Threats: silent exfiltration (TM-P-06/08), prompt injection from imported/shared content, cross-notebook retrieval leakage. Controls: on-device-first registry, per-request consent + banner, content-as-data isolation, output sanitisation, egress allow-list, notebook/profile RAG scoping. IDs: MASVS-PRIVACY-1..4, MASVS-NETWORK-1, MASVS-CODE-4, OWASP-A05, CWE-1427 (prompt injection), CWE-200 (info exposure); a STRIDE/LINDDUN row is added in docs/security/threat-model.md.\n\n## UX notes\nAnchors on the design Search/Ask panel (screens-and-flows.md §11), the editor Selection bar Convert-to-text / Solve-math (§7.4), Settings Privacy & export on-device toggle (§12), and the Upgrade overlay Free/Pro gates (§14). The Sage mascot appears only through the single `SaneSageMark` asset (component-inventory.md). All Sage surfaces render across the 17 looks + dark mode and meet WCAG 2.2 AA.\n\n## Test plan\nAggregate of child test plans: sane_ml unit tests (registry resolution, scoping), golden tests for the Sage overlay across looks, integration_test for airplane-mode on-device flows, and the prompt-injection red-team CI suite ({{SN-AI-022}}). CI must be green before any child merges to a release candidate.\n\n## Dependencies\n{{SN-CORE-002}} (document model), {{SN-HWR-001}} (recognition/transcription this consumes), {{SN-SRCH-002}} (FTS index for hybrid retrieval). Children carry their own finer dependencies.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AI-002",
+    "title": "Define sane_ml AI capability interfaces (TextGenerator, Embedder, Translator) + mocks",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "ai"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-4",
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-AI-001",
+    "depends_on": [
+      "SN-CORE-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\nADR-0016 §1 mandates **pure-Dart capability interfaces** in `sane_ml` so callers depend only on an interface and the concrete engine is resolved at runtime, hiding wildly different platform engines behind one contract. This issue defines the generation/retrieval interfaces this area owns — `TextGenerator` (summaries/Q&A/rewrite/flashcards), `Embedder` (semantic vectors) and `Translator` — plus a **mock implementation** backing every method so tests never need a device model (ADR-0016 §4). The recognition interfaces (`InkRecognizer`, `ImageOcr`, `ShapeRecognizer`, `MathRecognizer`, `Transcriber`) are the sibling SN-HWR area; this issue must share the same `Result<T, Failure>` and capability-descriptor conventions so the single registry ({{SN-AI-003}}) can host both.\n\n## Scope\n**In:** `packages/sane_ml/lib/src/generation/text_generator.dart`, `embedding/embedder.dart`, `translation/translator.dart`; typed request/response value objects (immutable, `freezed`-style) including `GenerationRequest` (task, delimited content, options), `GenerationResult` (text, tokens-used, engineId, onDevice flag), `EmbedResult` (Float32List, dim), `TranslateResult`; a `CapabilityDescriptor` (engineId, onDevice, languages, maxContextTokens); a `SageFailure` hierarchy (modelUnavailable, quotaExceeded, contextTooLong, cancelled, backendError); and `MockTextGenerator`/`MockEmbedder`/`MockTranslator`.\n**Out:** the registry/resolver ({{SN-AI-003}}); any native binding ({{SN-AI-005}}/{{SN-AI-006}}/{{SN-AI-007}}); prompt assembly/RAG ({{SN-AI-011}}).\n\n## Acceptance criteria\n- [ ] Every interface method returns `Result<T, SageFailure>` (never throws across the boundary, never returns null-for-error).\n- [ ] `TextGenerator.generate` accepts content in a **structured, delimited** field distinct from the instruction/task field (enables {{SN-AI-020}} isolation).\n- [ ] `TextGenerator.generateStructured<T>` supports guided/typed output (maps to Apple @Generable / ML Kit Prompt schema) for flashcards/quizzes.\n- [ ] `Embedder` exposes the target dimension and supports Matryoshka truncation (768→256/128) per ADR-0016 §6.\n- [ ] Mocks are deterministic, return canned typed results, and record calls for assertions; no `package:flutter` import (arch-lint passes).\n\n## Technical notes\nPure Dart under `packages/sane_ml`; DAG allows import of `sane_core` only. `Result`/`Failure` sealed types from `sane_core` (overview §8.1). Guided-generation abstraction must map cleanly onto Apple `@Generable`/`@Guide` (docs/platform/ipad.md) and ML Kit Prompt API (docs/platform/android.md). Public API carries `///` dartdoc. No `dynamic` in public signatures (CLAUDE.md §6). ADR-0016 §1.\n\n## Security & privacy\nInterfaces must not expose an `eval`/arbitrary-code method (MASVS-CODE-4) and must model the content channel as data, not instructions, so downstream isolation is enforceable. No I/O here so nothing is logged. IDs: MASVS-CODE-4, MASVS-PRIVACY-1.\n\n## UX notes\nNone beyond baseline (pure interfaces, no UI). Baseline: no content or tokens logged; failures surface as typed `SageFailure`, never raw strings, so UI can render friendly copy.\n\n## Test plan\n`packages/sane_ml/test/generation/text_generator_contract_test.dart` (Result contract, delimited-content field, structured output shape), `embedding/embedder_test.dart` (Matryoshka dims), `translation/translator_test.dart`, `mocks/mock_text_generator_test.dart` (determinism + call recording).\n\n## Dependencies\n{{SN-CORE-002}} (Result/Failure + value-object conventions).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AI-003",
+    "title": "Implement the on-device-first AI runtime registry and capability resolver",
+    "type": "feature",
+    "priority": "p0",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "ai",
+      "privacy"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-NETWORK-1",
+      "OWASP-A05",
+      "CWE-200"
+    ],
+    "parent": "SN-AI-001",
+    "depends_on": [
+      "SN-AI-002",
+      "SN-AI-004"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nThe single most important privacy control in the AI stack is the **resolver**: for each capability it registers the available implementations per platform/device and resolves the **best available on-device engine first**; a cloud implementation is only ever selected when the user has explicitly opted in for that specific request. There is **no silent cloud fallback, ever** (ADR-0016 §2 / decision 6 / PRD-CO-001). This makes \"on-device by default\" a structural guarantee rather than a UI promise, and it is the keystone the data-leaves-device indicator ({{SN-AI-019}}) and every capability build on.\n\n## Scope\n**In:** `packages/sane_ml/lib/src/registry/` — an `AiRegistry` that maps `Capability -> List<CapabilityDescriptor>` ranked by (onDevice desc, quality desc); `resolve(capability, {requireOnDevice})` returning the top on-device engine or a graceful-degradation `Failure` (offer-download / offer-cloud-opt-in), never a cloud engine implicitly; a `resolveCloud(capability, consentToken)` path that requires a valid per-request consent token from {{SN-AI-019}}; registration hooks the platform adapters call at startup; capability `availability()` feature detection.\n**Out:** the consent UI/token issuance ({{SN-AI-019}}); the flag/master-gate reading ({{SN-AI-004}}); the adapters themselves.\n\n## Acceptance criteria\n- [ ] `resolve()` never returns a cloud descriptor; obtaining a cloud engine requires `resolveCloud(consentToken)` with a valid, unexpired, capability-scoped token.\n- [ ] With no on-device engine registered, `resolve()` returns a typed `modelUnavailable` Failure carrying a degradation hint (download vs cloud-opt-in), never a crash (ADR-0016 §8).\n- [ ] A unit test asserts that no code path can reach a cloud engine without a consent token (reachability test, mirrors the auth-bypass rigor).\n- [ ] Resolution is O(1) after a one-time registration; results are cached per (capability, deviceCapability) and invalidated on model download.\n- [ ] Registry holds no engine that logs content and forbids registering one flagged as content-logging.\n\n## Technical notes\nPure Dart, `sane_ml` only. The consent token is an opaque, short-lived, capability + payload-hash-scoped value minted by {{SN-AI-019}} and validated here (defence in depth with the egress allow-list {{SN-AI-021}}). Reads the `SANE_AI_CLOUD_ENABLED` master gate via {{SN-AI-004}}; when false, `resolveCloud` always fails closed. ADR-0016 §2/§7. Feature-detect Android engines via ML Kit `availability()` (docs/platform/android.md); Apple via OS/HW capability query (docs/platform/ipad.md).\n\n## Security & privacy\nPrimary control for TM-P-06 (silent egress). A wrong edge here leaks note content, so the no-silent-cloud property is a **gate** with a dedicated reachability test. IDs: MASVS-PRIVACY-1 (on-device default), MASVS-NETWORK-1 (no unconsented egress), OWASP-A05, CWE-200.\n\n## UX notes\nNo chrome of its own, but its Failures drive the graceful-degradation UX (\"model not downloaded — download 180 MB or send this once to <service>?\") rendered by {{SN-AI-018}}/{{SN-AI-019}}. Copy is defined there.\n\n## Test plan\n`packages/sane_ml/test/registry/ai_registry_test.dart` (ranking, on-device-first, degradation Failure), `registry/no_silent_cloud_test.dart` (reachability: no cloud without token; master-gate-off fails closed), `registry/consent_token_validation_test.dart` (scope + expiry).\n\n## Dependencies\n{{SN-AI-002}} (interfaces + descriptors), {{SN-AI-004}} (master gate/flags).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AI-004",
+    "title": "Add AI feature flags and the SANE_AI_CLOUD_ENABLED master gate",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "ai",
+      "privacy"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-3",
+      "MASVS-PRIVACY-1",
+      "MASVS-NETWORK-1"
+    ],
+    "parent": "SN-AI-001",
+    "depends_on": [
+      "SN-FND-005"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\nCloud AI ships **off by default**; `SANE_AI_CLOUD_ENABLED` is the compile-time master gate (default false, overview §7.1 / ADR-0016 §7), and even when enabled every use still prompts per request ({{SN-AI-019}}). This issue wires that gate plus per-capability runtime feature flags (summaries, ask, flashcards, math, translation, writing-tools) so unfinished or device-unsupported capabilities can be dark-launched without shipping half a feature. It sits on the `--dart-define` matrix from {{SN-FND-005}}.\n\n## Scope\n**In:** read `SANE_AI_CLOUD_ENABLED` from `--dart-define` at startup into a typed `AiConfig` in `sane_core`/`sane_ml`; a `SageFlags` provider (Riverpod) exposing per-capability booleans with safe defaults; a user-facing hard master switch (\"Never leave device\") that, when set, forces `cloudEnabled=false` at runtime regardless of the build flag (union of build gate AND user switch); assert in CI that the gate is false in the release/beta flavours unless explicitly overridden.\n**Out:** the per-request consent flow and indicator ({{SN-AI-019}}); the resolver that reads these flags ({{SN-AI-003}}).\n\n## Acceptance criteria\n- [ ] Default build has `cloudEnabled=false`; a test asserts the release flavour cannot enable cloud implicitly.\n- [ ] The runtime master switch overrides the build flag toward **more** privacy only (can force-off, never force-on).\n- [ ] Each capability flag defaults to its shipped state; toggling a flag off hides the capability with an honest \"unavailable\" state, not a crash.\n- [ ] Flag reads are synchronous and cached; no flag value is logged.\n\n## Technical notes\n`--dart-define` keys per overview §7.1; typed access, never `String.fromEnvironment` scattered in feature code. `SageFlags` via Riverpod (ADR-0003). CI assertion lives beside `app/test/security/` flavour checks. Relates to telemetry-off default (ADR-0011). ADR-0016 §7.\n\n## Security & privacy\nEnforces secure-defaults (checklist §8): cloud AI off, no analytics SDK. The user master switch is the PRD-CO-168 \"never leave device\" control. IDs: MASVS-PLATFORM-3, MASVS-PRIVACY-1, MASVS-NETWORK-1.\n\n## UX notes\nThe master switch surfaces in Settings → Privacy & export near the on-device recognition toggle (screens-and-flows.md §12); copy \"Never leave device — turns off all cloud AI. Some features become on-device only.\" Renders across 17 looks + dark; 48dp/44pt target; `Semantics` labelled.\n\n## Test plan\n`packages/sane_ml/test/config/ai_config_test.dart` (parse + defaults), `app/test/security/ai_cloud_gate_test.dart` (release flavour off; master switch force-off), `app/test/sage/sage_flags_test.dart`.\n\n## Dependencies\n{{SN-FND-005}} (build flavours & --dart-define matrix).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AI-005",
+    "title": "Wire the Apple Foundation Models text-generation adapter via sane_ml_native",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "ai"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-2",
+      "MASVS-PRIVACY-1",
+      "MASVS-CODE-4"
+    ],
+    "parent": "SN-AI-001",
+    "depends_on": [
+      "SN-AI-002",
+      "SN-AI-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nOn Apple platforms the default on-device LLM is **Apple Foundation Models** via `LanguageModelSession`, with `@Generable`/`@Guide` guided generation producing typed structs (flashcards/quizzes/summaries) and `Tool` calling (ADR-0016 §3/§4; docs/platform/ipad.md lines 89/247-258). These are **iPadOS/iOS 26 + AI-capable-hardware** features and MUST be feature-gated: on iPadOS 17–25 or non-AI hardware the app degrades to on-device recognition only (or explicit cloud opt-in), never a crash (ipad.md §Primary target). This adapter implements the `TextGenerator` interface behind the federated `sane_ml_native` plugin.\n\n## Scope\n**In:** the Swift side of `plugins/sane_ml_native` — a `LanguageModelSession`-backed `summarize`/`generate`/`generateStructured` bridge with `@Generable` schema mapping for structured output; availability/HW gating; cancellation; streaming token delivery where available; the Dart platform-interface + method-channel impl registering itself with {{SN-AI-003}} as an on-device engine.\n**Out:** Vision OCR / SpeechAnalyzer transcription (SN-HWR/audio); the cross-platform interfaces ({{SN-AI-002}}); any cloud/Private-Cloud-Compute escalation ({{SN-AI-019}}).\n\n## Acceptance criteria\n- [ ] On iPadOS 26 + AI HW, `summarize`/`generateStructured` run fully offline (airplane mode) and return typed results (ADR-0016 verify 1).\n- [ ] On unsupported OS/HW, `availability()` reports unavailable and the registry degrades gracefully (no crash, no cloud without opt-in).\n- [ ] Guided generation yields a struct matching the requested schema; malformed model output surfaces a typed `backendError`, never a raw exception.\n- [ ] LLM latency is measured with the Instruments LLM-latency template (ipad.md §Instruments) and recorded; a long generation never blocks the UI isolate.\n- [ ] All platform-channel arguments are validated (lengths/encoding) before use; no method executes arbitrary code.\n\n## Technical notes\nSwift `LanguageModelSession`, `@Generable`, `@Guide`, `Tool` (Foundation Models); federated plugin platform-interface per ADR-0012; run generation off the UI isolate. Register as on-device engine in {{SN-AI-003}}. Do not hardcode the model size — verify at runtime (ADR-0016 §Negative). Swift hardening: ARC, no force-unwraps on model output, ATS on. Privacy Manifest declares no data collection for this path.\n\n## Security & privacy\nNote content (prompts/outputs) stays on device and is never logged (ADR-0016 §Security). Validate every channel argument (checklist §2). IDs: MASVS-PLATFORM-2 (minimal native surface), MASVS-PRIVACY-1, MASVS-CODE-4.\n\n## UX notes\nNo chrome of its own; surfaces the \"on-device\" state to the indicator ({{SN-AI-019}}). Where unsupported, the Sage overlay shows an honest \"on-device AI needs iPadOS 26 + a newer iPad\" message ({{SN-AI-018}}).\n\n## Test plan\n`plugins/sane_ml_native/test` Dart channel tests (mock native), Swift `sane_ml_nativeTests` (schema mapping, availability gating, cancellation), `app/integration_test/sage_ondevice_apple_test.dart` (airplane-mode summary on a supported device in the lab).\n\n## Dependencies\n{{SN-AI-002}} (TextGenerator), {{SN-AI-003}} (registry registration).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AI-006",
+    "title": "Wire the Android ML Kit GenAI / Gemini Nano text-generation adapter",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "ai"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-2",
+      "MASVS-PRIVACY-1",
+      "MASVS-CODE-4"
+    ],
+    "parent": "SN-AI-001",
+    "depends_on": [
+      "SN-AI-002",
+      "SN-AI-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nOn supported Android flagships the default on-device LLM is **ML Kit GenAI (Summarization / Proofreading / Rewriting / Image Description / Prompt API) over Gemini Nano via AICore** (ADR-0016 §3/§4; docs/platform/android.md lines 52/199-212). AICore is **top-foreground only**, enforces **per-app quotas**, and is device-gated (Pixel 9+/S25+/OnePlus 13+), so the adapter must handle `BUSY` / `BACKGROUND_USE_BLOCKED` and feature-detect via `availability()`, degrading to on-device recognition only (or explicit cloud opt-in) elsewhere (android.md L312 risk L4). This implements `TextGenerator` behind `sane_ml_native`.\n\n## Scope\n**In:** the Kotlin side of `plugins/sane_ml_native` — ML Kit GenAI Summarization/Proofreading/Rewriting and the Prompt API bound to `generate`/`generateStructured`; `availability()` feature-detection and model-feature download; explicit handling of foreground-only, quota, `BUSY`, and `BACKGROUND_USE_BLOCKED`; the Dart platform-interface impl registering with {{SN-AI-003}} as on-device.\n**Out:** ML Kit Digital Ink recognition + GenAI speech (SN-HWR/audio); interfaces ({{SN-AI-002}}); cloud escalation.\n\n## Acceptance criteria\n- [ ] On a supported device, summarize/rewrite/prompt run offline and return typed results (airplane mode; ADR-0016 verify 1).\n- [ ] `availability()` gates the feature; unsupported devices degrade gracefully with an honest message, no crash.\n- [ ] A backgrounded/qu’d request returns a typed `quotaExceeded`/`backgroundBlocked` Failure and the UI retries or explains, never silently hangs.\n- [ ] Structured output maps to the requested schema via the Prompt API; malformed output → typed `backendError`.\n- [ ] All intent/channel arguments validated; adapter is `exported=false` safe and logs no content (Log.d banned on this path).\n\n## Technical notes\nKotlin ML Kit GenAI + AICore (android.md §sane_ml_native). Foreground-only means the assistant queues if the app is backgrounded. 16 KB page-alignment applies to any bundled `.so` (android.md L297/L311). Federated plugin (ADR-0012). Register on-device engine in {{SN-AI-003}}. ADR-0016 §4 (handle BUSY/BACKGROUND_USE_BLOCKED).\n\n## Security & privacy\nPrompts/outputs are note content — never logged, never sent to Google beyond the on-device AICore path (which is local inference). Validate channel args (checklist §2, §9.3). IDs: MASVS-PLATFORM-2, MASVS-PRIVACY-1, MASVS-CODE-4.\n\n## UX notes\nSurfaces the on-device state to {{SN-AI-019}}. Foreground-only limitation is explained honestly if a queued request waits (\"Sage finishes when the app is in front\"). Unsupported-device copy names the requirement.\n\n## Test plan\nDart channel tests (mock native), Kotlin `sane_ml_nativeTest` (availability gating, BUSY/BACKGROUND handling, schema mapping), `app/integration_test/sage_ondevice_android_test.dart` on a lab Pixel 9/S25.\n\n## Dependencies\n{{SN-AI-002}} (TextGenerator), {{SN-AI-003}} (registry).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AI-007",
+    "title": "Add the web on-device LLM adapter (WebLLM/WebGPU) with graceful fallback",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "web"
+    ],
+    "areas": [
+      "ai"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "OWASP-A05",
+      "CWE-1104"
+    ],
+    "parent": "SN-AI-001",
+    "depends_on": [
+      "SN-AI-002",
+      "SN-AI-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe web is the weakest AI surface: **no ML Kit on web** (android.md L161/web.md R5), so on-device LLM tasks use **WebLLM (WebGPU)** and require **COOP/COEP cross-origin isolation** plus `'wasm-unsafe-eval'` in the CSP (ADR-0016 §4/§Negative; docs/platform/web.md §9). WebGPU is Chrome/Edge + recent Firefox + Safari 26 only, so the adapter must feature-detect and degrade gracefully to \"on-device AI unavailable in this browser — try the app, or opt in to cloud\" (never a silent cloud call). This implements `TextGenerator` on the web target.\n\n## Scope\n**In:** a web `TextGenerator` impl loading a self-hosted WebLLM model in a Web Worker under cross-origin isolation; WebGPU `navigator.gpu` feature detection; model weight download via {{SN-AI-008}}; registration with {{SN-AI-003}} only when WebGPU + isolation are present; graceful \"unavailable\" otherwise.\n**Out:** whisper.cpp WASM transcription and Tesseract.js OCR (SN-HWR/audio); COOP/COEP header config for the site (web platform area — consumed here); interfaces ({{SN-AI-002}}).\n\n## Acceptance criteria\n- [ ] On a WebGPU + cross-origin-isolated browser, a summary generates fully client-side with no note bytes sent to any server (network capture clean).\n- [ ] Without WebGPU/isolation, the adapter does not register; the UI shows an honest unavailable state and never falls back to cloud silently.\n- [ ] The model loads in a Worker (not the main thread); generation never freezes the page; a slow load is cancellable.\n- [ ] Model weights are self-hosted and integrity-checked ({{SN-AI-008}}); no third-party model CDN at runtime.\n- [ ] `crossOriginIsolated === true` is asserted before enabling; otherwise disabled.\n\n## Technical notes\nWebLLM (WebGPU), Web Worker + WASM threads need COOP `same-origin` + COEP `require-corp` (web.md §9); CSP adds `'wasm-unsafe-eval'` (web.md L213). Self-host per checklist §6.2 (SRI/self-host, no CDN). Register in {{SN-AI-003}}. ADR-0010 (web strategy). Guided/structured output on WebLLM is best-effort (JSON-mode prompt + validate).\n\n## Security & privacy\nClient-side inference keeps note content on device; the only egress risk is a model CDN, so weights are self-hosted + integrity-checked. IDs: MASVS-PRIVACY-1, OWASP-A05, CWE-1104 (unmaintained/3rd-party components — pin + self-host).\n\n## UX notes\nThe Sage overlay ({{SN-AI-018}}) shows a first-run \"downloading on-device model (NNN MB)\" progress with the data-leaves-device indicator firmly in the on-device state, and an honest fallback where WebGPU is missing (Safari < 26, Firefox variants). 17 looks + dark; keyboard reachable.\n\n## Test plan\n`packages/sane_ml/test/web/webllm_gate_test.dart` (feature-detect + no-register-without-isolation), a Playwright/integration check on Chrome (generation offline) and Safari 17 (graceful unavailable), CSP/COOP-COEP assertions.\n\n## Dependencies\n{{SN-AI-002}} (TextGenerator), {{SN-AI-003}} (registry), {{SN-AI-008}} (model download).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AI-008",
+    "title": "Build the on-demand model download manager with integrity verification",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "ai"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-1",
+      "MASVS-STORAGE-1",
+      "MASVS-NETWORK-1",
+      "OWASP-A08",
+      "CWE-494"
+    ],
+    "parent": "SN-AI-001",
+    "depends_on": [
+      "SN-AI-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nModels are **downloaded on demand** with the user aware of size — ML Kit language packs, Whisper/EmbeddingGemma weights, WebLLM models — and a missing model must degrade gracefully (offer download or cloud opt-in), never crash (ADR-0016 §8). Because a swapped-in model is code that runs over note content, every download is **integrity-checked (hash/signature) before use** (ADR-0016 §Security). This manager centralises download, progress, storage, eviction and verification for all on-device AI/embedding/recognition weights this area uses.\n\n## Scope\n**In:** `packages/sane_ml/lib/src/models/model_manager.dart` — a catalogue of models (id, version, sizeBytes, sha256/signature, license), `ensure(modelId)` that downloads with progress + cancel, verifies the digest before marking usable, stores under an app-private dir excluded from OS backup, supports eviction under storage pressure, and reports `available/downloading/failed/absent`; a `ModelProvenance` record feeding the SBOM.\n**Out:** the actual weights hosting/CDN choice (release infra); ML Kit's own language-pack download (delegated to the ML Kit adapter but reported through this status API).\n\n## Acceptance criteria\n- [ ] A model with a mismatched digest/signature is rejected and never loaded; the capability reports `absent` with a re-download option (fail closed).\n- [ ] Download shows accurate progress, is cancellable with no partial file left usable, and resumes where the platform supports it.\n- [ ] Weights live in an app-private, backup-excluded directory; no weight path or URL is logged as content.\n- [ ] A missing model degrades to \"download NNN MB\" or cloud opt-in, never a crash (ADR-0016 verify 5).\n- [ ] Every model's id/version/license is recorded for the SBOM (ADR-0016 §9).\n\n## Technical notes\nPure-Dart orchestration in `sane_ml`; platform storage dirs via `sane_secure_store`/path providers; digest via `sane_crypto` SHA-256/Ed25519 verify (checklist §3). TLS 1.2+ pinned for our own weight host (checklist §8). Backup exclusion per checklist §9.2/§9.3. ADR-0016 §8/§9.\n\n## Security & privacy\nSupply-chain control: an unverified model is a code-execution risk over note content. IDs: MASVS-CODE-1, MASVS-STORAGE-1 (backup exclusion), MASVS-NETWORK-1 (TLS/pinning), OWASP-A08 (integrity), CWE-494 (download without integrity check).\n\n## UX notes\nFirst use of a Sage capability shows a size-aware download sheet (\"On-device model · 180 MB · downloads once\") in the Sage overlay ({{SN-AI-018}}) with progress + cancel; Wi-Fi-only preference respected (screens-and-flows.md §12 backup). 17 looks + dark; 48dp targets; `Semantics` progress announcements.\n\n## Test plan\n`packages/sane_ml/test/models/model_manager_test.dart` (digest mismatch rejected, resume/cancel, eviction, backup-exclusion path), integrity fixture with a tampered blob (regression).\n\n## Dependencies\n{{SN-AI-002}} (descriptors/failures).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AI-009",
+    "title": "Implement the EmbeddingGemma on-device embeddings adapter",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "ai",
+      "search"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-STORAGE-1"
+    ],
+    "parent": "SN-AI-001",
+    "depends_on": [
+      "SN-AI-002",
+      "SN-AI-008"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nSemantic \"chat with your notes\" needs local embeddings. ADR-0016 §6 selects **EmbeddingGemma (308M, 100+ languages, Matryoshka 768→128, <200 MB RAM)** run on-device, producing vectors stored in **sqlite-vec** next to notes ({{SN-AI-010}}). This adapter implements the `Embedder` interface across platforms (native on Apple/Android via `sane_ml_native`, WASM on web), emitting a fixed-dimension vector (default 256-dim Matryoshka truncation for footprint) for a text chunk, entirely offline.\n\n## Scope\n**In:** `Embedder` impls — Apple/Android native binding + web WASM binding in `sane_ml_native`; batched `embedAll(List<String>)`; Matryoshka dimension selection (768/256/128) with 256 default; model provisioning via {{SN-AI-008}}; registration with {{SN-AI-003}}; deterministic normalisation (L2) so cosine similarity is stable.\n**Out:** chunking + the vector store + indexing schedule ({{SN-AI-010}}); retrieval/ranking ({{SN-AI-011}}); the text that gets embedded comes from recognition (SN-HWR) + typed text + PDF text + transcripts.\n\n## Acceptance criteria\n- [ ] `embed(text)` returns a Float32List of the configured dim, L2-normalised, deterministic for the same input/model.\n- [ ] Runs fully offline on a supported device; airplane-mode embedding works (ADR-0016 verify 1).\n- [ ] Matryoshka truncation to 256/128 preserves ranking quality within an agreed tolerance on the eval set ({{SN-AI-022}}).\n- [ ] Embedding a 512-token chunk stays within a per-chunk latency budget and runs off the UI isolate; a batch is chunked so mobile never loads everything at once.\n- [ ] Missing model degrades gracefully (offer download); no vector or source text is logged.\n\n## Technical notes\n`sane_ml` `Embedder` + `sane_ml_native` bindings; web uses a WASM build under COOP/COEP (web.md §9). 256-dim default per ADR-0016 §6. Vectors are note content — E2E-encryptable on sync with the rest of the local store. Off-isolate execution (overview §6). ADR-0016 §6.\n\n## Security & privacy\nEmbeddings can leak content via inversion, so they are treated as note content: stored locally, E2E-encryptable, never logged (ADR-0016 §Security). IDs: MASVS-PRIVACY-1, MASVS-STORAGE-1.\n\n## UX notes\nNo direct chrome; first-run model download shown via {{SN-AI-008}}; indexing progress is surfaced subtly (a small \"indexing for search\" chip) per {{SN-AI-010}}. On-device indicator stays green.\n\n## Test plan\n`packages/sane_ml/test/embedding/embedding_gemma_test.dart` (dim/normalisation/determinism), a ranking-quality check on a small labelled set (Matryoshka tolerance), off-isolate execution assertion.\n\n## Dependencies\n{{SN-AI-002}} (Embedder), {{SN-AI-008}} (weights).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AI-010",
+    "title": "Implement the sqlite-vec vector store and incremental on-save/idle indexing",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "ai",
+      "search",
+      "storage"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-1",
+      "OWASP-A03",
+      "CWE-89"
+    ],
+    "parent": "SN-AI-001",
+    "depends_on": [
+      "SN-AI-009",
+      "SN-CORE-004",
+      "SN-SRCH-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nRAG needs vectors living **next to notes in SQLite** with zero extra service (ADR-0016 §6): on note save → recognise ink to text (SN-HWR) → chunk → embed ({{SN-AI-009}}) → store in **sqlite-vec**, incrementally and battery-consciously (on save / on idle), honouring the on-device recognition setting (PRD-CO-159). This issue owns the vector table schema, the chunker, and the incremental indexing scheduler that keeps the index fresh without ever blocking the writing thread.\n\n## Scope\n**In:** a `sqlite-vec` virtual table alongside the drift schema (`packages/sane_search`), a chunker (token-bounded, overlap, per-source-type: ink-OCR / typed / PDF text / transcript with sourceRef metadata: notebookId, profileId, pageId, strokeGroupId/quad, audioMs), an `IndexingService` on the storage/indexing isolate that reacts to save/idle events, dedupes by content hash, and evicts stale rows on delete; a manual reindex; progress reporting.\n**Out:** the embedding model ({{SN-AI-009}}); retrieval/ranking + prompt assembly ({{SN-AI-011}}); FTS keyword index ({{SN-SRCH-002}}, complementary, hybrid at retrieval).\n\n## Acceptance criteria\n- [ ] Editing a page schedules re-embedding of only the changed chunks; a writing session shows no measurable draw-loop jank (indexing on a non-UI isolate).\n- [ ] Each vector row carries sourceRef (notebook/profile/page + timecode) enabling citations ({{SN-AI-013}}) and scoping ({{SN-AI-011}}).\n- [ ] Deleting a page/notebook removes its vectors; trashing then restoring reindexes correctly.\n- [ ] With on-device recognition OFF (setting), no cloud path is used to build the index and it degrades to typed/PDF text only (PRD-CO-159).\n- [ ] All queries are parameterised via drift/sqlite-vec bindings (no string-built SQL); the vector store is part of the E2E-encryptable local DB.\n\n## Technical notes\n`sqlite-vec` extension loaded into the drift database ({{SN-CORE-004}}); indexing on the storage isolate (overview §6/§8). Parameterised queries only (checklist §9.1, A03/CWE-89). Content hashing via `sane_crypto`. ADR-0016 §6; PRD-CO-159.\n\n## Security & privacy\nVectors + chunks are note content: local, E2E-encryptable on sync ({{SN-CRY-001}} area), never logged. SQL injection closed via parameterised queries. IDs: MASVS-STORAGE-1, MASVS-PRIVACY-1, OWASP-A03, CWE-89.\n\n## UX notes\nA subtle \"indexing for search\" status (Settings/Search), never a blocking spinner; respects Wi-Fi-only only where downloads are involved (indexing itself is local). On-device indicator green throughout. 17 looks + dark.\n\n## Test plan\n`packages/sane_search/test/vector/sqlite_vec_store_test.dart` (insert/query/delete, sourceRef integrity), `indexing/indexing_service_test.dart` (incremental, idle-triggered, no-UI-block), a parameterised-query assertion, an on-device-off degradation test.\n\n## Dependencies\n{{SN-AI-009}} (embeddings), {{SN-CORE-004}} (drift DB + blob store), {{SN-SRCH-002}} (FTS complement).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AI-011",
+    "title": "Implement RAG retrieval and prompt assembly with notebook/profile scoping",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "ai",
+      "privacy"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-2",
+      "OWASP-A01",
+      "CWE-285",
+      "CWE-1427"
+    ],
+    "parent": "SN-AI-001",
+    "depends_on": [
+      "SN-AI-010",
+      "SN-AI-003"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nRetrieval-augmented generation turns the vector index into answers. ADR-0016 §6 and PRD-CO-174 require retrieval **scoped to the current notebook/profile by default**, so a shared or hostile notebook can never pull private notebook content into an answer; cross-notebook querying needs explicit user scope selection. This issue owns hybrid retrieval (vector + FTS), reranking, and the delimited prompt-assembly that feeds {{SN-AI-012}}/{{SN-AI-013}} — the exact place where scoping and content-as-data isolation ({{SN-AI-020}}) are enforced.\n\n## Scope\n**In:** `packages/sane_ml/lib/src/rag/` — a `Retriever` combining sqlite-vec cosine search ({{SN-AI-010}}) with FTS keyword hits ({{SN-SRCH-002}}), reciprocal-rank fusion, a `RetrievalScope` (default: current notebook + profile; explicit multi-notebook opt-in), top-k with token budget, and a `PromptAssembler` that packs retrieved chunks into a clearly delimited, non-authoritative content channel with per-chunk provenance for citations.\n**Out:** the generation call ({{SN-AI-012}}/{{SN-AI-013}}); the isolation system prompt wording ({{SN-AI-020}}); the vector store ({{SN-AI-010}}).\n\n## Acceptance criteria\n- [ ] Default retrieval on Notebook A returns only A's (current profile) chunks; it cannot cite or leak Notebook B without an explicit multi-notebook scope (PRD-CO-174 — abuse test).\n- [ ] Cross-profile content is never bundled (profile isolation; PRD-LB-350/PROF-004 alignment).\n- [ ] Hybrid ranking beats vector-only on the eval set ({{SN-AI-022}}); retrieval stays within the context token budget of the resolved engine.\n- [ ] Every retrieved chunk carries provenance (notebook/page/timecode + author) so citations and provenance tags are exact ({{SN-AI-013}}/{{SN-AI-020}}).\n- [ ] Assembled prompt places all note content in a delimited data channel separate from instructions (feeds {{SN-AI-020}}).\n\n## Technical notes\nPure Dart in `sane_ml`; reads {{SN-AI-010}} vectors + {{SN-SRCH-002}} FTS; scope enforced at the query layer, not post-filter (defence in depth). Externally-authored chunks flagged for {{SN-AI-020}} provenance. ADR-0016 §6; PRD-CO-174/175.\n\n## Security & privacy\nThis is the authorization boundary for retrieval (broken-access-control class): scope leakage = cross-notebook/profile data exposure. Controls: query-level scoping, provenance tagging. IDs: MASVS-PRIVACY-1/2, OWASP-A01, CWE-285 (improper authorization), CWE-1427 (injection context).\n\n## UX notes\nScope is visible in the Ask panel (\"Answering from: Physics 204 · this profile\") with an explicit \"search all notebooks\" opt-in toggle ({{SN-AI-018}}); default is the current notebook. 17 looks + dark; `Semantics` on the scope control.\n\n## Test plan\n`packages/sane_ml/test/rag/retriever_scope_test.dart` (A-cannot-leak-B, profile isolation — abuse tests), `rag/hybrid_ranking_test.dart`, `rag/prompt_assembler_test.dart` (delimited channel + provenance).\n\n## Dependencies\n{{SN-AI-010}} (vector store), {{SN-AI-003}} (engine context budget), {{SN-SRCH-002}} (FTS).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

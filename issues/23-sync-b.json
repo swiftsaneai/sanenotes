@@ -1,0 +1,412 @@
+[
+  {
+    "key": "SN-SYNC-014",
+    "title": "Implement silent snapshot-conflict resolution",
+    "type": "feature",
+    "priority": "p0",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-4",
+      "OWASP-A04",
+      "CWE-362"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-006",
+      "SN-CORE-003"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nConflict handling MUST be automatic and invisible — the app must NEVER show a conflicted-copy file or a manual merge prompt (PRD-SYNC-010, [docs/architecture/sync.md](docs/architecture/sync.md) section 5.3/6.4). Single-writer op-log segments mean per-file conflicts cannot arise; the only conflictable file is a snapshot (rewritten by whichever device compacts). If two devices compact the same page concurrently, the provider yields variants (iCloud NSFileVersion, Drive competing revisions, Dropbox siblings); the engine reads all variants, CRDT-merges them (they are just replicas of the same folded state), writes one resolved snapshot, and marks the others resolved. This invisible convergence is the category differentiator (fixes the number-one complaint).\n\n## Scope\n**In:** a ConflictResolver that detects a snapshot with multiple variants via adapter.conflictVariants(), decrypts and CRDT-merges every variant through SN-CORE-003, publishes one resolved snapshot generation via atomic publish, calls adapter.resolveConflict() to clear the others, and — if a raw provider conflict copy ever appears (iCloud/Dropbox) — ingests it as another replica, merges, and deletes the extra; emits conflictResolvedSilently (log-only) status.\n**Out:** compaction leasing that makes this rare ({{SN-SYNC-015}}), the adapter variant APIs ({{SN-SYNC-003}}/{{SN-SYNC-004}}), and CRDT merge internals (SN-CORE-003).\n\n## Acceptance criteria\n- [ ] Two devices compacting the same page concurrently converge to one resolved snapshot with no data loss and no user-visible conflict file.\n- [ ] A raw provider conflict-copy file is ingested as a replica, merged, and the extra deleted; the user never sees it.\n- [ ] Resolution is deterministic: all devices that observe the same variants produce the same resolved snapshot (HLC total order).\n- [ ] The event is surfaced only as conflictResolvedSilently in logs/telemetry-off diagnostics, never as a UI prompt.\n- [ ] No variant is dropped before it is merged (no lost update).\n\n## Technical notes\npackages/sane_sync/lib/src/conflict/*.dart. Variant fetch via the adapter conflictVariants/resolveConflict methods; merge via sane_core (SN-CORE-003) treating variants as replicas. Publish via atomic publish ({{SN-SYNC-002}}). Implements PRD-SYNC-010, sync.md section 5.3/6.4, [ADR-0006](docs/adr/0006-sync-over-user-cloud-drives.md) decision 4.\n\n## Security & privacy\nThreats: a concurrent-compaction race dropping an update (CWE-362, lost update) or fail-open surfacing partial state (OWASP-A04). Controls: merge-all-then-publish-one, deterministic HLC ordering, fail closed on decrypt error (defer to paused). MASVS-CODE-4, OWASP-A04.\n\n## UX notes\nThe user experience is nothing: notebooks just converge (design invariant, no conflict files — [docs/design/screens-and-flows.md](docs/design/screens-and-flows.md) section 12). If a device is on a stale key it shows Paused (no key), never a merge dialog. Baseline: silent-resolution logged as opaque page id + variant count only.\n\n## Test plan\npackages/sane_sync/test/conflict/silent_merge_test.dart (concurrent compaction, N-variant convergence, determinism), raw_conflict_copy_test.dart (ingest+delete). Extended by the chaos suite {{SN-SYNC-025}}.\n\n## Dependencies\n{{SN-SYNC-006}} (engine), SN-CORE-003 (CRDT merge).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-015",
+    "title": "Implement lease-coordinated snapshot compaction",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-4",
+      "OWASP-A04",
+      "CWE-362",
+      "CWE-667"
+    ],
+    "parent": "SN-SYNC-006",
+    "depends_on": [
+      "SN-SYNC-006",
+      "SN-CORE-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nCompaction folds op-log tails into a fresh snapshot and GCs stable tombstones; it is the only operation that rewrites a shared file, so it is lease-coordinated to make concurrent-compaction conflicts rare, per [docs/architecture/sync.md](docs/architecture/sync.md) section 8 and [docs/architecture/document-model.md](docs/architecture/document-model.md) section 8.3. Leases are advisory (correctness is still guaranteed by {{SN-SYNC-014}}); they just avoid churn.\n\n## Scope\n**In:** a compaction coordinator that (a) writes a single-writer soft lease pages/pageId/compaction.lease as lease.deviceId with an HLC + TTL, (b) compacts a page only if no unexpired lease from a higher-priority device (lowest DeviceId) exists, (c) runs only on an idle device (page open, no active writing, on power/wifi ideally) so it never competes with the low-latency ink path for I/O, (d) writes the new snapshot generation atomically and only then prunes folded segments (durable on 2+ replicas), and (e) invokes the SN-CORE causal-stability GC gate before any physical purge.\n**Out:** the CRDT fold/GC math (SN-CORE-003 / document-model section 8), and conflict resolution when leases lose the race ({{SN-SYNC-014}}).\n\n## Acceptance criteria\n- [ ] Only one device (lowest DeviceId with a valid lease) compacts a page under normal conditions; a test with two devices confirms at most one wins.\n- [ ] Compaction runs only when the device is idle (no active writing); it is deferred while the ink path is active.\n- [ ] A new snapshot generation is published atomically; folded segments are deleted only after the snapshot is durable on 2+ replicas.\n- [ ] No tombstone/blob is physically purged unless causally stable (every non-revoked device lastSeenHlc >= tombstone HLC).\n- [ ] If two devices compact anyway (lease race), {{SN-SYNC-014}} resolves it with no data loss.\n\n## Technical notes\npackages/sane_sync/lib/src/compaction/*.dart. Lease priority = lowest DeviceId (deterministic). Idle detection via engine state ({{SN-SYNC-006}}). GC gate from document-model section 8 (SN-CORE-003). Implements sync.md section 8, supports PRD-STOR-007/008.\n\n## Security & privacy\nThreats: concurrent compaction corrupting shared state (CWE-362) or early purge resurrecting deleted data (CWE-667 improper lock / stale state). Controls: single-writer lease files, atomic publish, causal-stability gate, fail-safe to {{SN-SYNC-014}}. MASVS-CODE-4, OWASP-A04.\n\n## UX notes\nInvisible to the user; the point is stable performance (compaction never fights the pen) and bounded storage. A just-purged trashed item stays gone across devices. Baseline: compaction logs opaque page id + generation only.\n\n## Test plan\npackages/sane_sync/test/compaction/lease_test.dart (priority, TTL expiry, idle gating), gc_gate_test.dart (no purge before causal stability), atomic_publish_test.dart.\n\n## Dependencies\n{{SN-SYNC-006}} (engine/idle state), SN-CORE-003 (fold + GC).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-016",
+    "title": "Implement returning-device catch-up and op-log replay",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-4",
+      "OWASP-A08",
+      "CWE-354"
+    ],
+    "parent": "SN-SYNC-006",
+    "depends_on": [
+      "SN-SYNC-006"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nA returning or new device loads the latest snapshot generation, then replays every device op-log tail above the snapshot watermark, CRDT-merging, per [docs/architecture/sync.md](docs/architecture/sync.md) section 2.1 (the recommended hybrid). It diffs the manifest hlcVector against its own to know exactly which segments/ranges it still needs and fetches page snapshots lazily so a 1,000-page notebook opens instantly with structure and streams contents on demand.\n\n## Scope\n**In:** a catch-up routine that (a) reads the merged manifest hlcVector, (b) diffs it against the local per-device watermark to compute the exact missing segments/ranges (document-model section 2.4), (c) fetches the latest snapshot per opened page + only the missing op-log tails, (d) replays them in HLC order into local state, and (e) fetches page snapshots lazily (only for pages the user opens) so structure loads first; integrates with lazy blob fetch ({{SN-SYNC-011}}).\n**Out:** the initial pairing/key acquisition ({{SN-SYNC-017}}), integrity verification ({{SN-SYNC-013}}, applied per member), and blob policy ({{SN-SYNC-011}}).\n\n## Acceptance criteria\n- [ ] A device offline for a week catches up by loading the latest snapshot + replaying only the op-log tails above its watermark, not the full history.\n- [ ] The hlcVector diff requests exactly the missing segments/ranges — no redundant re-fetch of already-merged segments.\n- [ ] A 1,000-page notebook shows full Library structure in under 1 second; page contents stream when opened (not all at once).\n- [ ] Catch-up converges to identical folded state as a device that was always online (verified against {{SN-SYNC-025}}).\n- [ ] Every fetched member is integrity-verified ({{SN-SYNC-013}}) before replay; a bad member is skipped and re-fetched.\n\n## Technical notes\npackages/sane_sync/lib/src/engine/catchup.dart. Uses the manifest hlcVector watermark (document-model section 2.4) and the Library-doc/page-doc split so structure syncs independently of heavy page payloads. Implements PRD-SYNC-013 catch-up step, sync.md section 2.1.\n\n## Security & privacy\nThreats: replaying an unverified/partial member (CWE-354, OWASP-A08). Controls: verify-before-replay via {{SN-SYNC-013}}, HLC-ordered idempotent replay, fail closed. MASVS-CODE-4, OWASP-A08.\n\n## UX notes\nA new device shows the Library instantly and streams page contents as opened — no full-download wall (design no-spinners). Progress for a large catch-up maps to pendingDownload(n) ({{SN-SYNC-020}}). Baseline: no content/ids in logs.\n\n## Test plan\npackages/sane_sync/test/engine/catchup_test.dart (watermark diff exactness, tail-only replay, convergence-with-always-online, structure-first). Uses the fake adapter.\n\n## Dependencies\n{{SN-SYNC-006}} (engine). Verified members via {{SN-SYNC-013}}; lazy contents via {{SN-SYNC-011}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-017",
+    "title": "Implement multi-device pairing and key acquisition",
+    "type": "feature",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "auth",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-CRYPTO-1",
+      "MASVS-STORAGE-2",
+      "OWASP-A02",
+      "OWASP-A07",
+      "ASVS-V6",
+      "CWE-287",
+      "CWE-522"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-CRY-002",
+      "SN-CRY-003",
+      "SN-AUTH-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nAdding a second device must reconcile via the same signed-in account + same provider, then obtain the master key through the crypto key-source ladder — passkey-PRF or platform-keychain sync (iCloud Keychain / Google Password Manager) or manual recovery-code entry — after which the new device loads the latest snapshot + replays op-log tails, per PRD-SYNC-013 and [docs/architecture/sync.md](docs/architecture/sync.md) section 2.1. Without the key the device can sync ciphertext but shows Paused (no key); the master key never leaves a device unwrapped.\n\n## Scope\n**In:** the pairing flow that registers this device in Workspace.devices (name, Ed25519 signing pubkey, mints a random 128-bit DeviceId used in op-log filenames + HLC tie-breaks), selects the provider, obtains the master key via the SN-CRY-002 ladder (passkey-PRF / keychain / recovery code), and — once keyed — hands off to catch-up ({{SN-SYNC-016}}); a Paused (no key) state until keyed; brute-force-hardened recovery-code entry (memory-hard unwrap + attempt backoff) per PRD-KEY-007.\n**Out:** the key hierarchy/wrap itself (SN-CRY-002), recovery-code generation UX (SN-CRY-003), device revocation + key rotation ({{SN-SYNC-018}}), and identity sign-in (SN-AUTH).\n\n## Acceptance criteria\n- [ ] A second signed-in device on the same provider syncs ciphertext immediately but shows Paused (no key) until a key source completes.\n- [ ] Entering a valid recovery code unwraps the master key and completes pairing; an invalid code is rejected with attempt backoff and never reveals whether a portion was correct.\n- [ ] The new device gets a unique random DeviceId; a test asserts no DeviceId collision and that op-log filenames use it.\n- [ ] The master key is never persisted in plaintext and never leaves the device unwrapped (a test asserts no plaintext key in storage/logs).\n- [ ] After keying, catch-up ({{SN-SYNC-016}}) converges the device with no data loss.\n\n## Technical notes\npackages/sane_sync device-registry wiring + app/ pairing flow; keys via sane_crypto (SN-CRY-002/003) and sane_secure_store; identity via SN-AUTH-002. Device record shape per document-model section 1.2 (DeviceRecord). Implements PRD-SYNC-013, PRD-KEY-007. See [ADR-0007](docs/adr/0007-end-to-end-encryption-and-keys.md).\n\n## Security & privacy\nThreats: unauthorized device gaining plaintext (OWASP-A07/A02), recovery-code brute force (CWE-287), key theft (CWE-522). Controls: master key via hardware-gated sources, memory-hard recovery unwrap + backoff, keys only in Keychain/Keystore, fail closed to Paused. MASVS-AUTH-1, MASVS-CRYPTO-1, MASVS-STORAGE-2, ASVS V6.\n\n## UX notes\nFollows the E2EE setup honesty (SN-CRY-003): plainly state there is no password reset. Pairing shows a clear key-source picker and, on failure, Paused (no key) with a recover option ({{SN-SYNC-020}}). All chrome across 17 looks + dark, a11y labels + 44pt targets. Baseline: no keys/codes in logs.\n\n## Test plan\npackages/sane_sync/test/pairing/pairing_test.dart (paused-until-keyed, DeviceId uniqueness), app/test/security/recovery_code_bruteforce_test.dart (backoff, no oracle), integration convergence with {{SN-SYNC-016}}.\n\n## Dependencies\nSN-CRY-002 (key hierarchy/keychain), SN-CRY-003 (recovery code), SN-AUTH-002 (identity/tokens).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-018",
+    "title": "Build the multi-device management and revocation screen",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "settings"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-CRYPTO-1",
+      "OWASP-A01",
+      "ASVS-V6",
+      "CWE-613"
+    ],
+    "parent": "SN-SYNC-017",
+    "depends_on": [
+      "SN-SYNC-017",
+      "SN-CRY-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe Multi-device screen lists paired devices (name, platform, last-seen), lets the user name the current device, and revoke a device — which rotates the relevant wrapped keys so a lost device loses future access, per PRD-SYNC-014 and PRD-KEY-010. Each device has its own DeviceId used in op-log filenames and HLC tie-breaks. Revocation cannot un-send already-synced ciphertext the device holds, and the UI must say so honestly.\n\n## Scope\n**In:** a settings screen (under Security / Sync & backup) that reads Workspace.devices, shows each device name/platform/last-seen, allows renaming the current device (LWW write), and revokes a device — marking it revoked (its future ops are rejected) and triggering key rotation via SN-CRY-002/PRD-KEY-010 so content written after revocation is unreadable by it; honest copy that already-held ciphertext cannot be recalled.\n**Out:** the key rotation crypto itself (SN-CRY-002), pairing ({{SN-SYNC-017}}), and collaborator revocation (SN-COL-001, M6).\n\n## Acceptance criteria\n- [ ] The screen lists all registered non-revoked devices with name, platform, and last-seen (from DeviceRecord.lastSeenHlc).\n- [ ] Renaming the current device updates its DeviceRecord.displayName and propagates via LWW.\n- [ ] Revoking a device sets revoked=true, rejects its future ops, and rotates the affected content/items keys (PRD-KEY-010) so it cannot decrypt content written after revocation.\n- [ ] The UI clearly states that already-synced ciphertext the device holds cannot be un-sent.\n- [ ] A revoked device that comes back online cannot merge new ops and shows an appropriate revoked/re-pair state.\n\n## Technical notes\napp/lib/settings/devices/*.dart + sane_ui components (SN-DS-003); reads/writes Workspace.devices via sane_core; rotation via sane_crypto (SN-CRY-002). Implements PRD-SYNC-014, PRD-KEY-010. Design: Multi-device under Sync & backup ([docs/design/screens-and-flows.md](docs/design/screens-and-flows.md) section 12).\n\n## Security & privacy\nThreats: a lost/stolen device retaining future access (CWE-613 insufficient session expiration; OWASP-A01), or a false promise of recall. Controls: key rotation on revoke, revoked-op rejection, honest UI about already-held ciphertext. MASVS-AUTH-1, MASVS-CRYPTO-1, ASVS V6.\n\n## UX notes\nDesign Multi-device list; revoke is a destructive action with a confirm + honest note. Render across 17 looks + dark; a11y labels on each device row and the revoke action, 44pt targets, contrast >= 4.5:1, keyboard-reachable on web. Empty state: only this device paired. Baseline: no device secrets in logs.\n\n## Test plan\napp/test/settings/devices_screen_test.dart (list/rename/revoke widget), integration test asserting a revoked device is denied post-revocation merge (with {{SN-SYNC-017}}), golden tests per look.\n\n## Dependencies\n{{SN-SYNC-017}} (pairing/device registry), SN-CRY-002 (key rotation).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-019",
+    "title": "Wire auto-sync, Wi-Fi-only and provider-choice preferences",
+    "type": "feature",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "settings"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-NETWORK-1",
+      "MASVS-PRIVACY-1",
+      "OWASP-A04",
+      "ASVS-V8",
+      "CWE-1188"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-006",
+      "SN-SET-001"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nSync is off until the user turns it on; autoSync is the master switch, and when off nothing leaves the device (PRD-SYNC-001, PRD-SET-001). wifiOnly holds large uploads on mobile data (PRD-SYNC-008, PRD-SET-002). Provider choice (Back up to) offers iCloud Drive on Apple / Google Drive elsewhere with exactly one active target per profile, replacing the removed SS Cloud option (PRD-SYNC-002, PRD-SET-003, PRD section 0.4). The first enable runs key-setup + provider-choice before any upload.\n\n## Scope\n**In:** the settings wiring for autoSync (default on per the design token, but sync itself off until first enable completes key-setup — see note), wifiOnly (default off), and the Back up to provider segmented control (iCloud on Apple only / Google Drive; SAF folder option from {{SN-SYNC-010}}); enforcement that when autoSync is off the engine pushes nothing; that wifiOnly holds large blob uploads until unmetered while small op-log text segments may still sync; and that switching provider is a guarded migration (exactly one active target per profile).\n**Out:** the key-setup flow (SN-CRY, gates first enable), the settings screen chrome shell (SN-SET-001), and the status surface ({{SN-SYNC-020}}).\n\n## Acceptance criteria\n- [ ] With autoSync off, a network trace shows zero note bytes leaving the device; enabling it first runs key-setup + provider choice before any upload (PRD-SYNC-001).\n- [ ] With wifiOnly on and no unmetered network, audio/PDF/image uploads are held (pendingUpload / Waiting for Wi-Fi) while small text segments may still sync unless all-cellular is disabled.\n- [ ] Back up to shows iCloud Drive only on Apple platforms and Google Drive on all; exactly one target is active per profile.\n- [ ] Changing provider is guarded (confirm) and does not orphan or duplicate the encrypted store.\n- [ ] The autoSync/wifiOnly/backup preferences persist per profile and propagate as LWW ops when sync is on (device-scoped settings excepted).\n\n## Technical notes\napp/lib/settings/sync/*.dart consuming SN-SET-001 preference keys autoSync/wifiOnly/backup (PRD-SET-001/002/003); gates the engine ({{SN-SYNC-006}}). Network class detection for metered/unmetered. Implements PRD-SYNC-001/002/008. Note the SS Cloud removal (PRD section 0.4).\n\n## Security & privacy\nThreats: an insecure default leaking content (CWE-1188), or cellular upload against user intent. Controls: off-until-on master switch (privacy by default), Wi-Fi-only hold, per-profile scoping, no content egress without explicit enable. MASVS-NETWORK-1, MASVS-PRIVACY-1, OWASP-A04, ASVS V8.\n\n## UX notes\nSettings Sync & backup: exact labels/defaults from PRD-SET-001/002/003 ([docs/design/screens-and-flows.md](docs/design/screens-and-flows.md) section 12). Toggles apply immediately, no Save. Render across 17 looks + dark; a11y switch labels, 44pt targets, keyboard on web. Baseline: no provider tokens/paths in logs.\n\n## Test plan\napp/test/settings/sync_prefs_test.dart (off=no-egress, wifiOnly hold, provider gating, per-profile persistence); integration test app/integration_test/sync_optin_test.dart asserting no bytes leave until enabled. Golden per look.\n\n## Dependencies\n{{SN-SYNC-006}} (engine gating), SN-SET-001 (preference infrastructure).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-020",
+    "title": "Build sync status UI and recoverable error states",
+    "type": "design",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "settings"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "ASVS-V8",
+      "CWE-532"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-006",
+      "SN-DS-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nBecause provider latency is unavoidable (seconds to hours), sync state is a first-class honest UI surface — the category number-one complaint is untrustworthy sync — per [docs/architecture/sync.md](docs/architecture/sync.md) section 10 and PRD-SYNC-009. The app must expose per-page and global states and a manual Sync now, and must never block writing or reading on sync (local-first).\n\n## Scope\n**In:** a per-page and global status indicator with the states upToDate, syncing (with progress for large blobs), pendingUpload(n), pendingDownload(n), offline, driveFull, authNeeded, and conflictResolvedSilently (log-only); an always-available Sync now (best-effort; cannot force iCloud but triggers the loop + download requests); and clear recovery surfaces for Attention needed (auth expired / quota full / provider disconnected) that route to {{SN-SYNC-021}}/{{SN-SYNC-022}}.\n**Out:** the engine that emits the states ({{SN-SYNC-006}}), quota logic ({{SN-SYNC-021}}), and re-auth flow ({{SN-SYNC-022}}).\n\n## Acceptance criteria\n- [ ] All nine states render with correct copy and iconography and never block the editor; writing/reading stays live in every state.\n- [ ] Sync now triggers the loop + download requests and returns immediately; it does not spin-block and respects active backoff.\n- [ ] Large-blob syncing shows progress; pendingUpload(n)/pendingDownload(n) show counts.\n- [ ] driveFull and authNeeded present as recoverable states with a clear next action, not as errors.\n- [ ] Empty/offline states render correctly (offline shows Offline — will sync later).\n\n## Technical notes\napp/lib/sync/status/*.dart + sane_ui components (SN-DS-003); consumes the SyncStatus stream from {{SN-SYNC-006}} via Riverpod. States map to the sync.md section 10 contract. Implements PRD-SYNC-009. Surfaced in the library, page rail, and Settings Sync & backup ([docs/design/screens-and-flows.md](docs/design/screens-and-flows.md) section 12).\n\n## Security & privacy\nThreats: leaking note titles/paths in a status string or log (MASVS-PRIVACY-2, CWE-532). Controls: status carries counts/states only, never content; logs opaque page ids only. ASVS V8.\n\n## UX notes\nDesign Sync & backup + per-notebook badges. Must render across all 17 looks + dark mode with golden tests; a11y: Semantics labels announce state changes (e.g. syncing to up to date), 44pt/48dp targets, contrast >= 4.5:1, keyboard-reachable Sync now on web; respect reduced-motion for any progress animation. Baseline: no content in any status text.\n\n## Test plan\napp/test/sync/status_widget_test.dart (all nine states, Sync-now non-blocking), golden tests per look app/test/sync/goldens/, a11y semantics test.\n\n## Dependencies\n{{SN-SYNC-006}} (status stream), SN-DS-003 (components).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-021",
+    "title": "Implement drive-quota handling and sync soft cap",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-NETWORK-1",
+      "OWASP-A05",
+      "CWE-770"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-006"
+    ],
+    "labels_extra": [
+      "needs-decision"
+    ],
+    "body": "## Context\nStorage is the user own drive, so quota exhaustion is their Drive full / iCloud full, which must be a first-class recoverable state — the app keeps working locally, compacts aggressively, dedups blobs, and retries with backoff (PRD-SYNC-011, [docs/architecture/sync.md](docs/architecture/sync.md) section 6.5/10). The design 5 GB (Free) / 50 GB (Pro) meter is reinterpreted as an app-enforced soft cap on how much encrypted data Sane will sync into the user own cloud, not Sane-hosted storage (PRD-SYNC-012). This issue is needs-decision: the maintainer must decide whether to enforce any cap at all given the user owns the storage (PRD section 15 open decision 1).\n\n## Scope\n**In:** detection of provider 403 quota / storageQuotaExceeded and surfacing driveFull; keep-working-locally guarantee; aggressive compaction + blob dedup + size padding as footprint controls; a soft-cap meter (used/cap) reinterpreted per PRD-SYNC-012 that, beyond the Free cap, pauses syncing new large attachments and prompts Upgrade while never blocking local note-taking; behind a build-time flag so the cap can be disabled per the maintainer decision.\n**Out:** the pricing/entitlement gate (SN-BILL), the storage meter chrome (SN-SET-004), and backoff mechanics ({{SN-SYNC-007}}).\n\n## Acceptance criteria\n- [ ] A provider quota-exceeded response surfaces driveFull; local note-taking continues uninterrupted.\n- [ ] Beyond the Free soft cap, new large-attachment uploads pause with an Upgrade prompt; text sync and local editing continue.\n- [ ] The cap is behind a build-time flag and can be disabled entirely (maintainer decision, PRD section 15).\n- [ ] Under quota pressure the app compacts, dedups, and pads to minimise footprint before prompting.\n- [ ] Recovering space (or upgrading) clears driveFull and resumes held uploads automatically.\n\n## Technical notes\npackages/sane_sync/lib/src/quota/*.dart + app wiring; compaction via {{SN-SYNC-015}}, dedup via {{SN-SYNC-011}}, padding via {{SN-SYNC-024}}. Meter reinterpretation per PRD-SYNC-012 / PRD-SET-004. verify exact Drive quota numbers before shipping (sync.md section 12). Implements PRD-SYNC-011/012.\n\n## Security & privacy\nThreats: unbounded retry against a full quota (CWE-770), or a footprint that leaks size. Controls: backoff, padding, dedup, no content in the meter. MASVS-NETWORK-1, OWASP-A05.\n\n## UX notes\ndriveFull is a state, not an error; the meter (Audio recordings use most of it. Pro raises the limit to 50 GB) and Upgrade path follow PRD-SET-004 ([docs/design/screens-and-flows.md](docs/design/screens-and-flows.md) section 12). Render across looks + dark; a11y labelled meter, contrast. Baseline: no content in quota logs.\n\n## Test plan\npackages/sane_sync/test/quota/quota_test.dart (driveFull surfacing, local-continues, soft-cap pause, flag-off bypass, resume-on-recover) against the fake adapter injecting quota errors.\n\n## Dependencies\n{{SN-SYNC-006}} (engine). Blocked on the maintainer soft-cap decision (PRD section 15).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-022",
+    "title": "Handle provider auth expiry and re-authentication",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "auth"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-2",
+      "MASVS-STORAGE-2",
+      "OWASP-A07",
+      "ASVS-V6",
+      "CWE-613"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-004",
+      "SN-AUTH-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nOAuth/provider auth expires, and PRD-SYNC-011 requires that auth expiry prompt a single re-auth, not silent failure. The provider-disconnected and authNeeded states must be recoverable, keeping the local store fully usable meanwhile ([docs/architecture/sync.md](docs/architecture/sync.md) section 10).\n\n## Scope\n**In:** detection of 401/invalid-token and provider-disconnected conditions; a single, clear re-auth prompt (via SN-AUTH-002) that refreshes/renews the token in sane_secure_store; the authNeeded status ({{SN-SYNC-020}}); automatic resume of the sync loop after successful re-auth; and a guard that the engine never busy-retries a hard auth failure (defers to a user action).\n**Out:** the OAuth flow itself (SN-AUTH), token storage internals (sane_secure_store), and the Drive adapter transport ({{SN-SYNC-004}}).\n\n## Acceptance criteria\n- [ ] An expired token surfaces authNeeded and a single re-auth prompt; the engine does not silently fail or loop.\n- [ ] After successful re-auth the loop resumes from the persisted cursor with no lost changes.\n- [ ] Tokens are read/renewed only from sane_secure_store and never logged or written to the notes DB / synced store.\n- [ ] Local reading/writing is unaffected while auth is pending.\n- [ ] A user-cancelled re-auth leaves the app in a clean authNeeded state, not a broken one.\n\n## Technical notes\npackages/sane_sync + app wiring; re-auth via SN-AUTH-002 (OIDC PKCE + state + nonce per M4 exit criteria); tokens in sane_secure_store. Implements PRD-SYNC-011 (auth expiry) and PRD-AUTH-006 (token storage).\n\n## Security & privacy\nThreats: stale/session-expiry mishandling (CWE-613, OWASP-A07), token leakage (MASVS-STORAGE-2). Controls: single re-auth, secure-store-only tokens, no token in logs, resume from durable cursor. MASVS-AUTH-2, ASVS V6.\n\n## UX notes\nauthNeeded shows a single Reconnect action (design Attention needed). Render across looks + dark; a11y label + 44pt target. Empty/offline unaffected. Baseline: no tokens in logs.\n\n## Test plan\npackages/sane_sync/test/auth/reauth_test.dart (expiry to authNeeded, resume-after-reauth, cancel-clean, no busy-loop); token-not-logged assertion.\n\n## Dependencies\n{{SN-SYNC-004}} (Drive adapter), SN-AUTH-002 (auth abstraction).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-023",
+    "title": "Implement version history browse and restore from snapshots",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "storage"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-CODE-4",
+      "OWASP-A08",
+      "CWE-354"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-002",
+      "SN-CORE-005"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "innovation"
+    ],
+    "body": "## Context\nVersion history falls out of the retained ring of snapshot generations plus the op-log tail: reconstruct any retained point by loading the nearest snapshot at-or-before the target and replaying ops up to the target HLC, per [docs/architecture/file-format.md](docs/architecture/file-format.md) section 8 and PRD-STOR-007. The retention ring is hourly x24, daily x30, monthly x12 by default; unlimited history is Pro and Free retains 7 days.\n\n## Scope\n**In:** a VersionHistory service that lists retained snapshot generations for a page (sorted by physicalMs for a human timeline), reconstructs a past state (nearest snapshot <= target + replay to target HLC) read-only, and restores a chosen version as new ops (never a destructive rewrite, so restore itself merges); enforcement of the retention ring bounds (hourly/daily/monthly) and the Free 7-day vs Pro unlimited window (gated via SN-BILL).\n**Out:** the pricing gate internals (SN-BILL), snapshot writing/compaction ({{SN-SYNC-015}}), and the GC that prunes the ring beyond retention (SN-CORE document-model section 8).\n\n## Acceptance criteria\n- [ ] The history list shows retained generations with human-readable timestamps (physicalMs order).\n- [ ] Reconstructing a past point loads nearest snapshot <= target + replays ops to the target HLC and matches what that point actually was.\n- [ ] Restoring a version is expressed as new ops (idempotent, merges), never a destructive rewrite; undoing a restore is possible.\n- [ ] Retention respects the ring (hourly x24 / daily x30 / monthly x12) and the Free 7-day vs Pro window.\n- [ ] Each loaded snapshot/segment is integrity-verified ({{SN-SYNC-013}}) before reconstruction.\n\n## Technical notes\npackages/sane_sync/lib/src/history/*.dart reading snapshots/segments via {{SN-SYNC-002}} and SN-CORE-005; replay via sane_core. Free/Pro window via SN-BILL entitlement. Implements PRD-STOR-007, file-format section 8.\n\n## Security & privacy\nThreats: reconstructing from an unverified/tampered snapshot (CWE-354, OWASP-A08). Controls: verify-before-reconstruct via {{SN-SYNC-013}}, restore-as-ops (no destructive path), ciphertext at rest. MASVS-STORAGE-1, MASVS-CODE-4.\n\n## UX notes\nA timeline browser with a preview and a Restore action; restore confirms and is non-destructive. Render across 17 looks + dark with golden tests; a11y timeline labels, 44pt targets, contrast, keyboard on web. Empty state: no earlier versions yet. Baseline: no content in logs.\n\n## Test plan\npackages/sane_sync/test/history/history_test.dart (reconstruct exactness, restore-as-ops idempotency, retention ring, Free/Pro window), golden for the timeline UI.\n\n## Dependencies\n{{SN-SYNC-002}} (snapshot/segment access), SN-CORE-005 (snapshot format/replay).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-024",
+    "title": "Enforce metadata minimisation and size padding",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync",
+      "privacy",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-STORAGE-1",
+      "OWASP-A02",
+      "CWE-212",
+      "CWE-359"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-002",
+      "SN-CRY-001"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nA curious cloud provider can see structure (page/device counts, rough op counts, rough sizes, sync timing) but must never see titles, text, ink, audio, or which page is which, per [docs/architecture/file-format.md](docs/architecture/file-format.md) section 6 and PRD-SYNC-007. Names in the cloud must be opaque ids; the name-to-id map lives only inside encrypted payloads; sizes are padded to bucket boundaries to blunt size-fingerprinting. What is intentionally cleartext must be documented in the threat model (LINDDUN).\n\n## Scope\n**In:** enforcement + verification that drive paths/filenames are opaque random ids (never names or content hashes); that manifest human-meaningful fields (titles, tags) are stored as separately-encrypted values (file-format section 6.2); size padding of ciphertext members to the buckets {4, 16, 64, 256 KiB, 1, 4 MiB} for snapshots/segments and next 64 KiB for blobs; and a documented list (in docs/security/threat-model.md, LINDDUN) of exactly what metadata is intentionally cleartext and why.\n**Out:** the AEAD itself (SN-CRY-001), the store layout ({{SN-SYNC-002}}, which this hardens), and the threat-model doc ownership (SN-PRV/SN-SEC).\n\n## Acceptance criteria\n- [ ] A test scans a synced store and asserts no path, filename, or manifest field contains a plaintext title, tag, or content hash.\n- [ ] Manifest titles/tags are present only as encrypted values; a reader without the key sees ciphertext.\n- [ ] Snapshots/segments are padded to the next bucket boundary; blobs to the next 64 KiB; a test asserts on-disk sizes land on buckets.\n- [ ] The intentionally-cleartext metadata list is documented in the threat model with rationale.\n- [ ] Padding overhead stays within a few percent (measured).\n\n## Technical notes\npackages/sane_sync/lib/src/store/padding.dart + metadata assertions in {{SN-SYNC-002}}. Padding is random bytes inside the AEAD or a trailing padding length (file-format section 6.3). Opaque ids per document-model section 1.1 / sync.md section 1. Implements PRD-SYNC-007, file-format section 6.\n\n## Security & privacy\nThreats: metadata leakage (CWE-212, MASVS-PRIVACY-2), size-fingerprinting (CWE-359). Controls: opaque ids, encrypted fields, bucket padding, documented cleartext surface. OWASP-A02, MASVS-STORAGE-1.\n\n## UX notes\nNone beyond baseline. No user-facing surface; the baseline is that nothing here logs titles, tags, paths, ids, or sizes in the clear (object/blob ids as opaque short hashes only).\n\n## Test plan\npackages/sane_sync/test/privacy/metadata_min_test.dart (no plaintext in paths/manifest), padding_test.dart (bucket boundaries, overhead bound).\n\n## Dependencies\n{{SN-SYNC-002}} (store layout), SN-CRY-001 (AEAD/field encryption).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-025",
+    "title": "Build sync soak and chaos test harness",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "sync",
+      "qa"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "L",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-CODE-4",
+      "MASVS-RESILIENCE-2",
+      "OWASP-A08",
+      "CWE-362",
+      "CWE-354"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-006",
+      "SN-SYNC-003",
+      "SN-SYNC-004"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe M4 exit criterion is that two devices editing offline then syncing converge with no data loss, and the sync layer must survive the messy realities of consumer drives (out-of-order and delayed delivery, torn tails, placeholder eviction, quota errors, concurrent compaction). A dedicated soak + chaos harness proves convergence and offline-first guarantees under fault injection before beta ([docs/architecture/sync.md](docs/architecture/sync.md) section 11, roadmap M7).\n\n## Scope\n**In:** a multi-replica simulation (N virtual devices over the fake adapter, plus opt-in real-adapter runs) that generates randomised concurrent edit/erase/move/delete op streams, injects faults (reorder, delay, drop-then-redeliver, torn tail, placeholder eviction, 403/429 quota/throttle, concurrent compaction, clock skew within maxDrift), and asserts eventual convergence to identical folded state with no data loss; a long-running soak that runs thousands of rounds; and property assertions (commutativity, idempotency, no resurrection of causally-stable deletes).\n**Out:** the CRDT unit-property tests (SN-CORE convergence harness), and perf latency budgets (SN-PERF).\n\n## Acceptance criteria\n- [ ] After any randomised fault-injected schedule, all replicas converge to byte-identical folded state; a divergence fails the test with a reproducible seed.\n- [ ] Concurrent compaction produces one resolved snapshot with no lost update ({{SN-SYNC-014}}).\n- [ ] A causally-stable deleted item is never resurrected by a resurfacing stale replica.\n- [ ] Torn/partial members and injected tampering are rejected (via {{SN-SYNC-013}}) without corrupting state.\n- [ ] The soak runs thousands of rounds in CI within a time budget and is deterministic under a seed.\n\n## Technical notes\npackages/sane_sync/test/soak/*.dart (harness) + tools/ chaos config; drives {{SN-SYNC-006}} over the fake adapter ({{SN-SYNC-005}}) and, opt-in, real adapters ({{SN-SYNC-003}}/{{SN-SYNC-004}}). Seeds logged for reproduction. Feeds the SN-QA-001 suite. Implements the sync.md section 11 verification.\n\n## Security & privacy\nThreats verified: reordering/tamper/rollback (CWE-354), concurrent-compaction races (CWE-362, OWASP-A08). Controls exercised: integrity verify, silent merge, causal-stability GC. MASVS-CODE-4, MASVS-RESILIENCE-2.\n\n## UX notes\nNone beyond baseline. No user surface; the harness must never print note content (it generates synthetic ops) and logs only seeds + opaque ids.\n\n## Test plan\npackages/sane_sync/test/soak/convergence_soak_test.dart, chaos_fault_injection_test.dart, no_resurrection_test.dart. Reproducible seeds; runs in CI (bounded) and as a longer nightly soak.\n\n## Dependencies\n{{SN-SYNC-006}} (engine), {{SN-SYNC-003}} + {{SN-SYNC-004}} for opt-in real-adapter runs.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-SYNC-026",
+    "title": "Verify offline-first guarantees under all sync states",
+    "type": "test",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "qa"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-NETWORK-1",
+      "OWASP-A04",
+      "ASVS-V8",
+      "CWE-1188"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-SYNC-006"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nLocal-first means the editor is always live from the local store; the app must never block writing or reading on sync (sync.md section 10, roadmap M1/M4 exit criteria: editor works with no account and no network, nothing leaves the device without opt-in). This verification suite is the guardrail that keeps every sync feature honest to that promise.\n\n## Scope\n**In:** integration tests that drive the app in each sync state (autoSync off, offline, syncing, driveFull, authNeeded, paused-no-key, backing-off) and assert that create/edit/read/organise/undo all complete from the local store with no blocking spinner and no dependence on a network call; plus an egress assertion that with autoSync off (or guest) zero note bytes leave the device; plus a guard test that no sync operation runs on the UI isolate.\n**Out:** the individual features under test (they own their unit tests), and the broad convergence soak ({{SN-SYNC-025}}).\n\n## Acceptance criteria\n- [ ] In every sync state, writing and reading notes complete locally with no blocking on a network call (measured: no awaited network on the read/write path).\n- [ ] With autoSync off or as a guest, a network trace shows zero note bytes leaving the device.\n- [ ] Undo/redo and library organisation work fully offline.\n- [ ] No sync/encryption/network work runs on the UI isolate (asserted via isolate instrumentation).\n- [ ] Turning sync on later adopts existing local data without uploading until explicitly enabled (PRD-AUTH-010, PRD-SYNC-001).\n\n## Technical notes\napp/integration_test/offline_first_test.dart + a network-egress harness (block/trace) and isolate instrumentation. Exercises {{SN-SYNC-006}} states and {{SN-SYNC-019}} opt-in gating. Implements the M4 exit criteria and CLAUDE.md section 8 isolate rule.\n\n## Security & privacy\nThreats: an insecure default silently uploading (CWE-1188), or blocking that pushes users to disable local encryption. Controls: off-until-on egress proof, local-first read/write proof, no-UI-isolate-network proof. MASVS-PRIVACY-1, MASVS-NETWORK-1, OWASP-A04, ASVS V8.\n\n## UX notes\nNone beyond baseline (a verification suite). It protects the no-spinners, always-live editor promise across all 17 looks implicitly. Baseline: the harness logs no note content, only pass/fail + opaque state labels.\n\n## Test plan\napp/integration_test/offline_first_test.dart (per-state local liveness), app/integration_test/no_egress_when_off_test.dart (egress trace), app/test/sync/no_ui_isolate_network_test.dart.\n\n## Dependencies\n{{SN-SYNC-006}} (engine + states). Gating from {{SN-SYNC-019}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze --fatal-infos, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

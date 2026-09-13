@@ -1,0 +1,241 @@
+[
+  {
+    "key": "SN-AUTH-015",
+    "title": "Add profile management (rename, recolour, delete, set lock)",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "settings"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-2",
+      "ASVS-V6",
+      "OWASP-A01",
+      "CWE-284"
+    ],
+    "parent": "SN-AUTH-007",
+    "depends_on": [
+      "SN-AUTH-007",
+      "SN-AUTH-014"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nProfile management (rename, change note/colour, delete a profile, set/clear lock) MUST be reachable from Settings → Account (PRD-PROF-007). Deleting a profile MUST warn that it removes that profile's local notes and prompt to export first, and MUST NOT touch other profiles (PRD-PROF-007, composes with per-profile isolation {{SN-AUTH-013}}). This completes the profiles feature ({{SN-AUTH-007}}) with the edit/remove operations the mock lacks (design open questions 3/15).\n\n## Scope\n**In:** the Settings → Account → Profiles management UI: rename (max 24 chars), change note, change colour, set/clear the biometric lock ({{SN-AUTH-014}}), and delete a profile with an export-first warning and scope confirmation.\n**Out:** adding/switching profiles ({{SN-AUTH-007}}), the biometric mechanism itself ({{SN-AUTH-014}}), the export archive builder (SN-SET-001 / BKP), and entitlement scope ({{SN-AUTH-016}}).\n\n## Acceptance criteria\n- [ ] Rename/change-note/change-colour update only the target profile and persist immediately (no explicit Save), matching the profile add flow's constraints (max 24 chars).\n- [ ] Set/clear lock toggles the target profile's locked flag and triggers the {{SN-AUTH-014}} gate on next open.\n- [ ] Delete warns that it removes that profile's local notes, offers Export first, requires an explicit confirmation, and removes only that profile's partition — other profiles are untouched (PRD-PROF-007).\n- [ ] The management UI lives under Settings → Account (design §12) and is unavailable for the implicit Guest profile beyond rename.\n- [ ] After delete, the profile's notes, thumbnails, caches and search index are removed (composes with deletion, {{SN-AUTH-018}}).\n\n## Technical notes\nOperate on the ProfileRepository ({{SN-AUTH-007}}); delete cascades within the profile partition only (SN-CORE-004 + {{SN-AUTH-013}} scoping). The export-first prompt hands off to the Export everything flow (SN-SET-001 / PRD-BKP-001). Set/clear lock calls into {{SN-AUTH-014}}. Keep the UI in Settings → Account using sane_ui components. This is a small, self-contained task suitable for a first contribution.\n\n## Security & privacy\nThreats: deleting a profile touching another's data (CWE-284, A01) — prevented by partition-scoped cascade; data loss without export (mitigated by the export-first prompt, LINDDUN-Disclosure vs Availability). Controls: MASVS-STORAGE-1, MASVS-PRIVACY-2, ASVS V6. Privacy-by-design: deletion is scoped and confirmed; no cross-profile side effects. No new network egress.\n\n## UX notes\nManagement rows live under Settings → Account → Profiles on this account (design §12), rendered across all 17 looks + dark mode. Destructive delete uses the design's destructive styling + a confirmation and the Export first affordance. Every control needs a Semantics label, 44pt/48dp target, contrast and keyboard reachability on web. Inline validation for the 24-char name cap.\n\n## Test plan\nUnit: app/test/auth/profile_management_test.dart (rename/recolour/note update only target; delete cascades within partition; guest cannot be deleted). Widget: app/test/auth/profile_management_screen_test.dart (export-first warning + confirmation gate). Integration: delete removes the partition's index/thumbnails.\n\n## Dependencies\nSN-AUTH-007, SN-AUTH-014; export handoff SN-SET-001; deletion mechanics {{SN-AUTH-018}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-016",
+    "title": "Scope Pro entitlement to the account across all profiles",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "billing"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "ASVS-V6",
+      "OWASP-A01",
+      "CWE-863"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-007",
+      "SN-BILL-001"
+    ],
+    "labels_extra": [
+      "needs-decision",
+      "sec: masvs"
+    ],
+    "body": "## Context\nA Pro entitlement is account-scoped and shared across all local profiles on that signed-in account; a Guest profile with no account gets Free limits (PRD-PROF-006). This task wires the identity layer to the entitlement provider (SN-BILL-001, RevenueCat-style, PRD-BILL-011) so premium is gated behind a verified entitlement object keyed to the signed-in account, never a per-profile boolean on disk. The family/household edge — whether a household plan grants Pro to all local profiles on a shared device or only the owner's profiles — is an open maintainer decision (PRD-PROF-006 / §15.6, needs-decision); implement the decisive default of account-scoped-for-all-profiles and leave the household hook.\n\n## Scope\n**In:** exposing the active account's entitlement to every profile on the device; making feature gates read the verified entitlement object (cached last-known-good for offline grace) rather than a stored flag; guest = Free; the household-grant hook (default: all profiles on the account get the account's entitlement).\n**Out:** purchase/restore flows, StoreKit/Play Billing, and the entitlement provider integration itself (SN-BILL-001); student verification (SN-BILL-001); the per-profile-vs-per-account household decision (maintainer).\n\n## Acceptance criteria\n- [ ] Every profile on a signed-in Pro account sees Pro features; switching profiles does not change entitlement (PRD-PROF-006).\n- [ ] A Guest profile (no account) gets Free limits.\n- [ ] Gates read a verified entitlement object (cached last-known-good offline), never a boolean on disk that could be forged (PRD-BILL-011, TM-S-05, CWE-863).\n- [ ] Entitlement failure degrades to Free and never blocks local note-taking (fail-open, roadmap M8 exit criterion).\n- [ ] The household-grant behaviour is implemented behind the documented default with a marker for the maintainer decision.\n\n## Technical notes\nRead the entitlement from SN-BILL-001's provider (app_user_id keyed to the signed-in account, PRD-BILL-011). Feature gates query an EntitlementProvider (Riverpod) that returns the verified object; guest returns Free. Do not persist a plain isPro boolean. Leave a // needs-decision marker citing PRD-PROF-006/§15.6 for the household scope. This is identity↔billing glue only; the purchase/verify machinery is SN-BILL-001.\n\n## Security & privacy\nThreats: forged Pro entitlement (TM-S-05, CWE-863 — countered by reading the server-verified object, not a disk flag), authorization confusion across profiles (A01). Controls: MASVS-AUTH-1, ASVS V6, OWASP-A01. Fail-open is deliberate and non-punitive (a failed check must never lock a user out of their own notes). No note keys are involved. needs-decision: household/family scope.\n\n## UX notes\nNone beyond baseline — this task exposes state; the Upgrade/Manage UI is SN-BILL-001 and the Account & plan tab (design §12). Baseline: entitlement state is never logged with PII; gated-feature affordances (Pro badges/upgrade prompts) are rendered by their owning features across all looks. Ensure a profile switch does not flash a wrong entitlement state.\n\n## Test plan\nUnit: app/test/auth/entitlement_scope_test.dart (Pro account → all profiles Pro; guest → Free; forged disk flag ignored; failure → Free, note-taking unaffected). Integration: switch profiles without entitlement change; offline grace uses last-known-good.\n\n## Dependencies\nSN-AUTH-007, SN-BILL-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-017",
+    "title": "Implement sign out and switch account without data loss",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-STORAGE-2",
+      "ASVS-V6",
+      "OWASP-A01",
+      "CWE-613"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-AUTH-008"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue",
+      "sec: masvs"
+    ],
+    "body": "## Context\nUse a different account (Profiles screen) and Sign out (Settings → Account, destructive) sign the whole device out back to Login (design §4/§12). Sign-out MUST clear identity tokens only and MUST NOT delete local note data by default (PRD-PROF-003) — data deletion is the separate account-deletion flow ({{SN-AUTH-018}}). This is the clean, reversible complement to sign-in: after sign-out the notes remain on device (as a Guest partition or awaiting re-sign-in) and can be re-adopted on next sign-in.\n\n## Scope\n**In:** the Sign out action (Settings → Account) and Use a different account (Profiles) both returning to Login; wiping all identity tokens from the secure store ({{SN-AUTH-008}}); leaving local note data intact; ending the session cleanly (invalidate in-memory session, revoke provider session where the SDK supports it).\n**Out:** deleting local/cloud data or the account ({{SN-AUTH-018}}), disconnecting sync (SN-SYNC-001), and clearing per-profile locks ({{SN-AUTH-014}}).\n\n## Acceptance criteria\n- [ ] Sign out and Use a different account both return to the Login screen (design §4/§12).\n- [ ] All identity tokens for the account are deleted from the secure store; a relaunch shows signed-out (no residual session, CWE-613).\n- [ ] Local notebooks/pages/attachments are NOT deleted by default (PRD-PROF-003); they remain available and re-adoptable on next sign-in ({{SN-AUTH-011}}).\n- [ ] Sign out is styled destructive but is non-destructive to data; the copy makes clear notes stay on the device.\n- [ ] Where the provider SDK supports it, the provider session is revoked/cleared so the next sign-in re-prompts.\n\n## Technical notes\nSign-out transitions AuthState to signedOut (or guest), calls SessionStore.deleteAll for the account ({{SN-AUTH-008}}), and clears the in-memory session provider (ADR-0003). Do NOT delete drift/blob data. Revoke the provider session via the SDK where available (e.g. google_sign_in signOut, MSAL removeAccount). This is a small, well-scoped task — good first issue.\n\n## Security & privacy\nThreats: residual session after sign-out (CWE-613 — countered by full token wipe + in-memory invalidation), accidental data loss (prevented by keeping local data). Controls: MASVS-AUTH-1, MASVS-STORAGE-2, ASVS V6, OWASP-A01. No token is logged during sign-out. No new egress; note the threat model is unchanged.\n\n## UX notes\nSign out uses the design's destructive styling (design §12) with clear copy that notes stay on the device. Render across all 17 looks + dark mode; Semantics label announces the destructive nature and the data-safe outcome; 44pt/48dp target; keyboard reachable on web. Returning to Login must not flash any previous account's data.\n\n## Test plan\nUnit: app/test/auth/sign_out_test.dart (tokens wiped, state → signedOut, local data untouched). Widget: both entry points route to Login. Integration (patrol): relaunch after sign-out shows Login; provider re-prompts on next sign-in.\n\n## Dependencies\nSN-AUTH-002, SN-AUTH-008.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-018",
+    "title": "Implement self-service account and data deletion",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-3",
+      "MASVS-STORAGE-1",
+      "ASVS-V6",
+      "OWASP-A01",
+      "CWE-212",
+      "CWE-459"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-AUTH-013",
+      "SN-PRV-001"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nThe app MUST provide self-service account deletion reachable from Settings/Privacy (Apple requires an in-app account-deletion path when accounts exist) and MUST distinguish three scopes the user chooses between: (a) sign out (keep local notes, drop tokens); (b) delete cloud data (wipe the encrypted store in the user's own cloud + disconnect provider); (c) delete account (revoke identity + entitlement association at the provider) — PRD-DEL-001..004, PRD-PRIV-003. Because notes are E2EE in the user's own cloud, Sane holds no note content to delete: deletion is the user removing their own cloud store + keys. Deletion MUST offer export-first, require explicit typed/confirmed consent, and complete or clearly report partial completion.\n\n## Scope\n**In:** the deletion surface (Settings → Privacy & export / Account) offering the three scopes; export-first handoff; explicit typed/confirmed consent; local wipe of a profile's data + keys + thumbnails + caches + search index; disconnecting the cloud provider and deleting the encrypted cloud store; requesting identity/entitlement removal at the providers; a completion/partial-completion report.\n**Out:** the export archive builder (SN-SET-001 / BKP), the cloud store mechanics (SN-SYNC-001), the entitlement provider API (SN-BILL-001), and telemetry-aggregate deletion (SN-TEL, best-effort).\n\n## Acceptance criteria\n- [ ] The dashboard offers the three clearly-labelled scopes and lets the user choose (PRD-DEL-001).\n- [ ] Deletion offers Export everything first and requires an explicit typed/confirmed consent before proceeding (PRD-DEL-002).\n- [ ] Sign-out scope keeps local notes; delete-cloud wipes the encrypted cloud store + disconnects the provider; delete-account additionally revokes the identity/entitlement association (PRD-DEL-001/003).\n- [ ] Local files, thumbnails, caches and the search index for the deleted scope are securely removed; keys are removed from Keychain/Keystore (PRD-DEL-004, CWE-459).\n- [ ] The app confirms completion or reports partial completion with a retry, and leaves no orphaned entitlement that blocks re-signup on the same email (PRD-DEL-004).\n- [ ] Deletion states plainly what is and is not recoverable (zero-knowledge: once cloud store + keys are gone, data is unrecoverable) (PRD-DEL-002).\n\n## Technical notes\nLocal wipe operates on the profile partition ({{SN-AUTH-013}}) — cascade-delete drift rows, blobs, FTS index, thumbnails; remove keys via sane_secure_store. Cloud delete + provider disconnect calls into SN-SYNC-001's cloud adapter (ciphertext store) — for account-delete, also call the entitlement/identity provider removal (SN-BILL-001). Wrap each scope as a resumable step returning Result so partial completion is reportable (PRD-DEL-004, OWASP-A10 exceptional conditions). Surface this under the privacy dashboard (SN-PRV-001, PRD-PRIV-003).\n\n## Security & privacy\nThreats: incomplete erasure leaving recoverable data (CWE-212/459, LINDDUN Non-compliance), orphaned entitlement blocking re-signup, accidental over-deletion of another profile (scoped via {{SN-AUTH-013}}). Controls: MASVS-PRIVACY-3 (erasure), MASVS-STORAGE-1, ASVS V6, OWASP-A01. Satisfies GDPR/DPDP/CCPA erasure (PRD-PRIV-003/004). Privacy-by-design: self-service, scoped, honest about zero-knowledge irrecoverability. Update the threat model if the deletion flow changes a stored-asset lifecycle.\n\n## UX notes\nDeletion lives in the privacy dashboard (design §12 Privacy & export; PRD-PRIV-003). The three scopes are distinct, clearly labelled cards; delete-account uses destructive styling + a typed confirmation; export-first is offered inline. Render across all 17 looks + dark mode with Semantics labels, 44pt/48dp targets, contrast, keyboard reachability on web. Copy states plainly what is unrecoverable. Show progress and a completion (or partial + retry) result.\n\n## Test plan\nUnit: app/test/auth/account_deletion_test.dart (each scope removes exactly its data; partial completion reported; other profiles untouched). Security: app/test/security/deletion_residue_test.dart asserts no note/thumbnail/index/key residue after local wipe. Integration (patrol): export-first + typed confirmation gate; delete-account leaves no orphaned entitlement.\n\n## Dependencies\nSN-AUTH-002, SN-AUTH-013, SN-PRV-001; cloud store SN-SYNC-001; entitlement provider SN-BILL-001; export SN-SET-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-019",
+    "title": "Add identity security and abuse test suite",
+    "type": "test",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-AUTH-2",
+      "MASVS-NETWORK-1",
+      "ASVS-V6",
+      "OWASP-A07",
+      "CWE-287",
+      "CWE-307",
+      "CWE-384"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-009",
+      "SN-AUTH-006",
+      "SN-AUTH-008"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs",
+      "sec: threat-model"
+    ],
+    "body": "## Context\nIdentity is the product's Spoofing surface (threat-model §5.1). This issue delivers the abuse/negative test suite that proves the identity controls hold — the verification the threat model demands for TM-S-01 (token replay), TM-S-02 (OTP brute-force / SIM-swap / account-takeover-yields-no-plaintext) and TM-I-05 (no token/PII in logs). CLAUDE.md §10 requires abuse/negative tests as first-class; this suite is the identity slice, complementing the bypass CI gate ({{SN-AUTH-021}}).\n\n## Scope\n**In:** negative/abuse tests across the identity stack — OIDC state/nonce/PKCE replay rejection ({{SN-AUTH-009}}); id_token forgery/expiry/audience rejection; OTP brute-force throttling + single-use + expiry ({{SN-AUTH-006}}); tokens-only-in-secure-store + never-logged assertions ({{SN-AUTH-008}}); the account-takeover-yields-no-note-plaintext invariant (TM-S-02); cross-profile access-control probes referencing {{SN-AUTH-013}}.\n**Out:** the release-bypass reachability gate ({{SN-AUTH-021}}), crypto fail-closed tests (SN-CRY), and the full MASVS/ASVS verification pass (M7, SN-SEC).\n\n## Acceptance criteria\n- [ ] A replayed or mismatched state/nonce is rejected and creates no session; a forged/expired/wrong-audience id_token is refused (TM-S-01).\n- [ ] OTP brute force is throttled (>=30s between resends, <=5/hour), codes are single-use and expire; verification is server-side only (TM-S-02, CWE-307).\n- [ ] A simulated account takeover (stolen token / OTP) yields NO note plaintext — keys are not derivable from identity (TM-S-02 integration test).\n- [ ] No access token, refresh token, id_token, email or phone number appears in any captured log or crash report (TM-I-05).\n- [ ] A cross-profile access attempt is denied (references the isolation guarantee, {{SN-AUTH-013}}).\n- [ ] The suite runs in CI and fails the build on any regression.\n\n## Technical notes\nAdd tests under app/test/security/ and app/integration_test/ using mock providers/gateways plus the real validation code paths (do not mock away the thing under test). For the no-plaintext invariant, assert that with a valid session but no key source, note content stays encrypted/paused (PRD-KEY-009). Capture logs via the SaneLog test sink and assert the redaction allow-list holds. Wire the suite into the DevSecOps workflow (SN-CI-001) as a required gate.\n\n## Security & privacy\nThis IS the security verification for the identity area. Threats covered: TM-S-01, TM-S-02, TM-I-05. Controls verified: MASVS-AUTH-1/2, MASVS-NETWORK-1, ASVS V6, OWASP-A07, CWE-287/307/384. Every fixed identity vuln must gain a regression test here (CLAUDE.md §10). No production behaviour changes; this is test-only.\n\n## UX notes\nNone beyond baseline — test-only issue, no user surface. Baseline reaffirmed by the suite: no content/token/PII logging; tokens only in the secure store.\n\n## Test plan\nFiles: app/test/security/oidc_replay_test.dart, app/test/security/otp_bruteforce_test.dart, app/test/security/token_never_logged_test.dart, app/integration_test/account_takeover_no_plaintext_test.dart, app/test/security/profile_access_control_test.dart. All wired into CI as a required job; failure blocks merge.\n\n## Dependencies\nSN-AUTH-009, SN-AUTH-006, SN-AUTH-008; references {{SN-AUTH-013}}; CI wiring SN-CI-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-020",
+    "title": "Track and document maintainer OAuth client IDs and secrets",
+    "type": "infra",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "ci-cd"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-2",
+      "ASVS-V14",
+      "OWASP-A05",
+      "CWE-798",
+      "CWE-522"
+    ],
+    "parent": "SN-AUTH-001",
+    "depends_on": [
+      "SN-AUTH-002"
+    ],
+    "labels_extra": [
+      "needs-credentials",
+      "sec: supply-chain"
+    ],
+    "body": "## Context\nEvery social provider and the OTP gateway need maintainer-supplied secrets — OAuth client IDs/secrets for Google/Microsoft/Apple, the Apple Services ID/team/key, the SMS/OTP provider API key — plus store/dev accounts and signing keys (CLAUDE.md §13 credentials list). These MUST be injected via --dart-define / CI secrets / platform config and NEVER committed (Dart AOT is reversible, CLAUDE.md §7 rule 2). This issue creates the single source of truth documenting which secrets are required, where each is injected, and how a maintainer supplies them, and adds the config plumbing + CI-secret wiring so the provider issues can consume them without ever hardcoding.\n\n## Scope\n**In:** a documented credentials manifest (docs/security/ or app config README) listing every required identity secret, its purpose, the platform(s) that need it, the injection mechanism (--dart-define name / CI secret name / platform config file), and a not-committed placeholder config; wiring the flavour/--dart-define matrix (SN-FND-005) so providers read client IDs from config; a gitleaks/trufflehog-clean tree.\n**Out:** obtaining the actual secrets (maintainer, needs-credentials), the provider implementations ({{SN-AUTH-003}}/{{SN-AUTH-004}}/{{SN-AUTH-005}}/{{SN-AUTH-006}}), and store/signing keys for release (SN-REL).\n\n## Acceptance criteria\n- [ ] A single manifest lists every identity secret (Google/Microsoft/Apple client IDs, Apple Services ID/team/key, OTP provider key) with purpose, platforms, and injection point.\n- [ ] Providers read client IDs from config populated by --dart-define / CI secrets; no secret or client-secret string is committed (gitleaks + trufflehog clean).\n- [ ] A placeholder/example config documents the shape without real values and is safe to commit.\n- [ ] The manifest states which are launch-blocking (needs-credentials) so release readiness is trackable (CLAUDE.md §13, roadmap M8 exit criterion).\n- [ ] CI secret names are documented and referenced by the DevSecOps workflow (SN-CI-001), not inlined.\n\n## Technical notes\nUse the flavour/--dart-define matrix from SN-FND-005 (overview §7.1) for build-time client IDs; keep runtime provider secrets (e.g. OTP gateway key) server-side or in CI-injected config, never in the client where policy allows. Add .gitignore coverage + a committed example. Cross-reference the credentials bullet in CLAUDE.md §13. This is infra/documentation glue; it unblocks the provider issues' testing by defining exactly what the maintainer must supply.\n\n## Security & privacy\nThreats: a committed secret/client-secret leaking (CWE-798/522, OWASP-A05), a hardcoded key extracted from an AOT binary (CLAUDE.md §7 rule 2, L5). Controls: MASVS-CODE-2, ASVS V14, supply-chain hygiene. needs-credentials: the real values are maintainer-supplied via CI secrets; this issue defines the contract but cannot complete provider testing until they exist. Enforced by gitleaks/trufflehog + push protection (SN-CI-001).\n\n## UX notes\nNone beyond baseline — developer/maintainer-facing documentation and config only. Baseline: no secret ever reaches the client tree, logs or the repo. The manifest itself contains no live secrets, only names and injection points.\n\n## Test plan\nCI: gitleaks + trufflehog scan the tree clean; a test asserting the example config contains only placeholders. Manual: a maintainer can follow the manifest to inject a client ID via CI secret and a provider build picks it up. No runtime behaviour to unit-test beyond config resolution (app/test/config/auth_config_test.dart reads a --dart-define client id).\n\n## Dependencies\nSN-AUTH-002; flavour matrix SN-FND-005; CI-secret wiring SN-CI-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-AUTH-021",
+    "title": "Prove auth bypass is unreachable in release builds (CI gate)",
+    "type": "test",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "auth",
+      "security"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-RESILIENCE-2",
+      "MASVS-CODE-2",
+      "ASVS-V6",
+      "OWASP-A07",
+      "CWE-489"
+    ],
+    "parent": "SN-AUTH-002",
+    "depends_on": [
+      "SN-AUTH-002",
+      "SN-CI-001"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs",
+      "sec: threat-model"
+    ],
+    "body": "## Context\nThe dev auth-bypass (--dart-define=SANE_AUTH_BYPASS=true) is a p0 risk: if it ships enabled in a release build it skips sign-in entirely (TM-E-01, Impact Critical). CLAUDE.md §7 rule 5 mandates three independent layers — compile-time dead-code elimination, the runtime assertAuthBypassSafe() throw, and this CI reachability test — and forbids weakening any of them. The guard logic lands in {{SN-AUTH-002}}; this issue delivers the verification: the app/test/security/auth_bypass_test.dart reachability test AND a CI job that fails the release build if SANE_AUTH_BYPASS (or any equivalent bypass string) is present/reachable in a release artifact's compiled defines or string table (PRD-AUTH-012).\n\n## Scope\n**In:** app/test/security/auth_bypass_test.dart proving the bypass branch is unreachable when kReleaseMode is true; a CI job in the DevSecOps workflow (SN-CI-001) that builds a release artifact with the flag set true and asserts it still requires sign-in AND scans the compiled defines/string table for the bypass string, failing the release job on any hit; wiring both as required gates.\n**Out:** the guard implementation itself ({{SN-AUTH-002}}), the broader identity abuse suite ({{SN-AUTH-019}}), and general SAST/secret scanning (SN-CI-002 / SN-CI-001).\n\n## Acceptance criteria\n- [ ] app/test/security/auth_bypass_test.dart passes: with kReleaseMode true the bypass branch is unreachable and sign-in is still required, even with SANE_AUTH_BYPASS=true.\n- [ ] A CI job builds a release artifact with --dart-define=SANE_AUTH_BYPASS=true and asserts the app still requires real sign-in (behavioural check).\n- [ ] The CI job scans the release artifact's compiled defines and string table for SANE_AUTH_BYPASS (and equivalent bypass strings) and FAILS the release job on any reachable hit (PRD-AUTH-012).\n- [ ] Both checks are required gates; a bypassed release cannot be produced or merged (TM-E-01).\n- [ ] The gate is documented in the threat model verification column for TM-E-01.\n\n## Technical notes\nExtend the M0 scaffolding (assertAuthBypassSafe from SN-FND, wired in {{SN-AUTH-002}}). The reachability test uses a release-mode harness / const-folding assertion. The CI job runs in the DevSecOps pipeline (SN-CI-001, .github/workflows) and uses a string scan (e.g. strings/grep over the compiled artifact) plus a smoke build; pin actions by SHA. Because a benign string match could occur, scope the scan to the flag token and assert non-reachability, not mere absence-of-substring, to avoid false negatives while catching real inclusion. Update docs/security/threat-model.md TM-E-01 verification.\n\n## Security & privacy\nThis is the third mandated layer of the p0 bypass guard (CLAUDE.md §7 rule 5; TM-E-01). Threats: bypass-in-release (CWE-489, MASVS-RESILIENCE-2). Controls: MASVS-AUTH-1, MASVS-CODE-2, ASVS V6, OWASP-A07. Never weaken this gate; a change to the guard requires re-proving all three layers. Test/CI-only — no production behaviour change beyond enforcement.\n\n## UX notes\nNone beyond baseline — CI/test-only. Baseline: a bypassed dev build always shows the AUTH BYPASS watermark ({{SN-AUTH-002}}); this gate ensures such a build can never be a release.\n\n## Test plan\nFiles: app/test/security/auth_bypass_test.dart (release-mode reachability). CI: a devsecops job that release-builds with the flag set, runs a boot smoke check that sign-in is still required, and scans the artifact string table — failing on a reachable bypass. Regression: a deliberately-weakened guard must make this job fail (meta-test).\n\n## Dependencies\nSN-AUTH-002 (guard implementation); SN-CI-001 (DevSecOps workflow).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, arch-lint, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]
