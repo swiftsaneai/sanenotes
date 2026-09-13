@@ -17,18 +17,6 @@ melos:
   scripts:
     analyze: dart analyze --fatal-infos
     format: dart format --output=none --set-exit-if-changed app/lib app/test packages
-    test: melos run test:flutter && melos run test:core && dart test tools/scripts/test
-    test:flutter:
-      run: flutter test
-      exec:
-        concurrency: 1
-      packageFilters:
-        flutter: true
-        dirExists: test
-    test:core:
-      run: dart test
-      exec:
-        concurrency: 1
-      packageFilters:
-        flutter: false
-        dirExists: test
+    test: dart run melos run test:flutter && dart run melos run test:core && dart test tools/scripts/test
+    test:flutter: dart run melos exec --concurrency=1 --flutter --dir-exists=test -- flutter test
+    test:core: dart run melos exec --concurrency=1 --no-flutter --dir-exists=test -- dart test

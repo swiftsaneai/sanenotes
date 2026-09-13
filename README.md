@@ -120,14 +120,15 @@ Use **Library options → Copy library backup** for a readable JSON copy; backup
 implemented. Markdown images remain inert, and links do not launch automatically.
 
 ```bash
-./tools/scripts/verify.sh           # formatting, strict analysis, domain/UI/storage tests
+./tools/scripts/verify.sh           # macOS reference runner: format, analysis, tests
 cd app
 flutter build web --release --no-web-resources-cdn
 flutter build ios --simulator --debug
 flutter test integration_test/local_notes_test.dart -d <ipad-simulator-id>
 ```
 
-The static web artifact is `app/build/web/`. Serve `sqlite3.wasm` as `application/wasm`. For broad
+The static web artifact is `app/build/web/`. From the root, run
+`python3 tools/scripts/serve_preview.py` to preview it at `http://127.0.0.1:5173`. Serve `sqlite3.wasm` as `application/wasm`. For broad
 browser support use `Cross-Origin-Opener-Policy: same-origin` and
 `Cross-Origin-Embedder-Policy: require-corp`. The app rejects nonpersistent or unsafe storage
 fallbacks instead of claiming notes are saved. No hosting or App Store/Play distribution is configured.
@@ -142,7 +143,9 @@ dart compile js -O2 app/tool/drift_worker.dart -o app/web/drift_worker.dart.js
 ```
 
 `app/web/storage-assets.json` records the SQLite WASM source and checksum. The worker is compiled
-from the locked Drift dependency. Fonts are bundled locally with their OFL licenses.
+from the locked Drift dependency. Fonts are bundled locally with their OFL licenses. Exact golden baselines use macOS
+font rasterization; the application CI uses macOS 15 rather than comparing Linux pixels
+to macOS reference images.
 
 Backlog tools:
 

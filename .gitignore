@@ -47,3 +47,6 @@ design/.thumbnail
 # Local compiler metadata (contains machine-specific paths)
 app/web/*.js.deps
 app/web/*.js.map
+
+# Melos IDE metadata
+**/*.iml
