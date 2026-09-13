@@ -78,4 +78,48 @@ void main() {
     await database.close();
     expect(file.readAsBytesSync(), original);
   });
+  test(
+    'subsecond edit order survives reopen and version 1 migrates safely',
+    () async {
+      final directory = Directory.systemTemp.createTempSync('sane-migration-');
+      addTearDown(() => directory.deleteSync(recursive: true));
+      final file = File('${directory.path}/notes.sqlite');
+      var database = NoteDatabase(NativeDatabase(file));
+      final first = Note(
+        id: 'z',
+        title: 'Earlier',
+        body: '',
+        modifiedAt: DateTime.utc(2026, 9, 13, 12, 0, 0, 100),
+      );
+      final second = Note(
+        id: 'a',
+        title: 'Later',
+        body: '',
+        modifiedAt: DateTime.utc(2026, 9, 13, 12, 0, 0, 900),
+      );
+      await database.save(first);
+      await database.save(second);
+      await database.close();
+      database = NoteDatabase(NativeDatabase(file));
+      expect(
+        (await database.load() as Ok<List<Note>>).value.map((note) => note.id),
+        ['a', 'z'],
+      );
+      // Recreate the exact v1 timestamp representation and version marker.
+      await database.customStatement(
+        'UPDATE drafts SET modified_at = CAST(modified_at / 1000 AS INTEGER)',
+      );
+      await database.customStatement('PRAGMA user_version = 1');
+      await database.close();
+      database = NoteDatabase(NativeDatabase(file));
+      final migrated = (await database.load() as Ok<List<Note>>).value;
+      expect(migrated, hasLength(2));
+      expect(migrated.first.modifiedAt, DateTime.utc(2026, 9, 13, 12));
+      expect(
+        migrated.map((note) => note.title),
+        containsAll(['Earlier', 'Later']),
+      );
+      await database.close();
+    },
+  );
 }

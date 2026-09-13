@@ -45,11 +45,11 @@ class $DraftsTable extends Drafts with TableInfo<$DraftsTable, StoredNote> {
     'modifiedAt',
   );
   @override
-  late final GeneratedColumn<DateTime> modifiedAt = GeneratedColumn<DateTime>(
+  late final GeneratedColumn<int> modifiedAt = GeneratedColumn<int>(
     'modified_at',
     aliasedName,
     false,
-    type: DriftSqlType.dateTime,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   @override
@@ -117,7 +117,7 @@ class $DraftsTable extends Drafts with TableInfo<$DraftsTable, StoredNote> {
         data['${effectivePrefix}body'],
       )!,
       modifiedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
+        DriftSqlType.int,
         data['${effectivePrefix}modified_at'],
       )!,
     );
@@ -140,7 +140,7 @@ class StoredNote extends DataClass implements Insertable<StoredNote> {
   final String body;
 
   /// UTC edit timestamp.
-  final DateTime modifiedAt;
+  final int modifiedAt;
   const StoredNote({
     required this.id,
     required this.title,
@@ -153,7 +153,7 @@ class StoredNote extends DataClass implements Insertable<StoredNote> {
     map['id'] = Variable<String>(id);
     map['title'] = Variable<String>(title);
     map['body'] = Variable<String>(body);
-    map['modified_at'] = Variable<DateTime>(modifiedAt);
+    map['modified_at'] = Variable<int>(modifiedAt);
     return map;
   }
 
@@ -175,7 +175,7 @@ class StoredNote extends DataClass implements Insertable<StoredNote> {
       id: serializer.fromJson<String>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       body: serializer.fromJson<String>(json['body']),
-      modifiedAt: serializer.fromJson<DateTime>(json['modifiedAt']),
+      modifiedAt: serializer.fromJson<int>(json['modifiedAt']),
     );
   }
   @override
@@ -185,7 +185,7 @@ class StoredNote extends DataClass implements Insertable<StoredNote> {
       'id': serializer.toJson<String>(id),
       'title': serializer.toJson<String>(title),
       'body': serializer.toJson<String>(body),
-      'modifiedAt': serializer.toJson<DateTime>(modifiedAt),
+      'modifiedAt': serializer.toJson<int>(modifiedAt),
     };
   }
 
@@ -193,7 +193,7 @@ class StoredNote extends DataClass implements Insertable<StoredNote> {
     String? id,
     String? title,
     String? body,
-    DateTime? modifiedAt,
+    int? modifiedAt,
   }) => StoredNote(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -238,7 +238,7 @@ class DraftsCompanion extends UpdateCompanion<StoredNote> {
   final Value<String> id;
   final Value<String> title;
   final Value<String> body;
-  final Value<DateTime> modifiedAt;
+  final Value<int> modifiedAt;
   final Value<int> rowid;
   const DraftsCompanion({
     this.id = const Value.absent(),
@@ -251,7 +251,7 @@ class DraftsCompanion extends UpdateCompanion<StoredNote> {
     required String id,
     required String title,
     required String body,
-    required DateTime modifiedAt,
+    required int modifiedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
@@ -261,7 +261,7 @@ class DraftsCompanion extends UpdateCompanion<StoredNote> {
     Expression<String>? id,
     Expression<String>? title,
     Expression<String>? body,
-    Expression<DateTime>? modifiedAt,
+    Expression<int>? modifiedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -277,7 +277,7 @@ class DraftsCompanion extends UpdateCompanion<StoredNote> {
     Value<String>? id,
     Value<String>? title,
     Value<String>? body,
-    Value<DateTime>? modifiedAt,
+    Value<int>? modifiedAt,
     Value<int>? rowid,
   }) {
     return DraftsCompanion(
@@ -302,7 +302,7 @@ class DraftsCompanion extends UpdateCompanion<StoredNote> {
       map['body'] = Variable<String>(body.value);
     }
     if (modifiedAt.present) {
-      map['modified_at'] = Variable<DateTime>(modifiedAt.value);
+      map['modified_at'] = Variable<int>(modifiedAt.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -550,14 +550,14 @@ typedef $$DraftsTableCreateCompanionBuilder = DraftsCompanion Function({
   required String id,
   required String title,
   required String body,
-  required DateTime modifiedAt,
+  required int modifiedAt,
   Value<int> rowid,
 });
 typedef $$DraftsTableUpdateCompanionBuilder = DraftsCompanion Function({
   Value<String> id,
   Value<String> title,
   Value<String> body,
-  Value<DateTime> modifiedAt,
+  Value<int> modifiedAt,
   Value<int> rowid,
 });
 
@@ -585,7 +585,7 @@ class $$DraftsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get modifiedAt => $composableBuilder(
+  ColumnFilters<int> get modifiedAt => $composableBuilder(
     column: $table.modifiedAt,
     builder: (column) => ColumnFilters(column),
   );
@@ -615,7 +615,7 @@ class $$DraftsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get modifiedAt => $composableBuilder(
+  ColumnOrderings<int> get modifiedAt => $composableBuilder(
     column: $table.modifiedAt,
     builder: (column) => ColumnOrderings(column),
   );
@@ -639,7 +639,7 @@ class $$DraftsTableAnnotationComposer
   GeneratedColumn<String> get body =>
       $composableBuilder(column: $table.body, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get modifiedAt => $composableBuilder(
+  GeneratedColumn<int> get modifiedAt => $composableBuilder(
     column: $table.modifiedAt,
     builder: (column) => column,
   );
@@ -679,7 +679,7 @@ class $$DraftsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> body = const Value.absent(),
-                Value<DateTime> modifiedAt = const Value.absent(),
+                Value<int> modifiedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DraftsCompanion(
                 id: id,
@@ -693,7 +693,7 @@ class $$DraftsTableTableManager
                 required String id,
                 required String title,
                 required String body,
-                required DateTime modifiedAt,
+                required int modifiedAt,
                 Value<int> rowid = const Value.absent(),
               }) => DraftsCompanion.insert(
                 id: id,

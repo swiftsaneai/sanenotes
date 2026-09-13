@@ -19,7 +19,7 @@ class Drafts extends Table {
   TextColumn get body => text().withLength(max: Note.maxBodyLength)();
 
   /// UTC edit timestamp.
-  DateTimeColumn get modifiedAt => dateTime()();
+  IntColumn get modifiedAt => integer()();
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -66,7 +66,19 @@ class NoteDatabase extends _$NoteDatabase implements NoteRepository {
       );
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (migrator, from, to) async {
+      if (from == 1) {
+        // Version 1 stored Drift DateTime values in whole Unix seconds.
+        await customStatement(
+          'UPDATE drafts SET modified_at = modified_at * 1000',
+        );
+      }
+    },
+  );
 
   @override
   Future<Result<List<Note>>> load() async {
@@ -83,7 +95,10 @@ class NoteDatabase extends _$NoteDatabase implements NoteRepository {
               id: row.id,
               title: row.title,
               body: row.body,
-              modifiedAt: row.modifiedAt.toUtc(),
+              modifiedAt: DateTime.fromMillisecondsSinceEpoch(
+                row.modifiedAt,
+                isUtc: true,
+              ),
             ),
           )
           .toList();
@@ -111,7 +126,7 @@ class NoteDatabase extends _$NoteDatabase implements NoteRepository {
           id: note.id,
           title: note.title,
           body: note.body,
-          modifiedAt: note.modifiedAt,
+          modifiedAt: note.modifiedAt.millisecondsSinceEpoch,
         ),
       );
       return const Ok(null);
