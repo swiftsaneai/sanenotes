@@ -1,0 +1,473 @@
+[
+  {
+    "key": "SN-GSEC-001",
+    "title": "Verify complete right-to-erasure across all derived-data stores",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "privacy",
+      "storage",
+      "search"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-PRIVACY-3",
+      "MASVS-STORAGE-1",
+      "TM-P-07",
+      "TM-I-05",
+      "OWASP-A01",
+      "CWE-212",
+      "ASVS-V14"
+    ],
+    "parent": "SN-PRV-001",
+    "depends_on": [
+      "SN-PRV-006",
+      "SN-SRCH-015",
+      "SN-AI-010"
+    ],
+    "labels_extra": [
+      "sec: privacy-by-design",
+      "agent-ready"
+    ],
+    "body": "## Context\nNote content is copied into many *derived* stores: the FTS search index ({{SN-SRCH-015}}), the sqlite-vec embedding store ({{SN-AI-010}}), page/notebook thumbnail caches ({{SN-PG-010}}), OCR text layers ({{SN-HWR-006}}), AI summary/flashcard caches, and backlink indexes ({{SN-STDY-013}}). Each feature issue owns its own purge hook, but no issue proves that deleting a note, page or notebook — or deleting an account ({{SN-PRV-006}}) — removes *every* derived copy. A surviving thumbnail or embedding after \"delete\" breaks the GDPR/DPDP right to erasure (docs/security/threat-model.md TM-P-07) and is an information-disclosure residue (TM-I-05). This is the completeness gate that ties the per-store hooks together.\n\n## Scope\n**In:** an erasure map enumerating every derived/cache store that holds content or content-derived data; an automated completeness test that creates a note with unique markers across ink, text, PDF, image, audio and AI-derived artefacts, deletes it (and separately deletes its notebook, and separately runs account deletion), then asserts no marker survives in any store, cache directory, thumbnail cache, vector index, FTS index, backlink table or the encrypted blob store after the retention/Trash window; filing follow-up issues for any store missing a purge hook (notably thumbnails and OCR/AI caches).\n**Out:** implementing individual purge hooks already owned elsewhere ({{SN-SRCH-015}}, {{SN-AI-010}}, {{SN-PRV-011}}); cloud-side deletion (the user owns their drive); the Trash UI/tombstone op ({{SN-CORE-018}}).\n\n## Acceptance criteria\n- [ ] A committed erasure map lists every derived/cache store and its purge owner.\n- [ ] Deleting a note/page purges its rows from FTS, vector, backlink, thumbnail and OCR/AI caches within the defined window.\n- [ ] Deleting a notebook and running account deletion leaves zero markers in any local store or cache dir (asserted by test).\n- [ ] Any store lacking a purge hook is either fixed here or has a filed follow-up issue.\n- [ ] The test runs in CI and fails on a surviving derived copy.\n\n## Technical notes\nAdd `app/test/privacy/erasure_completeness_test.dart` and a store-enumeration helper in `sane_core`. Drive real delete/tombstone flows ({{SN-CORE-018}}), the retention engine ({{SN-PRV-011}}) and account deletion ({{SN-PRV-006}}). Scan on-device cache directories (thumbnails, OCR intermediates) plus the encrypted stores. Reference docs/security/controls-matrix.md PRIVACY-3 and threat-model TM-P-07/TM-I-05.\n\n## Security & privacy\nThreats: TM-P-07 (non-compliance with erasure), TM-I-05 (content residue in caches). Controls: MASVS-PRIVACY-3, ASVS V14, GDPR Art.17 / DPDP erasure. Ensures the zero-knowledge promise is not undone by plaintext derivatives.\n\n## UX notes\nNo new UI. Surfaces confidence for the privacy dashboard ({{SN-PRV-002}}) copy that \"delete means gone\"; feeds the Definition of Done for any feature that adds a new derived store.\n\n## Test plan\nUnit: per-store purge unit tests. Integration: the end-to-end erasure_completeness_test across note/notebook/account deletion with cross-store marker assertions; a negative test that intentionally skips one hook and confirms the gate catches it.\n\n## Dependencies\n{{SN-PRV-006}}, {{SN-SRCH-015}}, {{SN-AI-010}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans).\n- [ ] Erasure map documented under docs/security/; controls-matrix PRIVACY-3 updated.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-002",
+    "title": "Protect derived-data caches at rest and exclude them from cloud and backup",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "storage",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-STORAGE-2",
+      "MASVS-CRYPTO-1",
+      "TM-I-01",
+      "TM-I-03",
+      "TM-I-10",
+      "OWASP-A02",
+      "CWE-312",
+      "CWE-922"
+    ],
+    "parent": "SN-CRY-001",
+    "depends_on": [
+      "SN-CRY-002",
+      "SN-PG-010"
+    ],
+    "labels_extra": [
+      "sec: masvs",
+      "agent-ready"
+    ],
+    "body": "## Context\nThe E2EE stack encrypts the document DB and blobs, and {{SN-SRCH-015}} encrypts the FTS index, but several *derived* caches are rendered representations of note content that today are written to plain on-device cache directories: page/notebook thumbnails ({{SN-PG-010}} is tagged CWE-312 but only specifies a \"disk cache keyed by page id + content hash\"), OCR text intermediates ({{SN-HWR-006}}), and AI summary/flashcard caches ({{SN-AI-012}}/{{SN-AI-014}}). A plaintext thumbnail is a picture of the user's note; if it lands in an OS auto-backup (TM-I-10) or is readable by another app after a device compromise (TM-I-03), the zero-knowledge guarantee (TM-I-01) is broken by the side door. This issue makes at-rest confidentiality and backup/cloud exclusion a single, enforced guarantee for every derived cache.\n\n## Scope\n**In:** route thumbnail, OCR-intermediate and AI-derived caches through the encrypted store (SQLCipher/`drift` or the content-addressed encrypted blob store) keyed from `sane_secure_store`, or encrypt-in-place with per-cache keys; set iOS `isExcludedFromBackup` / Android `fullBackupContent`+`dataExtractionRules` on any cache path that must stay on disk unencrypted for performance; never sync derived caches as cleartext to the user's drive; a lint/arch-check that flags writes of content-derived bytes to a non-encrypted path.\n**Out:** the FTS index at rest ({{SN-SRCH-015}}); the vector store, which lives in the encrypted drift DB ({{SN-AI-010}}); the key hierarchy ({{SN-CRY-002}}); backup exclusion of *keys* ({{SN-SEC-023}}, {{SN-AND-030}}).\n\n## Acceptance criteria\n- [ ] Thumbnail, OCR and AI-derived caches are encrypted at rest or excluded from backup and never leave the device as cleartext.\n- [ ] A test asserts thumbnail cache files on disk are ciphertext (or absent from backup manifests).\n- [ ] The arch-check fails a PR that writes content-derived bytes to a plaintext cache path.\n- [ ] Cache eviction preserves the confidentiality guarantee (no plaintext temp during regeneration).\n- [ ] controls-matrix STORAGE-1/2 rows list the derived-cache stores and their protection.\n\n## Technical notes\nExtend the encrypted storage layer in `sane_core`/`sane_secure_store`; reuse `sane_crypto` envelope keys ({{SN-CRY-002}}). Audit `getTemporaryDirectory`/`cacheDir`/`NSCachesDirectory` usage. Reference docs/security/threat-model.md TM-I-01/03/10 and controls-matrix §1 STORAGE.\n\n## Security & privacy\nThreats: TM-I-01 (cloud plaintext), TM-I-03 (local FS read), TM-I-10 (backup exfiltration). Controls: MASVS-STORAGE-1/2, CRYPTO-1, ASVS V14, 2025 A04 Cryptographic Failures.\n\n## UX notes\nNo user-facing change beyond unaffected performance; document the guarantee in the privacy promise page ({{SN-SITE-006}}).\n\n## Test plan\nUnit: cache-write ciphertext assertions; backup-manifest exclusion checks. Widget: thumbnail render round-trip from encrypted cache. Integration: MASTG backup review confirms no derived plaintext in an iCloud/Android backup dump.\n\n## Dependencies\n{{SN-CRY-002}}, {{SN-PG-010}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans).\n- [ ] controls-matrix STORAGE rows updated; arch-check rule added.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-003",
+    "title": "Harden domain and email security (DMARC, SPF, DKIM, CAA, HSTS preload, MTA-STS)",
+    "type": "security",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "ci-cd",
+      "release"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "S",
+    "sdlc": "release",
+    "security": [
+      "TM-S-01",
+      "TM-S-04",
+      "MASVS-NETWORK-1",
+      "ASVS-V12",
+      "ASVS-V13",
+      "OWASP-A02",
+      "CWE-16",
+      "CWE-297"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-SEC-036",
+      "SN-SITE-013"
+    ],
+    "labels_extra": [
+      "sec: threat-model",
+      "agent-ready"
+    ],
+    "body": "## Context\nThe disclosure process (docs/security/devsecops-pipeline.md §6/§7, {{SN-SEC-036}}) publishes `security@swiftsane.ai` and the marketing/docs site ({{SN-SITE-001}}) serves the brand domain. Nothing in the backlog hardens the *domain and email* layer itself. Without DMARC/SPF/DKIM an attacker can spoof `@swiftsane.ai` to phish users or reporters (STRIDE-Spoofing, TM-S-01); without a CAA record any CA can be tricked into issuing a certificate for the domain (TM-S-04 adjacency); without HSTS preload a first-visit downgrade is possible; without MTA-STS/TLS-RPT, mail to security@ can be intercepted. These are cheap, high-leverage controls that must exist before the domain is advertised at launch.\n\n## Scope\n**In:** publish and version-control DNS records — SPF, DKIM (per sending source), DMARC (start `p=none` with rua/ruf aggregate reporting, then move to `p=reject`), a restrictive CAA record listing only the chosen CA(s), MTA-STS policy + TLS-RPT, and DNSSEC where the registrar supports it; submit the apex + www to the HSTS preload list (coordinated with the `Strict-Transport-Security` header set by {{SN-SITE-013}}/{{SN-WEB-017}}); a short runbook and a periodic check (e.g. a scheduled job or documented manual audit) that the records have not drifted.\n**Out:** application security headers/CSP ({{SN-SEC-016}}, {{SN-SITE-013}}); TLS termination/hosting ({{SN-WEB-017}}); the disclosure policy text ({{SN-SEC-036}}); certificate pinning for API endpoints ({{SN-SEC-022}}).\n\n## Acceptance criteria\n- [ ] SPF, DKIM and DMARC are published; DMARC aggregate reports are received and reviewed; a documented path to `p=reject` exists.\n- [ ] A CAA record restricts issuance to the approved CA(s); DNSSEC enabled where supported.\n- [ ] MTA-STS + TLS-RPT are published for the mail domain.\n- [ ] The apex and www are submitted to the HSTS preload list with `preload` in the header.\n- [ ] DNS records are stored as code and a drift check exists.\n\n## Technical notes\nKeep zone records under version control (e.g. `infra/dns/`); align HSTS max-age/`preload`/`includeSubDomains` with the header emitted at the edge. Reference docs/security/threat-model.md TM-S-01/04 and controls-matrix §3 V12/V13.\n\n## Security & privacy\nThreats: TM-S-01 (identity/email spoofing), TM-S-04 (mis-issued certs). Controls: ASVS V12 Secure Communication, V13 Configuration, MASVS-NETWORK-1, 2025 A02 Security Misconfiguration. Protects reporters and users from phishing under the brand.\n\n## UX notes\nNone in-app; improves trust signals (verified sender) and prevents downgrade on first web visit.\n\n## Test plan\nManual/automated: validate SPF/DKIM/DMARC/CAA/MTA-STS with standard checkers; confirm a spoofed test message is quarantined/rejected once at enforcement; confirm preload eligibility via the preload submission tool.\n\n## Dependencies\n{{SN-SEC-036}}, {{SN-SITE-013}}.\n\n## Definition of done\n- [ ] Records published, stored as code, and drift-checked.\n- [ ] Docs/runbook updated under docs/security/.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-004",
+    "title": "Maintain the GDPR/DPDP Records of Processing and sub-processor register",
+    "type": "docs",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "privacy",
+      "docs"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "requirements",
+    "security": [
+      "TM-P-07",
+      "TM-P-02",
+      "MASVS-PRIVACY-4",
+      "ASVS-V14",
+      "CWE-359"
+    ],
+    "parent": "SN-PRV-001",
+    "depends_on": [
+      "SN-PRV-013"
+    ],
+    "labels_extra": [
+      "sec: privacy-by-design",
+      "needs-decision"
+    ],
+    "body": "## Context\nThe privacy stack has a DPIA ({{SN-PRV-013}}), a privacy policy ({{SN-PRV-017}}), store declarations ({{SN-PRV-015}}) and a metadata register ({{SN-PRV-012}}) — but no GDPR Art.30 **Records of Processing Activities (ROPA)** and no **sub-processor register** with the Art.28 data-processing agreements. Even a zero-knowledge, local-first product relies on real third parties that process personal data: RevenueCat/store billing, the web payment gateways (Razorpay/Stripe), the student-verification provider ({{SN-BILL-015}}), the optional crash backend ({{SN-TEL-011}}), and the TURN/relay hosting ({{SN-COL-023}}). DPDP 2023 imposes parallel obligations. This artefact is the accountability spine regulators ask for and the source of truth for the public sub-processor list.\n\n## Scope\n**In:** a maintained ROPA (`docs/privacy/ropa.md`) enumerating each processing activity — purpose, lawful basis, data categories, subjects, recipients, retention, international transfers and safeguards; a sub-processor register (name, role, data shared, region, DPA status/link, SCCs where transfers occur); a public-facing sub-processor list for the website; and a lightweight change process so adding any new SDK/service updates the ROPA in the same PR (tie into the {{SN-PRV-010}} SDK gate). Confirm which parties are processors vs the user acting as controller of their own cloud drive.\n**Out:** the DPIA methodology ({{SN-PRV-013}}); the privacy policy prose ({{SN-PRV-017}}); the sync metadata register ({{SN-PRV-012}}); signing the DPAs themselves (maintainer/legal action, tracked as needs-decision).\n\n## Acceptance criteria\n- [ ] A committed ROPA covers every processing activity with all Art.30 fields.\n- [ ] A sub-processor register lists every third party, its data-sharing scope, region and DPA status.\n- [ ] A public sub-processor list is prepared for the website.\n- [ ] Adding a data-processing SDK/service requires a ROPA update in the same PR (documented, tied to {{SN-PRV-010}}).\n- [ ] International-transfer safeguards (SCCs/adequacy) are recorded per sub-processor.\n\n## Technical notes\nKeep ROPA and register as versioned Markdown; cross-link the SBOM ({{SN-CI-004}}) so a new data-collecting dependency is visible. Reference docs/security/controls-matrix.md §7 and threat-model TM-P-07.\n\n## Security & privacy\nThreats: TM-P-07 (non-compliance), TM-P-02 (identifiability via third parties). Controls: MASVS-PRIVACY-4 (third-party sharing), GDPR Art.30/28, DPDP obligations, ASVS V14. Minimises and documents every PII egress.\n\n## UX notes\nFeeds the public sub-processor list linked from the privacy promise page ({{SN-SITE-006}}); no in-app UI.\n\n## Test plan\nReview-based: a CI doc-consistency check that the sub-processor register and the SBOM/SDK allow-list do not disagree; manual legal review checklist for DPA coverage.\n\n## Dependencies\n{{SN-PRV-013}}.\n\n## Definition of done\n- [ ] ROPA + sub-processor register merged and linked from the privacy docs.\n- [ ] Change process documented and wired to {{SN-PRV-010}}.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-005",
+    "title": "Establish fail-closed exceptional-conditions handling (OWASP 2025 A10)",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "storage"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "OWASP-A10",
+      "TM-T-01",
+      "TM-I-05",
+      "ASVS-V16",
+      "MASVS-CODE-4",
+      "CWE-703",
+      "CWE-755",
+      "CWE-209"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-CORE-011",
+      "SN-SEC-021"
+    ],
+    "labels_extra": [
+      "sec: owasp-top10",
+      "agent-ready"
+    ],
+    "body": "## Context\nOWASP Top 10 **2025 A10 — Mishandling of Exceptional Conditions** is a new category (docs/security/controls-matrix.md §4b) with no dedicated backlog issue. Individual fail-closed behaviours exist — crypto decrypt ({{SN-CRY-020}}), parser input gate ({{SN-SEC-004}}), sync auth expiry ({{SN-SYNC-022}}) — but there is no cross-cutting discipline that guarantees every error path fails closed, produces no partial state, leaks no sensitive data in a message or stack trace, and is caught by a top-level boundary. A partial-decrypt that renders half a note, a parser that leaves a half-imported notebook, or an error dialog echoing a token would each break the security model.\n\n## Scope\n**In:** codify the exceptional-conditions policy in docs/security/secure-coding-checklist.md and enforce it: mandatory `Result`/`Failure` returns for fallible operations (build on {{SN-CORE-011}}), no swallowed exceptions, no partial commits (transactional writes / all-or-nothing import), user-safe error surfaces that never contain content/keys/tokens/paths (reuse the redaction of {{SN-SEC-021}}), a global Dart error boundary (`FlutterError.onError`, `PlatformDispatcher.onError`, zoned guards) that fails safe and routes to sanitised diagnostics, and a Semgrep/arch rule banning empty catches and `toString()` of exceptions into UI. Apply to crypto, sync, parse, storage and IO paths.\n**Out:** the crypto fail-closed decrypt itself ({{SN-CRY-020}}); the input-validation gate ({{SN-SEC-004}}); log redaction implementation ({{SN-SEC-021}}); DoS/resource limits on parsers ({{SN-SEC-010}}).\n\n## Acceptance criteria\n- [ ] The checklist documents the fail-closed / no-partial-state / no-sensitive-error rule with examples.\n- [ ] A Semgrep/arch rule flags empty catch blocks and exception text reaching a UI/error sink.\n- [ ] A global error boundary catches uncaught errors, fails safe and emits only redacted diagnostics.\n- [ ] Representative crypto/sync/parse/storage error paths are shown (by test) to leave no partial state and no sensitive data.\n- [ ] controls-matrix §4b A10 row moves toward Implemented.\n\n## Technical notes\nAdd the rule to the CI SAST config ({{SN-CI-007}}); provide a shared `SafeError` mapping from `Failure` to user copy. Reference docs/security/threat-model.md TM-T-01 (fail closed on tamper) and checklist §3/§7.\n\n## Security & privacy\nThreats: TM-T-01 (partial/rolled-back segment must fail closed), TM-I-05 (no sensitive data in errors/logs). Controls: 2025 A10, ASVS V16 Error Handling, MASVS-CODE-4, CWE-703/755/209.\n\n## UX notes\nError/empty/loading states show a friendly, non-technical message with a recovery action; never a raw exception. Aligns with the design system toast/dialog components ({{SN-DS-019}}).\n\n## Test plan\nUnit: fault-injection on crypto/sync/parse/storage asserting Result.failure, no partial write, redacted message. Widget: error-boundary golden showing safe copy. CI: the empty-catch/exception-to-UI lint rule with positive and negative fixtures.\n\n## Dependencies\n{{SN-CORE-011}}, {{SN-SEC-021}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans).\n- [ ] Checklist + controls-matrix A10 row updated.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-006",
+    "title": "Wire security alerting and monitoring for scanner and dependency findings",
+    "type": "security",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "ci-cd"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "M",
+    "sdlc": "maintenance",
+    "security": [
+      "OWASP-A09",
+      "TM-R-02",
+      "ASVS-V16",
+      "SSDF-RV.1",
+      "CWE-778"
+    ],
+    "parent": "SN-CI-001",
+    "depends_on": [
+      "SN-CI-019",
+      "SN-SEC-035"
+    ],
+    "labels_extra": [
+      "sec: owasp-top10",
+      "agent-ready"
+    ],
+    "body": "## Context\nOWASP 2025 **A09 — Logging & Alerting Failures** (docs/security/controls-matrix.md §4b) requires that security-relevant events are not only recorded but *routed to a human in time to act*. Today the repo produces signals — Code Scanning SARIF (Semgrep/Trivy/CodeQL), Dependabot/OSV alerts, secret-scanning/push-protection events, and Scorecard drift — and there is a security dashboard ({{SN-CI-019}}) and an incident runbook ({{SN-SEC-035}}), but nothing that *alerts* the Security Owner when a new high/critical finding appears or an alert breaches its SLA. Silent SARIF that no one reads is an A09 failure. This issue closes the detect→notify→triage loop.\n\n## Scope\n**In:** route new Code Scanning, Dependabot/OSV, secret-scanning and Scorecard alerts to the Security Owner via a low-noise channel (GitHub notifications config + a scheduled workflow that opens/updates a triage tracking issue for any open high/critical finding, with the SLA clock from ssdlc §3); a severity-to-SLA mapping and an escalation when a finding ages past its triage window; a documented (future) service-side detection/alerting spec for the relay/entitlement services (auth failures, rate-limit trips, integrity/tamper signals — content-free per {{SN-COL-008}}). De-duplicate against existing alerts; no content or PII in any alert payload.\n**Out:** the aggregation dashboard UI ({{SN-CI-019}}); the incident-response runbook prose ({{SN-SEC-035}}); the scanners that produce the findings ({{SN-CI-001}} children); client telemetry ({{SN-TEL-001}}).\n\n## Acceptance criteria\n- [ ] A new high/critical Code Scanning / Dependabot / secret-scanning / Scorecard finding produces an actionable alert to the Security Owner.\n- [ ] Each open finding is tracked with its ssdlc §3 SLA clock; an overdue finding escalates.\n- [ ] Alert payloads contain no note content, keys, tokens or PII.\n- [ ] A service-side detection/alerting spec is documented for when services ship.\n- [ ] controls-matrix §4b A09 row moves toward Implemented.\n\n## Technical notes\nImplement as a scheduled `security-alerts` workflow using the GitHub code-scanning/Dependabot alert APIs with a least-privilege token; write the triage tracker under a security label. Reference devsecops-pipeline §2/§6 and threat-model TM-R-02.\n\n## Security & privacy\nThreats: TM-R-02 (absent logs/alerts prevent incident reconstruction). Controls: 2025 A09, ASVS V16, SSDF RV.1, CWE-778. Complements, not duplicates, the dashboard and runbook.\n\n## UX notes\nMaintainer-facing only; keep signal-to-noise high so alerts are not ignored.\n\n## Test plan\nDry-run: seed a synthetic high finding and confirm an alert + tracking issue with the correct SLA; confirm an overdue item escalates; assert no sensitive fields in the payload.\n\n## Dependencies\n{{SN-CI-019}}, {{SN-SEC-035}}.\n\n## Definition of done\n- [ ] Workflow + docs merged, CI green.\n- [ ] controls-matrix §4b A09 updated; runbook cross-links the alert path.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-007",
+    "title": "Run MASVS-PRIVACY L2 verification with MASTG privacy procedures",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "ios-phone",
+      "android-phone"
+    ],
+    "areas": [
+      "security",
+      "privacy",
+      "qa"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-2",
+      "MASVS-PRIVACY-3",
+      "MASVS-PRIVACY-4",
+      "TM-P-06",
+      "TM-P-08",
+      "OWASP-A01",
+      "CWE-359"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-PRV-004",
+      "SN-PRV-009",
+      "SN-AI-019"
+    ],
+    "labels_extra": [
+      "sec: masvs",
+      "agent-ready"
+    ],
+    "body": "## Context\nThe M7 MASVS verification set covers storage/keys/crypto/backup ({{SN-SEC-029}}), platform/WebView/deep-links/leaks ({{SN-SEC-030}}), network/resilience ({{SN-SEC-031}}) and crypto ({{SN-CRY-024}}). The **MASVS-PRIVACY** category (docs/security/controls-matrix.md §1) has no dedicated MASTG verification issue — the one place it is referenced points at {{SN-SEC-029}}, which is scoped to storage/crypto only. MASVS-PRIVACY-1..4 (permission management & consent, collection transparency, retention & user control, third-party sharing restrictions) is exactly the category most load-bearing for a note app whose payload is personal content. This issue adds the missing MASTG privacy verification pass.\n\n## Scope\n**In:** execute and record the MASTG privacy procedures on a release-candidate build — verify lazy, in-context permission requests with rationale and no launch-time prompts ({{SN-PRV-004}}); confirm the \"data leaves device\" banner and per-request cloud-AI consent ({{SN-AI-019}}, {{SN-PRV-003}}); confirm no hidden tracking, no analytics/ad SDK linked ({{SN-PRV-010}}), no stable device identifiers ({{SN-TEL-009}}), correct pasteboard/clipboard behaviour; check retention/erasure controls ({{SN-PRV-006}}/{{SN-PRV-011}}); confirm store labels/manifest match reality ({{SN-PRV-016}}); map each finding to a MASVS/MASWE id with a fix or Security-Owner risk acceptance. Produce `docs/security/verification/masvs-privacy.md`.\n**Out:** authoring the privacy features themselves (the {{SN-PRV-001}} children); store-declaration authoring ({{SN-PRV-014}}/{{SN-PRV-015}}); the web ASVS pass ({{SN-SEC-032}}).\n\n## Acceptance criteria\n- [ ] MASTG PRIVACY-1..4 procedures executed and recorded on the RC with evidence.\n- [ ] No launch-time permission prompts; every request is in-context with rationale.\n- [ ] No analytics/ad SDK, no stable identifier, no undisclosed network egress (confirmed by traffic capture).\n- [ ] Retention/erasure and consent-withdrawal controls verified working.\n- [ ] Every finding mapped to MASVS/MASWE with a fix or explicit risk acceptance; no unresolved high privacy finding.\n\n## Technical notes\nConsume MobSF ({{SN-CI-013}}) and mobsfscan ({{SN-CI-008}}) SARIF; run a network capture to confirm zero pre-consent egress ({{SN-TEL-010}}). Reference controls-matrix §1 PRIVACY + §5 M6 and threat-model TM-P-06/08.\n\n## Security & privacy\nThreats: TM-P-06 (unawareness), TM-P-08 (cloud-AI linkage). Controls: MASVS-PRIVACY-1..4, Mobile Top 10 M6, GDPR/DPDP transparency. The mobile-side privacy assurance gate.\n\n## UX notes\nNo new UI; findings may generate fixes to consent/permission surfaces owned by {{SN-PRV-001}}.\n\n## Test plan\nManual/assisted MASTG procedures on iOS + Android reference devices; automated pre-consent zero-egress assertion; pasteboard behaviour test; store-declaration consistency check ({{SN-PRV-016}}).\n\n## Dependencies\n{{SN-PRV-004}}, {{SN-PRV-009}}, {{SN-AI-019}}.\n\n## Definition of done\n- [ ] Verification report merged under docs/security/verification/.\n- [ ] controls-matrix PRIVACY rows updated to Implemented/Partial with evidence.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-008",
+    "title": "Harden decoded CRDT op validation from sync and collaboration peers",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "core"
+    ],
+    "areas": [
+      "security",
+      "sync",
+      "collaboration"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-4",
+      "TM-T-06",
+      "TM-T-02",
+      "TM-E-04",
+      "TM-D-01",
+      "OWASP-A08",
+      "ASVS-V2",
+      "CWE-20",
+      "CWE-502",
+      "CWE-400"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-CORE-010",
+      "SN-SYNC-013",
+      "SN-COL-004"
+    ],
+    "labels_extra": [
+      "sec: threat-model",
+      "agent-ready"
+    ],
+    "body": "## Context\n{{SN-SYNC-013}} verifies that a synced segment came from a legitimate member (AEAD tags), and {{SN-CRY-020}} fails closed on decrypt failure — but *after* a frame is decrypted and authenticated, its decoded CBOR/op payload is still attacker-influenced input. A malicious-but-authenticated collaborator (TA7), a compromised paired device, or a subtly malformed op that passed the crypto layer can carry an unknown op-type, an out-of-range index, a self-referential tree move, an oversized string/blob reference, or a resource-exhausting structure. The document-model op registry ({{SN-CORE-010}}) and the collab op-frame codec ({{SN-COL-004}}) must treat decoded ops as untrusted (trust boundary TB1, threat-model DFD-A) and validate them against a schema, role and resource bounds before applying to `sane_core`.\n\n## Scope\n**In:** a validation layer that runs on every decoded op before it reaches the CRDT reducer — strict schema validation per op-type, unknown/forbidden op-type rejection, bounds on indices/fractional keys/string lengths/nesting depth/op count per segment, cycle detection for tree moves, blob-reference existence/size caps, and (for collab) an authorization check that the peer's role ({{SN-SHR-015}}) permits the op; hostile or malformed ops fail closed (rejected/quarantined, no partial apply) and are counted for abuse signals ({{SN-COL-019}}); resource budgets so a flood of valid-but-huge ops cannot exhaust memory (TM-D-01/TM-D-04 adjacency).\n**Out:** transport/decrypt/member integrity ({{SN-SYNC-013}}, {{SN-CRY-020}}); the abuse-floor UI/rate limits ({{SN-COL-019}}); `.sanenote` file import path ({{SN-SEC-007}}); CRDT convergence semantics ({{SN-CORE-024}}).\n\n## Acceptance criteria\n- [ ] Every decoded op is schema-validated and bounds-checked before apply; unknown op-types are rejected.\n- [ ] A hostile op (bad index, cyclic move, oversized field, over-role mutation) is rejected with no partial state change.\n- [ ] Per-segment op-count/size budgets prevent memory exhaustion from authenticated peers.\n- [ ] Collab ops are authorization-checked against the peer's cryptographic role.\n- [ ] Rejections are counted and surfaced to the abuse-signal path without leaking content.\n\n## Technical notes\nAdd the validator in `sane_core`/`sane_sync` between decode and reduce; drive from the op-type registry ({{SN-CORE-010}}) and role model ({{SN-SHR-015}}). Fuzz with the format corpus ({{SN-CORE-026}}/{{SN-SEC-010}}). Reference threat-model DFD-A, TM-T-06, TM-E-04, MASVS-CODE-4.\n\n## Security & privacy\nThreats: TM-T-06 (crafted payload mutates unrelated state), TM-T-02 (rollback/replay adjacency), TM-E-04 (memory-corruption via decoder), TM-D-01 (resource exhaustion). Controls: MASVS-CODE-4 (no unsafe deserialization), ASVS V2, 2025 A08 Integrity Failures, CWE-502/20/400.\n\n## UX notes\nA rejected op is invisible to the honest user; a persistently hostile peer surfaces through the collaboration abuse controls ({{SN-COL-019}}), not an error dialog.\n\n## Test plan\nUnit: op-schema + bounds validators with malformed fixtures. Property/fuzz: feed the fuzz corpus of decoded ops asserting no crash, no partial apply, bounded memory. Integration: a malicious-peer harness in the collab security suite ({{SN-COL-022}}).\n\n## Dependencies\n{{SN-CORE-010}}, {{SN-SYNC-013}}, {{SN-COL-004}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, fuzz, security scans).\n- [ ] threat-model DFD-A / TM-T-06 verification updated.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-009",
+    "title": "Operationalise the per-feature security design-review gate",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "docs"
+    ],
+    "milestone": "M0 Foundations",
+    "size": "S",
+    "sdlc": "design",
+    "security": [
+      "OWASP-A04",
+      "SSDF-PW.1",
+      "SSDF-PW.2",
+      "TM-P-07",
+      "CWE-1053"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-SEC-002",
+      "SN-SEC-003"
+    ],
+    "labels_extra": [
+      "sec: threat-model",
+      "agent-ready"
+    ],
+    "body": "## Context\ndocs/security/ssdlc-process.md §2.2 defines a **design-phase security review gate** — walk the feature's data flow through the trust boundaries, enumerate STRIDE + LINDDUN per element, choose only approved mechanisms, name a verification for each control, and write abuse-case/negative acceptance criteria — but no issue operationalises it. {{SN-SEC-002}} baselines the threat model once and {{SN-SEC-003}} enforces the *implementation*-phase secure-coding PR gate; the *design*-phase gate that catches insecure design (OWASP A04) before code is written is missing. Without it, features reach implementation without a DFD walk or abuse cases, which is exactly the \"Insecure Design\" failure mode.\n\n## Scope\n**In:** a security-design-review template (`docs/security/design-review-template.md`) and a checklist step in the ADR/issue flow for any feature that touches a trust boundary (new network call, parser, exported component, stored asset, third-party SDK, key/crypto use, WebView/bridge); require the review output (DFD walk, STRIDE/LINDDUN rows added to the threat model, chosen mechanisms, named verifications, abuse cases) to be recorded in the ADR or the issue before it moves to `sdlc: implementation`; wire a lightweight required check / CODEOWNERS expectation so a boundary-touching feature cannot skip it. Provide a worked example for one feature.\n**Out:** the one-time threat-model baseline ({{SN-SEC-002}}); the implementation PR gate and security-triage checkbox ({{SN-SEC-003}}); the DPIA trigger ({{SN-PRV-013}}); the pentest/abuse-case *verification* matrix ({{SN-SEC-033}}).\n\n## Acceptance criteria\n- [ ] A design-review template exists and is referenced from the ssdlc doc and the issue schema flow.\n- [ ] Boundary-touching features must record a DFD walk, STRIDE/LINDDUN rows, chosen mechanisms, named verifications and abuse cases before implementation.\n- [ ] A required-check/CODEOWNERS expectation enforces the gate for security-critical paths.\n- [ ] One worked example review is committed.\n- [ ] The gate is listed in the SSDLC design-phase exit criteria.\n\n## Technical notes\nReuse the threat-model row format (docs/security/threat-model.md §5/§6) and controls-matrix mechanism/verification columns. Tie the required check to the same path globs as {{SN-SEC-003}}/CODEOWNERS. Reference SSDF PW.1/PW.2 and SAMM Design.\n\n## Security & privacy\nThreats: TM-P-07 (non-compliance if privacy design skipped) and the whole STRIDE set caught earlier. Controls: 2025 A06 / 2021 A04 Insecure Design, SSDF PW.1/PW.2. Shifts security left to the cheapest phase.\n\n## UX notes\nProcess/maintainer-facing; the abuse cases it produces become negative UX acceptance criteria in downstream issues.\n\n## Test plan\nProcess validation: run the template on one real feature and confirm the threat model gains the expected rows; confirm the required check blocks a boundary-touching PR whose design review is absent.\n\n## Dependencies\n{{SN-SEC-002}}, {{SN-SEC-003}}.\n\n## Definition of done\n- [ ] Template + gate merged; ssdlc doc updated.\n- [ ] Worked example committed.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-010",
+    "title": "Minimise payment and third-party PII data flow and PCI SAQ-A scope",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "privacy",
+      "billing",
+      "security"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "design",
+    "security": [
+      "MASVS-PRIVACY-4",
+      "TM-P-09",
+      "TM-P-02",
+      "ASVS-V14",
+      "OWASP-A01",
+      "CWE-359"
+    ],
+    "parent": "SN-PRV-001",
+    "depends_on": [
+      "SN-BILL-009",
+      "SN-BILL-015"
+    ],
+    "labels_extra": [
+      "sec: privacy-by-design",
+      "agent-ready"
+    ],
+    "body": "## Context\nBilling is the product's largest deliberate PII egress: web checkout via Razorpay/Stripe ({{SN-BILL-009}}), store IAP receipts ({{SN-BILL-006}}/{{SN-BILL-007}}), and student verification ({{SN-BILL-015}}). {{SN-BILL-018}} hardens the entitlement token and {{SN-BILL-017}} handles cancellation/refund dark-patterns, but no issue treats the *payment/PII data-flow minimisation and PCI-DSS scope* as a first-class privacy control. If card data ever touches our code we inherit PCI SAQ-D; the correct posture is redirect/hosted-fields so we stay in SAQ-A and no cardholder data reaches us. Student verification must store proof, not raw ID documents (TM-P-09). These decisions must be locked before launch.\n\n## Scope\n**In:** document and enforce the payment data-flow — use gateway-hosted redirect/fields so no PAN/CVV/card data reaches our client or any service (PCI SAQ-A); map exactly what PII each gateway/receipt/verification flow sends and receives, its purpose, retention and lawful basis (feed the ROPA {{SN-GSEC-004}}); ensure student verification stores a boolean/proof token with short retention rather than raw documents; disclose payment/verification third parties in the sub-processor list; a test/lint that our code never persists or logs card fields or raw verification documents.\n**Out:** the checkout implementation ({{SN-BILL-009}}); IAP verification ({{SN-BILL-006}}/{{SN-BILL-007}}); entitlement-token hardening ({{SN-BILL-018}}); the ROPA register itself ({{SN-GSEC-004}}); refund/cancellation UX ({{SN-BILL-017}}).\n\n## Acceptance criteria\n- [ ] The payment architecture keeps us in PCI SAQ-A: no PAN/CVV/card data in our client, services, logs or storage (asserted by review + test).\n- [ ] Every payment/verification PII flow is mapped (data, purpose, retention, basis) and added to the ROPA/sub-processor register.\n- [ ] Student verification stores proof/short-lived tokens, never raw documents (TM-P-09).\n- [ ] A lint/test fails if card fields or raw verification docs are persisted or logged.\n- [ ] Payment third parties are disclosed in the sub-processor list.\n\n## Technical notes\nPrefer gateway SDKs that never expose card data to our origin; keep the web checkout on an isolated flow. Cross-link SBOM and ROPA ({{SN-GSEC-004}}). Reference controls-matrix §7 (student data) and threat-model TM-P-09/TM-P-02.\n\n## Security & privacy\nThreats: TM-P-09 (over-collection/retention of student PII), TM-P-02 (identifiability via processors). Controls: MASVS-PRIVACY-4, ASVS V14, PCI-DSS SAQ-A, GDPR/DPDP minimisation. Payment is the main real-world PII surface.\n\n## UX notes\nHonest, minimal data prompts at checkout and verification; a clear statement of which third party receives what, linked from the pricing/privacy pages.\n\n## Test plan\nReview: PCI SAQ-A applicability walkthrough. Unit: assert no card/verification-document fields are persisted or logged. Integration: verify the redirect/hosted-field flow keeps card data off our origin (network capture).\n\n## Dependencies\n{{SN-BILL-009}}, {{SN-BILL-015}}.\n\n## Definition of done\n- [ ] Data-flow doc + tests merged; ROPA/sub-processor list updated.\n- [ ] PCI SAQ-A posture recorded and reviewed by the Security Owner.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-011",
+    "title": "Eliminate plaintext transient and temp files in capture and processing",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "storage",
+      "privacy"
+    ],
+    "milestone": "M3 Audio & Recognition",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "TM-I-03",
+      "TM-I-10",
+      "OWASP-A04",
+      "CWE-312",
+      "CWE-459",
+      "CWE-377"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-CRY-007",
+      "SN-SEC-004"
+    ],
+    "labels_extra": [
+      "sec: masvs",
+      "agent-ready"
+    ],
+    "body": "## Context\nSeveral pipelines create intermediate artefacts that are copies of note content before they land in the encrypted store: in-progress audio recording segments and the crash-safe capture buffer ({{SN-AUD-001}}), camera-scan JPEGs and auto-crop intermediates ({{SN-MED-001}}/{{SN-PHN-011}}), OCR/recognition intermediates ({{SN-HWR-006}}), PDF rasterisation scratch, and export staging before a `.sanenote`/PDF is finalised ({{SN-SHR-002}}). If any of these are written to a plaintext temp/cache directory they become a side-channel readable after device compromise (TM-I-03) or captured by OS auto-backup (TM-I-10) — a plaintext leak of content the E2EE stack otherwise protects. No issue owns \"no plaintext transient files\" as a cross-cutting rule.\n\n## Scope\n**In:** an audit + policy that any transient artefact holding content is written encrypted (via `sane_crypto` per-blob keys {{SN-CRY-007}}) or to a path excluded from backup and securely deleted (best-effort overwrite/unlink) as soon as it is consumed; a shared `SecureTempFile`/`SecureScratch` helper used by audio capture, camera scan, OCR, PDF raster and export staging; wire deletion into the error paths so a failed operation does not leave a plaintext residue (ties to {{SN-GSEC-005}}); an arch/lint check flagging raw `getTemporaryDirectory`/`NSTemporaryDirectory`/`cacheDir` writes of content bytes.\n**Out:** the derived *cache* stores (thumbnails/OCR/AI caches) which persist ({{SN-GSEC-002}}); the encrypted blob store ({{SN-CRY-007}}); the input-validation gate ({{SN-SEC-004}}); backup exclusion of keys ({{SN-SEC-023}}).\n\n## Acceptance criteria\n- [ ] Audio, camera-scan, OCR, PDF-raster and export pipelines use the secure-scratch helper; no content is written to a plaintext temp path.\n- [ ] Transient artefacts are securely deleted after use and on error (no residue after a cancelled/failed op).\n- [ ] Temp artefacts are excluded from OS auto-backup where they must exist on disk.\n- [ ] An arch/lint rule flags raw temp/cache writes of content bytes.\n- [ ] controls-matrix STORAGE-1 lists the transient-artefact handling.\n\n## Technical notes\nImplement `SecureScratch` in `sane_core`/`sane_secure_store`; prefer streaming into the encrypted store over temp files where feasible. Coordinate deletion with the fail-closed discipline ({{SN-GSEC-005}}). Reference threat-model TM-I-03/10 and checklist §9.\n\n## Security & privacy\nThreats: TM-I-03 (local FS read of plaintext residue), TM-I-10 (backup exfiltration). Controls: MASVS-STORAGE-1, 2025 A04, CWE-312/377/459. Closes the \"encrypted at rest but plaintext in /tmp\" gap.\n\n## UX notes\nNo user-facing change; capture/scan/export behave identically, minus the residue.\n\n## Test plan\nUnit: SecureScratch write/consume/delete + error-path cleanup. Integration: run audio/scan/OCR/export flows, then assert no plaintext content in temp/cache dirs and none in a backup dump (MASTG backup review). Fuzz: interrupted operations leave no residue.\n\n## Dependencies\n{{SN-CRY-007}}, {{SN-SEC-004}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans).\n- [ ] controls-matrix STORAGE-1 updated; arch/lint rule added.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-012",
+    "title": "Enforce minor-safe feature gating for accounts flagged as minors",
+    "type": "security",
+    "priority": "p0",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "privacy",
+      "onboarding",
+      "ai"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-4",
+      "TM-P-07",
+      "OWASP-A01",
+      "CWE-359",
+      "ASVS-V14"
+    ],
+    "parent": "SN-PRV-001",
+    "depends_on": [
+      "SN-PRV-007",
+      "SN-PRV-003"
+    ],
+    "labels_extra": [
+      "sec: privacy-by-design",
+      "agent-ready"
+    ],
+    "body": "## Context\n{{SN-PRV-007}} adds a neutral age gate that resolves an `AgeAssuranceState` and clamps *consent purposes* (telemetry/cloud-AI) for minors, and {{SN-PRV-008}} handles verifiable parental consent. But COPPA and DPDP 2023 Rule 10 (plus age-appropriate design expectations) require more than clamping consent: minors must not be exposed to behavioural monitoring, and higher-risk *features* — cloud AI egress, public share links, open collaboration/classroom join, and any behavioural nudging — should be off or restricted by default and not silently re-enabled. No issue enforces this *feature-level* gating end to end from the minor flag.\n\n## Scope\n**In:** a single `MinorPolicy` derived from `AgeAssuranceState` ({{SN-PRV-007}}) that feature gates consult: cloud-AI master switch forced off for minors ({{SN-AI-004}}/{{SN-AI-019}}); public/open share links restricted and collaboration/classroom join constrained to a safe default ({{SN-SHR-013}}/{{SN-COL-009}}); telemetry and any behavioural surface unofferable ({{SN-TEL-001}} via {{SN-PRV-003}}); no behavioural ads/monitoring anywhere; enforcement that survives settings changes (a minor cannot toggle a clamped feature on); and tests proving each gate. Where verified parental consent ({{SN-PRV-008}}) is present, document which restrictions may lift.\n**Out:** the age-gate UI and threshold resolution ({{SN-PRV-007}}); the parental-consent mechanism ({{SN-PRV-008}}); the consent framework internals ({{SN-PRV-003}}); the individual feature implementations.\n\n## Acceptance criteria\n- [ ] A minor-flagged account cannot enable cloud AI; cloud egress is impossible for minors (asserted by test).\n- [ ] Public share links and open collaboration/classroom join default to the safe/restricted state for minors and cannot be silently re-enabled.\n- [ ] Telemetry and behavioural surfaces are unofferable to minors; no behavioural monitoring occurs.\n- [ ] Restrictions persist across settings changes and app restarts.\n- [ ] Any lifting of restrictions requires verified parental consent ({{SN-PRV-008}}) and is documented.\n\n## Technical notes\nCentralise in `MinorPolicy` consumed by AI ({{SN-AI-004}}), sharing ({{SN-SHR-013}}), collaboration ({{SN-COL-009}}) and telemetry ({{SN-TEL-001}}) gates; drive from {{SN-PRV-007}}'s `AgeAssuranceState`. Reference controls-matrix §7 (Children) and threat-model TM-P-07.\n\n## Security & privacy\nThreats: TM-P-07 (COPPA/DPDP non-compliance). Controls: MASVS-PRIVACY-1/4, GDPR Art.8 / COPPA / DPDP Rule 10, ASVS V14, CWE-359. Protects the most vulnerable users and the company's legal exposure.\n\n## UX notes\nRestricted features appear disabled with a neutral, non-stigmatising explanation and (where applicable) a parental-consent path; empty/disabled states are honest, not punitive.\n\n## Test plan\nUnit: MinorPolicy resolution across thresholds/jurisdictions. Widget: disabled/consent states for AI, share, collab, telemetry toggles. Integration: attempt cloud-AI/public-share/collab-join as a minor and confirm they are blocked and cannot be re-enabled; confirm parental consent lifts the documented subset.\n\n## Dependencies\n{{SN-PRV-007}}, {{SN-PRV-003}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans).\n- [ ] controls-matrix §7 Children row updated; behaviour documented.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  },
+  {
+    "key": "SN-GSEC-013",
+    "title": "Add server-side anti-automation and rate limiting for services and OTP",
+    "type": "security",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "auth",
+      "ci-cd"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "ASVS-V4",
+      "TM-S-02",
+      "TM-D-03",
+      "MASVS-AUTH-2",
+      "OWASP-A01",
+      "OWASP-A07",
+      "CWE-307",
+      "CWE-799",
+      "CWE-770"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-AUTH-006",
+      "SN-CI-018"
+    ],
+    "labels_extra": [
+      "sec: asvs",
+      "agent-ready"
+    ],
+    "body": "## Context\nASVS V4 anti-automation is not owned by any single issue. Room/relay flooding is handled by {{SN-COL-019}}/{{SN-COL-023}} and OTP is rate-limited \"at the provider\" ({{SN-AUTH-006}}), but the general anti-automation layer for the (future) entitlement/verification service, the public \"try it now\" web trial ({{SN-WEB-022}}), and defence-in-depth for OTP (TM-S-02: brute force / SIM-swap probing) has no home. A stateless entitlement verifier can still be scraped or brute-forced; an open web trial can be abused to exhaust resources; provider-side OTP limits are not something we can assert in a test. This issue defines the consolidated server/edge-side controls.\n\n## Scope\n**In:** a documented anti-automation policy and its enforcement for services and public endpoints — per-IP/per-account/per-key rate limits and connection caps on the entitlement/verification endpoints (aligned with {{SN-CI-018}}), exponential backoff/lockout signalling and abuse counters for OTP defence-in-depth (complementing the provider), edge/WAF-style throttling and optional bot mitigation for the web trial, and content-free abuse logging (per {{SN-COL-008}} log allow-list). Return non-punitive, graceful failures. Provide a black-box test that a burst of requests is throttled and that legitimate use is unaffected.\n**Out:** room/relay rate limits ({{SN-COL-019}}, {{SN-COL-023}}); provider-side OTP configuration ({{SN-AUTH-006}}); the entitlement service application code ({{SN-BILL-001}}); the services CI pipeline itself ({{SN-CI-018}}); client identity abuse tests ({{SN-AUTH-019}}).\n\n## Acceptance criteria\n- [ ] Entitlement/verification endpoints enforce per-IP/account/key rate limits and connection caps.\n- [ ] OTP has documented defence-in-depth (backoff/lockout + abuse counters) beyond the provider; TM-S-02 abuse case exercised.\n- [ ] The public web trial is throttled against automated abuse without breaking legitimate first-use.\n- [ ] Abuse logs are content-free and honour the log allow-list.\n- [ ] A black-box test shows bursts are throttled and normal use is unaffected.\n\n## Technical notes\nImplement in the services layer with a shared limiter; front with edge throttling where hosting allows ({{SN-COL-023}} hosting decision). Reference ASVS V4, threat-model TM-S-02/TM-D-03 and controls-matrix §3 V4.\n\n## Security & privacy\nThreats: TM-S-02 (OTP brute force / SIM-swap probing), TM-D-03 (service flood). Controls: ASVS V4 anti-automation, MASVS-AUTH-2, 2025 A07 Authentication Failures, CWE-307/799/770. Note zero-knowledge means account takeover still yields no plaintext (TM-S-02).\n\n## UX notes\nThrottled users see a friendly \"try again shortly\" message, never a hard punitive block; legitimate first-run on the web trial is unaffected.\n\n## Test plan\nIntegration/black-box: burst tests against entitlement/trial endpoints assert throttling; OTP abuse-case test asserts backoff/lockout; assert legitimate-rate traffic passes; assert logs contain no PII/content.\n\n## Dependencies\n{{SN-AUTH-006}}, {{SN-CI-018}}.\n\n## Definition of done\n- [ ] Code/config + tests merged, CI green.\n- [ ] Policy documented; controls-matrix §3 V4 updated.\n- [ ] Reviewed against docs/security/secure-coding-checklist.md."
+  }
+]

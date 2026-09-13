@@ -1,0 +1,618 @@
+[
+  {
+    "key": "SN-GPRF-001",
+    "title": "Validate the mid-range Android stylus tablet against the 25 ms pen-to-pixel budget",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet"
+    ],
+    "areas": [
+      "perf",
+      "compat",
+      "qa"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "verification",
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-PERF-002",
+      "SN-PERF-004",
+      "SN-PERF-006",
+      "SN-AND-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nBudget B2 — pen-down to pixel in 25 ms or less on a mid-range Android tablet — is half of the product's core promise, and its named Tier-1 gate device is the `Android-tablet-stylus` slot: a mid-range tablet (Snapdragon 7-class) with an S Pen or a USI 2.0 pen (docs/platform/performance-budgets.md B2 and section 4; docs/platform/compatibility-matrix.md section 2). Two sibling validation runs already exist — {{SN-IPAD-025}} validates the iPad slots against B1, and {{SN-AND-027}} validates the 4 GB Snapdragon-680 low-end floor against B4/B6/B9 — but no issue owns the mid-range stylus slot that B2 is actually gated on. Without it the 25 ms number is measured by the harness and never signed off on real pen hardware, and a front-buffer regression on the device class most Android students own would ship.\n\n## Scope\n**In:** wiring the `Android-tablet-stylus` device-lab slot into the perf gate; the camera-rig ground-truth run ({{SN-PERF-006}}) and the per-commit proxy run ({{SN-PERF-002}}) on this slot; recording Tier A (Jetpack Ink front-buffer) and Tier B numbers separately; exercising both an S Pen device and a USI 2.0 device from the pool; the release-blocking pass/fail record under `tools/device_lab/results`.\n**Out:** the harness and gate mechanics ({{SN-PERF-002}}, {{SN-PERF-003}}), the ink surface implementation ({{SN-AND-002}}, {{SN-AND-005}}), the low-end slot ({{SN-AND-027}}) and the iPad slots ({{SN-IPAD-025}}).\n\n## Acceptance criteria\n- [ ] Camera-rig ground truth on the mid-range stylus tablet reports p95 pen-to-pixel <= 25 ms on Tier A, recorded with date, OS build, pen model and tier.\n- [ ] The per-commit proxy runs on this slot and its estimate is calibrated against the camera number with the documented display-latency constant.\n- [ ] Tier A and Tier B are both measured so the ADR-0001 gap on Android stays visible; a Tier-B-only fallback on this device class is reported as a finding, not a silent pass.\n- [ ] 60 fps floor with zero frames over 16.7 ms holds during the scripted writing workload on this slot; 90/120 fps is asserted where the panel allows.\n- [ ] A regression on this slot fails the required perf check and blocks the release, exactly as the iPad and low-end slots do.\n- [ ] An S Pen device and a USI 2.0 device are both exercised and their numbers are reported separately.\n\n## Technical notes\n`tools/device_lab/android-tablet-stylus.json` from {{SN-PERF-004}} supplies display Hz, arch, stylus and min OS. Drive the workload with the synthetic corpus and replay driver ({{SN-PERF-005}}); the ADB stylus simulation hook is for functional automation only and MUST NOT be the latency number. Ink capture comes through `MotionEvent` historical samples with `requestUnbufferedDispatch` and prediction ({{SN-AND-004}}); the Tier A surface is Jetpack Ink / `GLFrontBufferedRenderer` ({{SN-AND-002}}, {{SN-AND-003}}). Confirm the renderer per run ({{SN-PERF-022}}) so an unexpected Skia GL fallback is not mistaken for a hardware ceiling.\n\n## Security & privacy\nNone beyond baseline. Perf traces and camera footage must contain no note content: the workload uses synthetic strokes only, and any captured trace is scrubbed before it leaves the runner (CLAUDE.md logging rule; MASVS-PRIVACY-1). Results published to the repo carry device metadata, never user data.\n\n## UX notes\nNo user-facing surface. The payoff is the one the product is sold on: a student writing on a mid-range Android tablet feels the pen keep up with the nib. If the slot cannot hold 25 ms on Tier A, that is the ADR-0008 native-pivot review trigger for Android, and the finding must say so explicitly rather than quietly relaxing the number.\n\n## Test plan\nManual, lab-run: the camera protocol from {{SN-PERF-006}} (>= 20 strokes at varied speeds, median + p95) per pen. Automated: the perf job runs `tools/perf_harness` on the slot per commit and nightly. Add `tools/device_lab/results/android-tablet-stylus-<os>.md` as the signed-off record, and a fixture-driven test proving the gate fails when the slot's numbers regress beyond tolerance.\n\n## Dependencies\n{{SN-PERF-002}}, {{SN-PERF-004}}, {{SN-PERF-006}}, {{SN-AND-002}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-002",
+    "title": "Validate 90 Hz and variable-refresh Android panels against the frame budget",
+    "type": "test",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "perf",
+      "compat",
+      "qa"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "S",
+    "sdlc": "verification",
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-014",
+      "SN-PERF-004"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe refresh-rate row of the compatibility matrix has three entries — 120 Hz (Tier 1), **90 Hz (Tier 2)**, and 60 Hz (Tier 1) — and the 90 Hz row carries its own expectation: 90 fps with no frame over the frame budget while writing (docs/platform/compatibility-matrix.md section 5; docs/architecture/rendering-and-performance.md section 9.3, mid GPU tier). Nothing in the issue set mentions 90 Hz today: {{SN-PERF-014}} gates 120 Hz and the idle-refresh behaviour, and the rest of the perf suite assumes the 16.7 ms 60 Hz ceiling. That leaves the most common mid-range Android panel untested, and 90 Hz is the case most likely to expose a frame-pacing bug, because a pipeline tuned for 8.3 ms or 16.7 ms buckets can systematically miss an 11.1 ms deadline and still look \"under 16.7 ms\" in the report.\n\n## Scope\n**In:** a 90 Hz device entry in the Tier 2 manual pool config; a harness run that reads the panel's actual mode and asserts against an 11.1 ms frame budget rather than a hardcoded 16.7 ms; a variable-refresh case (LTPO / adaptive panels that switch 60 <-> 90 <-> 120 mid-session) asserting no dropped frame at the mode switch and no stale frame-budget assumption after it; a Battery-Saver-capped-to-60 Hz case; reporting the measured mode alongside every fps result.\n**Out:** the 120 Hz gate and idle-refresh assertions ({{SN-PERF-014}}), the draw-path frame-rate-range request ({{SN-INK-023}}), and the power-save policy itself ({{SN-GPRF-019}}).\n\n## Acceptance criteria\n- [ ] The harness derives the frame budget from the display mode reported at runtime (8.3 / 11.1 / 16.7 ms) instead of a constant, and the value used is printed in the result JSON.\n- [ ] On a 90 Hz device the scripted writing workload sustains >= 90 fps with p99 frame time <= 11.1 ms, and zero frames exceed the 16.7 ms absolute ceiling.\n- [ ] A mid-session refresh-mode change (adaptive panel, Battery Saver, or a forced mode switch) produces no dropped frame beyond the documented single-frame allowance and the harness re-reads the new budget within one second.\n- [ ] A 90 Hz result is recorded as Tier 2 — measured and reported, a documented gap rather than a release blocker — per the tier definitions.\n- [ ] The result file names the panel, the modes observed, and the time spent in each.\n\n## Technical notes\nRead the mode via `Display.getMode()` / `Display.Mode.getRefreshRate()` (and `getSupportedModes()` for the adaptive set) through the platform channel that already backs {{SN-PERF-014}}; on Flutter the frame stream stays `SchedulerBinding`/`FrameTiming`. Do not infer the rate from measured frame deltas alone — an idle app at 90 Hz and a struggling app at 90 Hz produce similar deltas. Feed the derived budget into the jank counter used by {{SN-PERF-007}} so one code path owns \"what counts as a janky frame\".\n\n## Security & privacy\nNone beyond baseline: display metadata only, no content, no egress. Device-mode strings recorded in results are hardware facts, not identifiers tied to a user (ADR-0011 zero-server posture).\n\n## UX notes\nNo user-facing surface. The user-visible effect is that a mid-range 90 Hz tablet feels as smooth as the spec sheet promises instead of pacing to 60 and wasting a third of its frames.\n\n## Test plan\nUnit: a frame-budget resolver test mapping reported refresh rates to budgets, including unknown/zero rates (falls back to 16.7 ms and flags the run). Integration: the writing workload on a 90 Hz Tier 2 device plus a forced-mode-switch scenario. Manual: one lab pass on an adaptive-refresh panel with Battery Saver toggled mid-stroke, recorded under `tools/device_lab/results`.\n\n## Dependencies\n{{SN-PERF-014}}, {{SN-PERF-004}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-003",
+    "title": "Validate the armeabi-v7a 32-bit build against the Tier 3 minimum bar",
+    "type": "test",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "qa",
+      "perf"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "S",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-STORAGE-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-022",
+      "SN-PERF-022"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\n`armeabi-v7a` is a declared supported ABI: Tier 3, best-effort, no perf guarantee, but it MUST launch and take a note (docs/platform/compatibility-matrix.md sections 1 and 3; docs/architecture/rendering-and-performance.md section 9.2). It is also the ABI most likely to hit the Impeller GL fallback and the one with a 32-bit address space, so a 4 GB budget assumption that works on arm64 can still OOM there. Today {{SN-AND-022}} produces the ABI splits and {{SN-PERF-022}} records a known-fallback renderer for it, but nothing ever runs the app on a 32-bit device. A Tier 3 promise that is never executed is not a support tier, it is a hope, and the first evidence of breakage would be a one-star review from a user on an old tablet.\n\n## Scope\n**In:** a per-release smoke run of the `armeabi-v7a` artifact on a physical 32-bit device or an official 32-bit system image; the Tier 3 checklist (install, launch, create a notebook, write a stroke, save, reopen, export); a memory ceiling observation under the 32-bit address space; confirmation that every bundled native library ships an `armeabi-v7a` variant; recording the renderer and the ink tier chosen; a documented known-gaps section for this ABI.\n**Out:** perf budgets on this ABI (explicitly not guaranteed), the build configuration itself ({{SN-AND-022}}), 16 KB page alignment ({{SN-AND-021}}, an arm64 concern), and any optimisation work the run uncovers (filed separately).\n\n## Acceptance criteria\n- [ ] The `armeabi-v7a` artifact installs and launches on a 32-bit target and completes the Tier 3 checklist without a crash or ANR.\n- [ ] Every native library in the artifact (ink surface, PDF, ML, SQLite, crypto) has an `armeabi-v7a` variant, or its absence is handled by a runtime capability check that degrades instead of crashing.\n- [ ] The chosen ink tier and active renderer are recorded; a Tier B / Skia GL result is an accepted outcome here and is reported, not failed.\n- [ ] A long writing session on 32-bit does not exhaust the address space: peak native + Dart heap is recorded and any OOM is filed as a bug with the trace.\n- [ ] Known gaps for this ABI are written into the compatibility docs so support can answer honestly.\n\n## Technical notes\nBuild the split artifact from {{SN-AND-022}} and install with `adb install --abi armeabi-v7a`, or use an official 32-bit emulator image for the functional checklist (never for a latency claim — emulators are non-gating per docs/platform/performance-budgets.md section 3). Watch for 64-bit assumptions in plugin glue: pointer-width in FFI structs, `long` vs `int32` in JNI, and any `int` overflow in tile-coordinate maths. `dart:ffi` sizes must be derived, not hardcoded.\n\n## Security & privacy\nNone beyond baseline. The run uses synthetic notebooks only. Note that older 32-bit devices frequently run unpatched Android versions; this run does not lower any security control for them — key storage still requires Keystore ({{SN-AND-019}}) and a device without it degrades per that issue's policy, which this checklist verifies is a graceful degradation rather than a crash.\n\n## UX notes\nNo new UI. If a capability is missing on this ABI the user must see the same honest, documented degradation the capability layer gives everywhere else, never a silent failure or a crash on first stroke.\n\n## Test plan\nManual per-release checklist executed on the 32-bit target, recorded under `tools/device_lab/results/armeabi-v7a-<os>.md`. Automated: the functional `integration_test` suite ({{SN-QA-006}}) runs against a 32-bit image in the nightly matrix, functional-only. Add a build-time test asserting the ABI variant list of every bundled `.so`.\n\n## Dependencies\n{{SN-AND-022}}, {{SN-PERF-022}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-004",
+    "title": "Validate the x86_64 build on ChromeOS and emulators as functional-only",
+    "type": "test",
+    "priority": "p3",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "qa",
+      "ci-cd"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "S",
+    "sdlc": "verification",
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-022",
+      "SN-PERF-004"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n`x86_64` is the third supported Android ABI and it exists for two real audiences: the emulators every contributor and CI job runs, and Chromebooks running Android apps, where a USI pen and a note-taker registration make Sane Notes genuinely useful (docs/platform/compatibility-matrix.md section 3; docs/architecture/rendering-and-performance.md section 9.2). The matrix rates it Tier 2 on Android 13+ and Tier 2/3 elsewhere, and the performance rules are blunt: emulators MUST NOT be a latency or fps gate, they MAY run functional and golden checks only (docs/platform/performance-budgets.md section 3). Nothing currently proves the x86_64 artifact actually works: {{SN-AND-022}} configures the split, {{SN-AND-010}} handles USI and note-taker registration, but no run asserts the ABI boots, renders and passes the functional suite.\n\n## Scope\n**In:** running the functional and golden suites against the x86_64 artifact on an emulator image in the nightly matrix; a per-release manual pass on a Chromebook (ARCVM) covering install, window resize, keyboard/mouse, USI pen and file access; asserting every bundled native library ships an x86_64 variant; asserting the harness marks x86_64 runs as non-gating for latency and fps; recording the renderer (Impeller Vulkan availability differs under emulation).\n**Out:** ChromeOS windowing and note-taker behaviour ({{SN-AND-013}}, {{SN-AND-010}}), the USI stylus capability rows ({{SN-GPRF-008}}), and the perf gate mechanics ({{SN-PERF-003}}).\n\n## Acceptance criteria\n- [ ] The x86_64 artifact installs and passes the functional `integration_test` suite and the golden suite on an emulator image in the nightly matrix.\n- [ ] A perf result produced on an x86_64 emulator slot is tagged non-gating for latency and fps and cannot fail a gate on those metrics; a test proves the tag is applied.\n- [ ] Every bundled native library has an x86_64 variant, or a capability check degrades cleanly where it does not.\n- [ ] A Chromebook manual pass completes install, resize between window classes, hardware keyboard and mouse, a USI stroke, and open/save through the file picker.\n- [ ] The active renderer under emulation and under ARCVM is recorded in the results, since a software-GL fallback there is expected and must not be read as a device-class failure.\n\n## Technical notes\nUse the same artifact path as {{SN-AND-022}}; select the image with `adb install --abi x86_64`. Golden tests are safe under emulation because they compare pixels from a deterministic raster, but they must run with the same renderer the gate expects, so pin the image's GPU mode and record it. ChromeOS runs Android in ARCVM with its own window management; treat window-class changes as the same runtime relayout path as foldables ({{SN-AND-012}}, {{SN-AND-013}}).\n\n## Security & privacy\nNone beyond baseline. Emulator images are disposable and must never hold real user data or production credentials; the suite uses synthetic fixtures ({{SN-QA-011}}). On ChromeOS, file access goes through SAF with persistable permissions ({{SN-AND-018}}) and this pass verifies no broader storage permission is requested on that surface.\n\n## UX notes\nNo new UI. The outcome users feel is that the app opens on a school Chromebook, resizes like a desktop window, and takes a USI pen stroke without surprises.\n\n## Test plan\nAutomated: nightly functional + golden matrix entry for the x86_64 image; a unit test on the result tagger asserting the non-gating flag. Manual: the per-release Chromebook checklist, recorded in `tools/device_lab/results/x86_64-chromeos-<version>.md`.\n\n## Dependencies\n{{SN-AND-022}}, {{SN-PERF-004}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-005",
+    "title": "Gate the Android 16 Tier-1 slot on a behaviour-change conformance run",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "qa",
+      "ci-cd"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-014",
+      "SN-AND-015",
+      "SN-AND-021",
+      "SN-AND-012"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\n`Android-A16` is a Tier-1 device-lab slot whose entire reason for existing is the API 36 behaviour changes: predictive back, enforced edge-to-edge, 16 KB page sizes, and forced resizability on large screens (docs/platform/compatibility-matrix.md section 2 and section 3; docs/platform/android.md section 9). Each change already has an implementation issue — {{SN-AND-014}} predictive back, {{SN-AND-015}} edge-to-edge insets, {{SN-AND-021}} 16 KB alignment, {{SN-AND-012}} window size classes — but each proves itself in isolation, and the failure mode of behaviour changes is systemic: an app passes every individual check while the combination regresses once a temporary compatibility opt-out expires with the next target-SDK bump. This issue owns the combined conformance run on the Android-A16 slot and makes it a release gate, so the four changes are verified together, with every opt-out flag off.\n\n## Scope\n**In:** an automated conformance suite executed on the Android-A16 slot covering the four behaviour changes end to end; an assertion that no compatibility opt-out manifest flag or `targetSdk`-based grace behaviour is relied on; a 16 KB-page device (or the 16 KB emulator mode) actually running the app, not just a static alignment check; a large-screen forced-resizability pass that resizes the window across classes mid-edit; the release-gate wiring and a per-release results record.\n**Out:** the implementations themselves (the four issues above), the target-SDK bump policy ({{SN-GPRF-018}}), and Android 16 features not in the behaviour-change set.\n\n## Acceptance criteria\n- [ ] The suite runs on an API 36 device or image and fails the release gate when any of the four behaviour changes regresses.\n- [ ] Predictive back is exercised from the editor with unsaved ink present: the back preview animates, the gesture can be cancelled, and cancelling loses nothing.\n- [ ] Edge-to-edge is verified with gesture navigation and three-button navigation and in both orientations: no control sits under a system bar or a cutout, and insets are consumed once.\n- [ ] The app launches and inks on a 16 KB page-size configuration, with every bundled `.so` aligned; a deliberately misaligned library in a fixture build fails the check.\n- [ ] With forced resizability, the window is resized across compact, medium and expanded classes while a stroke is in progress and the editor relayouts without losing editor state or the in-flight stroke.\n- [ ] A static check asserts the manifest declares no behaviour-change opt-out flags.\n\n## Technical notes\nRun on the `Android-A16` config from {{SN-PERF-004}}. Predictive back uses `OnBackInvokedCallback` ({{SN-AND-014}}); insets via `WindowInsetsCompat` ({{SN-AND-015}}); alignment verified with the `check_elf_alignment` approach from {{SN-AND-021}} plus a runtime launch on the 16 KB image; resizability through the window-size-class resolver ({{SN-AND-012}}, {{SN-PHN-002}}). Resize-mid-stroke is the interesting case: the wet layer lives on a native surface ({{SN-AND-002}}), so the surface must be recreated without dropping the active stroke.\n\n## Security & privacy\nNone beyond baseline, with one note: behaviour-change conformance touches the manifest, and the same run should confirm no exported component or `PendingIntent` posture changed to satisfy a behaviour change ({{SN-AND-029}}; MASVS-PLATFORM-1). A resize or back-gesture path must not expose a locked note's content (see {{SN-PHN-015}}).\n\n## UX notes\nThe user-visible promise is that the newest Android release does not break the app. Concretely: the back gesture previews the destination and can be abandoned, nothing hides behind the system bars, and dragging the window smaller mid-sentence keeps the sentence.\n\n## Test plan\nIntegration (`integration_test` + patrol on the A16 slot): one test per behaviour change plus one combined test that resizes during an active stroke with predictive back mid-gesture. Static: a manifest-flag test and the ELF-alignment test with a deliberately misaligned fixture. Manual: one per-release pass on a physical API 36 device recorded under `tools/device_lab/results`.\n\n## Dependencies\n{{SN-AND-014}}, {{SN-AND-015}}, {{SN-AND-021}}, {{SN-AND-012}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-006",
+    "title": "Publish the compatibility matrix as a machine-readable registry with a CI drift check",
+    "type": "infra",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "compat",
+      "ci-cd",
+      "qa"
+    ],
+    "milestone": "M0 Foundations",
+    "size": "M",
+    "sdlc": "design",
+    "security": [
+      "SLSA-BUILD-L2"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-004",
+      "SN-PERF-018"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: supply-chain"
+    ],
+    "body": "## Context\nThe compatibility matrix is the single source of truth for \"do we support X?\" across OS version, architecture, browser, stylus, refresh rate and screen class (docs/platform/compatibility-matrix.md). It is currently prose plus tables, and its numbers are restated in at least four other places: the build files (minSdk 29, target SDK 36, iOS deployment target 17), the web browser floors, docs/architecture/rendering-and-performance.md section 9, and the per-surface docs. {{SN-PERF-018}} solved exactly this problem for the performance budgets by making them data with a docs-drift check; {{SN-PERF-004}} made the Tier-1 device slots data. The support matrix itself is still prose, so a floor can be raised in Gradle and nowhere else, and the app will keep claiming support it no longer has.\n\n## Scope\n**In:** `tools/device_lab/compat/compat.json` holding one row per supported combination — OS family and minimum version, architecture, browser and minimum version, stylus capability rows, refresh-rate rows, screen-size classes — each with a support tier (1/2/3/unsupported), the gating budgets that apply, and a source doc anchor; a typed loader shared by the harness and the app; a schema test; a drift check comparing the registry against the tables in the compatibility matrix doc; a second drift check comparing it against the real build configuration (Gradle `minSdk`/`targetSdk`, `IPHONEOS_DEPLOYMENT_TARGET`, the web browser floor list).\n**Out:** the runtime enforcement wall ({{SN-GPRF-007}}), the device-lab slot configs ({{SN-PERF-004}}, which this registry references rather than replaces), and the performance budget registry ({{SN-PERF-018}}).\n\n## Acceptance criteria\n- [ ] Every row of compatibility-matrix sections 1, 3, 4 and 5 exists in the registry with a tier, a source anchor, and the budgets that gate it.\n- [ ] A typed loader exposes the registry to Dart callers and fails loudly on an unknown row id instead of returning null.\n- [ ] A CI check fails when the registry and the compatibility-matrix tables disagree on any minimum version or tier.\n- [ ] A CI check fails when Gradle `minSdk`, the iOS deployment target, or the declared web browser floors differ from the registry.\n- [ ] Rows carry an explicit `verified` flag so the matrix's open \"(verify)\" cells (Apple Pencil USB-C pressure, USI hover, Firefox skwasm) are data rather than a footnote, and {{SN-GPRF-008}} can flip them.\n- [ ] Changing a floor requires editing the registry, and the README documents that path.\n\n## Technical notes\nMirror the shape and tooling of {{SN-PERF-018}} so there is one idiom for \"docs that are also data\": JSON plus a schema test plus a doc-drift parser. The device-lab configs from {{SN-PERF-004}} reference registry row ids rather than duplicating versions. The app reads the same registry at build time (a generated Dart constant) so {{SN-GPRF-007}} has no second copy of the floors. Keep it dependency-free and offline: no network calls, no hosted matrix.\n\n## Security & privacy\nSupply-chain hygiene: the registry is a build input, so it is code-reviewed and generated deterministically, never fetched at runtime (sec: supply-chain). An OS floor is also a security control — dropping below the floor means dropping below the platform security baseline (Keystore, Secure Enclave, modern TLS), so lowering a floor must be a reviewed, deliberate change with a security note, which making it data enforces.\n\n## UX notes\nNo user-facing surface of its own, but it is the input to the honest support story: the website's system requirements, the store listings, and the update wall ({{SN-GPRF-007}}) all read the same rows, so a user is never told three different minimum versions.\n\n## Test plan\nUnit: loader tests (known row, unknown row, malformed row). Schema test rejecting a row missing tier, version or anchor. Drift tests: a fixture doc and a fixture build config that disagree with the registry must fail; matching ones must pass. CI: the checks run in the standard verification workflow alongside the budget drift check.\n\n## Dependencies\n{{SN-PERF-004}}, {{SN-PERF-018}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-007",
+    "title": "Enforce the minimum OS and browser bar at runtime with an update wall",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "compat",
+      "onboarding"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PLATFORM-2"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-GPRF-006"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\nThe compatibility matrix defines an Unsupported tier and states plainly what happens there: the app MAY refuse to install or run, or show an \"update your OS/browser\" wall (docs/platform/compatibility-matrix.md section 1). Stores enforce the mobile floors for us — a device below minSdk 29 or iOS 17 cannot install the app — but the web has no such gate, and neither does a sideloaded or restored build. Today an old Safari or a Chrome 100 lands directly in a Flutter web app that will fail somewhere deep inside CanvasKit, producing a blank canvas and a support ticket instead of an answer. This issue turns the matrix's floors into a deliberate, friendly, data-driven boundary.\n\n## Scope\n**In:** a boot-time check comparing the running OS/browser version against the registry from {{SN-GPRF-006}}; a blocking wall for Unsupported with a plain-language explanation, the required version, and a route to get the user's data out; a one-time dismissible notice for a Tier 3 best-effort environment; localisation and accessibility of both surfaces; a debug override for testing; telemetry-free implementation.\n**Out:** the registry itself ({{SN-GPRF-006}}), store-side minimum declarations ({{SN-AND-022}}, {{SN-IPAD-031}}), feature-level capability degradation (which stays a runtime capability query, not a version check), and the marketing-site requirements page ({{SN-SITE-001}} area).\n\n## Acceptance criteria\n- [ ] On a browser below the declared floor the app renders an accessible HTML wall before the Flutter engine boots, naming the browser, the detected version and the minimum required.\n- [ ] The wall never traps data: if local notes exist in OPFS/IndexedDB the wall offers an export/download path, or, where that is impossible in the old browser, tells the user exactly which supported browser will recover them.\n- [ ] A Tier 3 environment shows a dismissible \"best-effort, not tested\" notice once, stored per install, and never blocks.\n- [ ] Version comparison is data-driven from the registry; no version string is hardcoded in app code, proven by a test that changes the registry and sees the boundary move.\n- [ ] Both surfaces are localised, keyboard-reachable, screen-reader-announced, and meet contrast tokens.\n- [ ] A debug flag forces each state so QA and goldens can cover them.\n\n## Technical notes\nThe web wall must be plain HTML/CSS in `web/index.html` with a tiny script that runs before the engine loads — a Flutter-rendered wall cannot render on a browser that cannot run the engine. Detect via feature probes first (WebAssembly, `OffscreenCanvas`, Pointer Events, `structuredClone`) and fall back to a UA-version parse only for messaging; capability probing is the rule everywhere else in this codebase and it applies here. On mobile, read the OS version and compare to the registry for the (rare) below-floor restore case. Keep the generated registry constant so no second copy of the floors exists.\n\n## Security & privacy\nNo identifiers, no network call, no telemetry: the check is local and the wall is static (ADR-0011). A UA string is never sent anywhere. The wall must not leak note titles or counts — it may say that local data exists, not what it is (LINDDUN: disclosure). Refusing to run below the security floor is itself a control: unsupported OS versions lack the hardware-backed key storage the threat model assumes (MASVS-STORAGE-1).\n\n## UX notes\nTone follows the brand voice: calm, specific, never blaming the user. One sentence on what is wrong, one on what to do, one on their notes being safe. Use the Sage mascot's supportive register, not an error skull. Design reference: the empty/error state patterns in the design system ({{SN-DS-001}}) and the onboarding first-run surfaces ({{SN-ONB-001}}).\n\n## Test plan\nUnit: version-comparison and tier-resolution tests driven by registry fixtures, including pre-release and vendor-suffixed versions. Widget/golden: the Tier 3 notice in light/dark. Web integration: a spoofed old-browser bundle test asserting the pre-engine wall renders and the engine never boots. Manual: one pass in an old Safari and an old Firefox from the Tier 2 pool.\n\n## Dependencies\n{{SN-GPRF-006}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-008",
+    "title": "Run the stylus capability conformance suite across every supported pen",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "android-phone",
+      "web"
+    ],
+    "areas": [
+      "input-gestures",
+      "compat",
+      "qa"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-INK-001",
+    "depends_on": [
+      "SN-INK-029",
+      "SN-IPAD-002",
+      "SN-AND-007",
+      "SN-GPRF-006"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nThe stylus table in the compatibility matrix has nine rows and six capability columns (pressure, tilt, azimuth, roll, hover, buttons), and three of its cells are still marked \"(verify)\": Apple Pencil USB-C pressure and azimuth, and USI 2.0 hover per pen (docs/platform/compatibility-matrix.md section 4; docs/architecture/rendering-and-performance.md section 9.4). The rule the engine depends on is that brushes MUST feature-detect per connected stylus and never assume a capability, with missing pressure falling back to velocity-based width. Capability probes exist per platform ({{SN-IPAD-002}}, {{SN-AND-007}}, {{SN-INK-029}}), and {{SN-IPAD-029}} checks degradation on Tier 2 iPads, but nothing runs one suite across the whole pen pool and writes the answers back into the matrix. The open \"(verify)\" cells are the proof: the matrix is currently guessing about hardware we claim to support.\n\n## Scope\n**In:** one conformance suite executed per pen in the lab pool (Apple Pencil Pro, Pencil 2, Pencil USB-C, Pencil 1, S Pen, USI 2.0, a generic active stylus, finger, mouse/trackpad) that records which axes actually arrive and how the brush engine responds; resolution of the three \"(verify)\" cells with evidence; writing the verified results back into the registry rows from {{SN-GPRF-006}} and the docs table; a regression assertion that a pen reporting no pressure renders velocity-derived width rather than a flat line or a crash.\n**Out:** the platform probes themselves, per-pen premium features ({{SN-IPAD-003}} squeeze, {{SN-IPAD-004}} roll, {{SN-AND-009}} S Pen remote), and palm rejection ({{SN-AND-006}}, {{SN-WEB-006}}).\n\n## Acceptance criteria\n- [ ] For every pen in the pool the suite records the observed axes (pressure range and resolution, tilt, azimuth, roll, hover distance, buttons) and the sample rate, into `tools/device_lab/results/stylus/<pen>.md`.\n- [ ] The three \"(verify)\" cells are resolved with evidence and the registry rows are updated with `verified: true` and a date.\n- [ ] A pen with no pressure produces velocity-derived width with no discontinuity at stroke start, proven by a golden.\n- [ ] A capability that the platform reports but never delivers (an axis present in the event but constant) is detected and treated as absent, with a test using a recorded sample stream.\n- [ ] Switching pens mid-session (disconnect a Pencil, pick up a finger, attach a USI pen) re-probes and re-selects the brush response path without an app restart.\n- [ ] Every result is reproducible from a recorded sample stream so the suite can run without the hardware in CI regression mode.\n\n## Technical notes\nCapture raw sample streams per pen through the {{SN-PERF-005}} corpus format so the hardware session becomes a replayable fixture — this is what lets CI keep asserting per-pen behaviour after the device leaves the desk. Probe surfaces: `UIPencilInteraction`/`UITouch` properties on iPadOS, `MotionEvent` axes (`AXIS_PRESSURE`, `AXIS_TILT`, `AXIS_ORIENTATION`, hover via `ACTION_HOVER_*`) on Android, and Pointer Events (`pressure`, `tiltX/Y`, `altitudeAngle`/`azimuthAngle`, `twist`) on web where Safari 18.2+ adds altitude/azimuth. Constant-value detection matters because some devices report a fixed 1.0 pressure.\n\n## Security & privacy\nNone beyond baseline. Recorded sample streams are synthetic handwriting produced by the team, never a user's notes, and are committed as fixtures only after review (they can encode handwriting biometrics, which is exactly the kind of data this product refuses to collect — LINDDUN: identifiability).\n\n## UX notes\nThe user-visible contract is that any pen the matrix lists writes sensibly out of the box: pressure where the hardware has it, velocity-based width where it does not, and never a dead axis silently flattening someone's handwriting. Settings' stylus calibration area ({{SN-SET-008}}) should show the detected capabilities so a user can see what their pen supports.\n\n## Test plan\nManual lab pass per pen with the recorded-stream capture. Automated regression: replay each recorded stream through the capture and brush pipeline and assert the resolved capability set and the rendered goldens. Add `packages/sane_ink/test/stylus_conformance_test.dart` driven by the fixture directory so adding a pen means adding a stream.\n\n## Dependencies\n{{SN-INK-029}}, {{SN-IPAD-002}}, {{SN-AND-007}}, {{SN-GPRF-006}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-009",
+    "title": "Add warm-start and resume-to-ink latency budgets and gates",
+    "type": "test",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "perf",
+      "qa"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-AUTH-2"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-008",
+      "SN-PERF-018"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\nBudget B6 measures cold start — process launch to first interactive frame (docs/platform/performance-budgets.md B6). But a student does not cold-start the app twenty times a lecture; they lock the tablet, unlock it, and expect to write. The path that dominates real use is warm start and resume: returning from background, reconnecting a scene after iPadOS window reconnection, coming back from an Android process death, restoring a web tab from bfcache, or relaunching an installed PWA. None of those have a budget or a test today, which means the most frequent \"is it laggy?\" moment in the product is ungoverned. Cold start is explicitly measured ({{SN-PERF-008}}); this issue adds its everyday sibling.\n\n## Scope\n**In:** proposing and ratifying three additional budget entries in the registry ({{SN-PERF-018}}) — warm start to interactive, resume-to-ink from background with the process alive, and restore-after-process-death (which MAY use the cold budget); trace markers and harness scenarios for each per surface; the gate wiring at the same cadence as B6; a first-stroke-after-resume assertion so the wet-ink path is proven live, not just the UI.\n**Out:** the cold-start measurement ({{SN-PERF-008}}), state-restoration correctness on iPad ({{SN-IPAD-028}}) and Android ({{SN-PHN-017}}), which this measures but does not implement, and the deferred-init work ({{SN-GPRF-011}}).\n\n## Acceptance criteria\n- [ ] Three budgets exist in the registry with targets, statistics (median plus p95), gate devices and cadence; the proposed defaults are warm start <= 600 ms, resume-to-ink <= 300 ms, restore-after-kill within the cold-start budget, and any change to them is an explicit registry edit.\n- [ ] Resume is measured to *first ink accepted*, not first frame: the scenario resumes the app and immediately replays a stroke, and the timestamp captured is the first presented wet-ink frame.\n- [ ] Each surface has a working scenario: iOS/iPadOS scene reconnect, Android `onStart` with the process alive and again after `am kill`, web tab restore including bfcache, and installed-PWA relaunch.\n- [ ] A regression fails the perf check on the Tier 1 slots at the same cadence as B6.\n- [ ] Results separate the three cases; a restore-after-kill run is never reported as a warm start.\n\n## Technical notes\nReuse the first-usable-frame marker from {{SN-PERF-008}} and add a resume marker on the lifecycle transition (`AppLifecycleState.resumed` in Flutter, with the native side stamping the OS-level callback so the Dart hop is inside the measurement, not before it). Android process death is driven with `adb shell am kill`; web bfcache with a scripted navigation plus `pageshow.persisted`. Beware the trap that makes warm start look free: the app may render a stale frame instantly and only accept input hundreds of milliseconds later, which is why the acceptance criterion is first ink, not first pixel.\n\n## Security & privacy\nResume crosses a security boundary: a locked note or a biometric-gated notebook must re-authenticate on resume, and the harness must not disable that to make the number look good. The scenario therefore runs in both states and asserts that a gated notebook shows its lock on resume ({{SN-AUTH-001}} area; MASVS-AUTH-2). No content appears in traces.\n\n## UX notes\nThe felt experience is picking up the tablet mid-lecture and writing immediately. If a surface cannot hit resume-to-ink, the fallback is to make the editor accept and buffer strokes while the rest of the app finishes waking, never to show a spinner over the page.\n\n## Test plan\nIntegration per surface in `tools/perf_harness/scenarios/resume_*`, run on the Tier 1 slots. Unit: the marker resolver mapping lifecycle transitions to the right scenario type. Manual: a lab pass on iPad and a low-end Android confirming the numbers with a stopwatch-class sanity check, recorded under `tools/device_lab/results`.\n\n## Dependencies\n{{SN-PERF-008}}, {{SN-PERF-018}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-010",
+    "title": "Respond to OS memory-pressure signals and prove no data loss on a low-memory kill",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "ios-phone",
+      "android-tablet",
+      "android-phone",
+      "web"
+    ],
+    "areas": [
+      "perf",
+      "storage",
+      "compat"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-STORAGE-2"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-009",
+      "SN-INK-022"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\nThe memory budget treats an OOM or a low-memory kill as an automatic fail ({{SN-PERF-009}}; docs/platform/performance-budgets.md B9), but a gate that fails a benchmark does nothing for the student whose 4 GB tablet kills the app mid-lecture because a browser and a video call are also open. Two behaviours are missing. First, the app never listens to the OS asking for memory back — Android's `onTrimMemory`/`ComponentCallbacks2` and iOS's memory-warning notification are the platform's explicit early warning, and the tile and PDF caches are exactly the evictable things they are asking about (docs/architecture/rendering-and-performance.md section 3). Second, nothing proves the invariant that matters most: a kill must lose no ink.\n\n## Scope\n**In:** a memory-pressure facade with platform bindings (Android `ComponentCallbacks2.onTrimMemory` levels, iOS `didReceiveMemoryWarning`, web `navigator.storage` pressure plus visibility as a weak proxy); a documented response ladder mapping pressure levels to eviction of the ink tile LRU, PDF page bitmaps, thumbnails and decoded images; a durability guarantee that the in-flight stroke and the pending journal are flushed at the first pressure signal; kill-and-restore tests on both mobile platforms; recording pressure events into the perf result so a benchmark run that survived by evicting is not mistaken for one that never needed to.\n**Out:** the cache implementations themselves ({{SN-INK-022}}, {{SN-PDF-003}}), the memory sampler and gates ({{SN-PERF-009}}), the quality ladder ({{SN-PERF-023}}, which this feeds rather than replaces), and editor scene restoration ({{SN-IPAD-028}}, {{SN-PHN-017}}).\n\n## Acceptance criteria\n- [ ] A pressure signal at each platform level triggers the documented eviction step and the freed bytes are recorded; a test drives `adb shell am send-trim-memory` at `RUNNING_MODERATE`, `RUNNING_LOW` and `RUNNING_CRITICAL` and asserts the step taken.\n- [ ] After any pressure signal the app remains correct: evicted tiles re-raster from vector strokes and evicted PDF bitmaps re-render, with no visual difference proven by a golden before and after.\n- [ ] Killing the app (`adb shell am kill`, iOS jetsam simulation) at any point during a stroke loses no committed ink and at most the in-flight stroke, and reopening restores the page and scroll position.\n- [ ] Eviction never touches unsaved data: the pending write journal is flushed before caches are dropped, asserted by a test that kills immediately after the signal.\n- [ ] Pressure events appear in the perf result JSON with timestamps so {{SN-PERF-024}} soak runs can correlate them.\n- [ ] On web, where no pressure API exists, the app behaves exactly as at nominal and the absence is recorded, not silently assumed.\n\n## Technical notes\nExpose pressure as an immutable value through a Riverpod provider, matching the thermal probe pattern in {{SN-PERF-015}}, so consumers subscribe rather than poll a singleton. The eviction order is deliberate — furthest-from-viewport first, re-derivable data before anything needing I/O to rebuild. Do not free the wet-layer surface under pressure: dropping the active stroke's buffer is a visible failure and the surface is small. Flush through the same storage path as ordinary autosave ({{SN-CORE-001}} area) so durability semantics are identical.\n\n## Security & privacy\nFlushing under pressure must keep encryption invariants: the journal is written through the same encrypted-at-rest path, never a plaintext emergency dump (MASVS-STORAGE-1, {{SN-CRY-001}}). Eviction must not leave decrypted page bitmaps in a cache directory that survives the process; dropped buffers are zeroed where the platform allows. A low-memory kill must not bypass a note lock on restore ({{SN-AUTH-001}} area).\n\n## UX notes\nInvisible when it works. The user must never see a \"low memory\" dialog: the app sheds caches quietly, and the worst visible effect is a page re-rendering a fraction of a second later after severe pressure. After a kill, reopening lands on the same page at the same scroll position with the last stroke present.\n\n## Test plan\nUnit: the level-to-step mapping, including unknown levels. Integration: `am send-trim-memory` at each level with golden comparison, and a kill-during-stroke durability test on Android and iOS. Widget: none. Manual: fill a low-end device with background apps and write for ten minutes, recorded under `tools/device_lab/results`.\n\n## Dependencies\n{{SN-PERF-009}}, {{SN-INK-022}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-011",
+    "title": "Split deferred components and move plugin initialisation off the startup path",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "perf",
+      "devx"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "OWASP-A05",
+      "MASVS-CODE-4"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-008"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: supply-chain"
+    ],
+    "body": "## Context\nThe startup strategy is explicit: defer everything not needed for first ink, split rarely-used features (brush studio, PDF export, ML) into deferred libraries so they do not inflate first paint, and warm the storage, sync and index isolates only after the editor is interactive (docs/architecture/rendering-and-performance.md section 4; docs/platform/performance-budgets.md B6 and section 5 item 3). {{SN-PERF-008}} measures cold start and explicitly places the deferred-component splitting implementation out of its scope, and no other issue picks it up — so the budget has a gate and no remedy. This is the work that makes B6 pass on a 4 GB Android and a cached web PWA, and it must land before the heavy subsystems (PDF, ML, audio, transcription) arrive, because retro-fitting deferral after every plugin is eagerly registered is far more expensive.\n\n## Scope\n**In:** an audit of what runs before the first interactive frame; deferred-library boundaries for the brush studio, PDF export, ML/handwriting, transcription, billing and cloud-drive SDKs (`deferred as` in Dart, `--split-debug-info`-compatible AOT splitting, web code-splitting); lazy plugin registration so a federated plugin's native side initialises on first use rather than at boot; post-first-frame warm-up scheduling for the storage, sync and index isolates; a CI guard listing the symbols/packages allowed on the startup path and failing when a new eager import appears.\n**Out:** the cold-start measurement ({{SN-PERF-008}}), warm start and resume ({{SN-GPRF-009}}), the individual plugin implementations, and the web precache strategy ({{SN-WEB-011}}).\n\n## Acceptance criteria\n- [ ] A documented list of everything initialised before the first interactive frame exists, and each entry is justified as required for first ink or moved behind deferral.\n- [ ] The brush studio, PDF, ML, transcription, billing and cloud-drive code paths are deferred libraries that are provably not loaded at boot, asserted by a test inspecting loaded libraries / bundle chunks.\n- [ ] Native plugin initialisation is lazy: launching and writing a stroke never triggers PDF, ML or cloud SDK init, proven by an init counter in profile builds.\n- [ ] Isolate warm-up starts only after the first interactive frame, and a cold start with warm-up disabled is measurably no faster (proving warm-up is off the critical path).\n- [ ] A CI guard fails when a new import puts a non-allowlisted package on the startup path, with a message naming the import chain.\n- [ ] Cold start improves or holds on every Tier 1 slot; the numbers before and after are recorded.\n\n## Technical notes\nDart deferred loading works on web natively and via AOT split units on mobile; verify per platform rather than assuming, and keep a fallback path where a deferred load fails (offline PWA, interrupted download) so a feature degrades with a message instead of throwing. Federated plugins scaffolded in the Foundations area already isolate platform code; lazy registration means not calling their `registerWith` until the feature's first use, which needs care on the iOS side where plugin registration is generated. Guest mode stays first-class: no auth or network on the boot path.\n\n## Security & privacy\nDeferred code must not become unverified code: on web, split chunks are covered by the same CSP and SRI posture as the main bundle ({{SN-WEB-014}}, {{SN-WEB-016}}), and a chunk fetched at runtime is same-origin only. Lazy plugin init must not defer a security control — key material, note locks and the encrypted store initialise on the normal path, never lazily (MASVS-STORAGE-1). The startup allowlist doubles as a supply-chain signal: an unexpected package on the boot path is worth a look (sec: supply-chain).\n\n## UX notes\nThe user sees the library or their last page fast, and can write before sync connects. When a deferred feature is opened for the first time and its chunk must load, show the standard inline loading state from the design system rather than a blocking spinner, and never more than once per install.\n\n## Test plan\nUnit: deferred-load failure handling per feature. Integration: a cold-start trace asserting the deferred set is absent at first frame, plus a first-use test asserting each feature loads and works. CI: the startup-path import guard with a fixture violation. Benchmark: `tools/perf_harness` cold-start runs before/after on iPad, Android-lowend and web cached.\n\n## Dependencies\n{{SN-PERF-008}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-012",
+    "title": "Define the performance run statistical protocol and device preconditions",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "perf",
+      "qa",
+      "ci-cd"
+    ],
+    "milestone": "M0 Foundations",
+    "size": "S",
+    "sdlc": "verification",
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-003",
+      "SN-PERF-018"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe gates are defined in terms of p95, p99 and peak, and they fail a PR that regresses beyond a tolerance versus a stored baseline (docs/platform/performance-budgets.md section 3; {{SN-PERF-003}}). What is not defined anywhere is how a number is produced: how many runs, whether the first is discarded, what device state is required, and how large a difference has to be before it is a regression rather than noise. That gap is how perf gates die. Too tight a tolerance and the check flakes until someone marks it non-blocking; too loose and a real 15% regression sails through. A warm device, a background app update, a different screen brightness or an unlucky first run can each move a frame-time p99 more than the regression being hunted.\n\n## Scope\n**In:** a written protocol plus its implementation in `tools/perf_harness`: run counts per metric class, warm-up runs discarded, the statistic computed per run and across runs, an empirically derived per-slot noise floor (measured by running the same commit N times), tolerance derived from that noise floor rather than guessed, a minimum detectable effect stated per budget, and the device preconditions the runner enforces before a run (battery level and charging state, fixed brightness, airplane mode or a declared network state, thermal cooldown wait, no other foreground apps, animator scales, developer-option overrides off); a re-run-once-then-fail policy for perf jobs and how it differs from the general flaky-test policy ({{SN-QA-008}}).\n**Out:** the gate workflow ({{SN-PERF-003}}), the budget values ({{SN-PERF-018}}), the runner provisioning ({{SN-GPRF-013}}), and the trend dashboard ({{SN-PERF-019}}).\n\n## Acceptance criteria\n- [ ] A documented protocol exists per metric class (latency proxy, frame time, cold start, memory, energy) naming run count, warm-up discards, statistic and aggregation.\n- [ ] A noise-floor run mode executes the same commit N times per slot and writes a noise profile; tolerances in the gate are derived from that profile and regenerating it is a documented, reviewed action.\n- [ ] The harness refuses to record a gating result when a precondition fails (low battery, charging where the protocol forbids it, device above the thermal threshold, wrong brightness) and says which precondition blocked it.\n- [ ] Each budget states its minimum detectable effect on each gate device, so a regression smaller than the noise floor cannot silently become a required check.\n- [ ] A perf job that fails re-runs once; a second failure is a real failure, and the pair of results is attached.\n- [ ] A synthetic fixture proves the gate distinguishes a 3% shift within noise (pass) from a 20% regression (fail).\n\n## Technical notes\nCompute both a within-run statistic (p95/p99 of frames in one run) and an across-run statistic (median of the per-run p99) so a single unlucky run does not decide a merge. Prefer a trimmed or bootstrap confidence interval over assuming normality — frame-time distributions are heavily skewed. Preconditions come from the device config ({{SN-PERF-004}}) and are read on-device: battery via platform APIs, thermal via the probe from {{SN-PERF-015}}, brightness set by the runner script. Record every precondition value in the result so an old result can be audited.\n\n## Security & privacy\nNone beyond baseline. The protocol records device state, never content, and all numbers stay local to the runner and the repo (ADR-0011: no vendor analytics). A precondition that requires disabling a security feature is never acceptable: runs happen on a normally configured device, not one with verification disabled.\n\n## UX notes\nNo user-facing surface. The developer experience is the point: a failing perf check must tell an engineer \"this is 22% over the noise floor on Android-lowend, here are the two runs\", not \"perf failed\", which is the difference between a gate people fix and a gate people bypass.\n\n## Test plan\nUnit: statistics implementation (percentiles, trimming, confidence interval) against fixed vectors; precondition evaluator tests for each failing state. Integration: a noise-floor run on one slot producing a profile; a fixture-driven gate test with a within-noise and an over-noise series. Docs: the protocol lives in `tools/perf_harness/README.md` and is linked from the budgets doc.\n\n## Dependencies\n{{SN-PERF-003}}, {{SN-PERF-018}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-013",
+    "title": "Provision the self-hosted physical device runner for the perf gates",
+    "type": "infra",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "perf",
+      "ci-cd",
+      "qa"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "SLSA-BUILD-L3",
+      "OWASP-CICD-SEC-4",
+      "OWASP-CICD-SEC-7"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-004",
+      "SN-PERF-003",
+      "SN-GPRF-012"
+    ],
+    "labels_extra": [
+      "needs-credentials",
+      "sec: supply-chain"
+    ],
+    "body": "## Context\nEvery perf gate in the plan assumes a machine with real devices attached to it. {{SN-PERF-004}} defines the device-lab configs and explicitly leaves provisioning the physical runner out of scope; {{SN-QA-009}} sets up a cloud device farm for functional and integration runs, which is the right tool for those but cannot serve latency or fps gates — a shared cloud device gives no control over thermal state, brightness, background load or pen hardware, and the budgets doc forbids emulators from gating at all (docs/platform/performance-budgets.md section 3). So the infrastructure that every blocking perf check depends on is currently owned by nobody. This issue provisions it: a host, the attached Tier 1 devices, the job plumbing, and the security posture that a self-hosted runner demands.\n\n## Scope\n**In:** a documented runner topology (a macOS host for iPad/iPhone slots, a Linux or macOS host for Android slots) with the Tier 1 devices attached; a self-hosted GitHub Actions runner configured for trusted refs only; device provisioning scripts (developer mode, stay-awake, brightness, locale, animation scales, cleanup between jobs); a watchdog that reboots a wedged device and quarantines a slot that fails to prepare; ephemeral per-job workspaces; artifact upload of results and timelines; a runbook for adding, replacing or retiring a device.\n**Out:** the harness and gate logic ({{SN-PERF-002}}, {{SN-PERF-003}}), the cloud functional farm ({{SN-QA-009}}), the camera rig ({{SN-PERF-006}}), and the statistical protocol ({{SN-GPRF-012}}) that this runner enforces.\n\n## Acceptance criteria\n- [ ] The runner executes the perf job on at least the iPad, Android-tablet-stylus and Android-lowend slots and uploads results to the workflow run.\n- [ ] Jobs from forked pull requests never execute on the self-hosted runner; perf on an untrusted PR runs only after an explicit maintainer label, and a test PR proves the block.\n- [ ] Each job starts from a clean workspace and leaves no build output, credentials or note fixtures on the host or the devices; a post-job check asserts it.\n- [ ] Device preparation is scripted and idempotent, and a device failing preparation quarantines its slot with a clear message instead of producing a bogus number.\n- [ ] A wedged or disconnected device is detected and recovered (reboot, re-pair) automatically; a slot offline for more than one nightly cycle raises an issue.\n- [ ] The runbook documents adding a device, rotating runner credentials, and the physical/network security expectations of the host.\n\n## Technical notes\nSelf-hosted runners execute arbitrary workflow code, so the isolation posture is the design, not an afterthought: dedicated machine, non-admin service account, no long-lived cloud credentials on the host, network segment with egress limited to the package and Actions endpoints, and no reuse of the host for release signing ({{SN-REL-017}} keeps signing separate). Devices connect over USB with authorised debugging keys; Android runs `adb` with a persisted key, iOS uses a provisioned profile and `devicectl`/`xcrun`. Keep device state reset cheap — uninstall the app between jobs rather than factory-resetting.\n\n## Security & privacy\nThis is the highest-value target in the CI estate: a compromised runner with attached, authorised devices can install arbitrary builds. Controls: trusted-ref-only execution, maintainer-gated PR runs, least-privilege service account, no secrets beyond what a perf run needs, egress allow-list, host patching, and audit logging of job invocations (sec: supply-chain; OWASP CI/CD-SEC-4 insufficient flow control, CI/CD-SEC-7 insecure system configuration; SLSA build-platform expectations). Devices hold only synthetic fixtures; no real user data ever reaches the lab.\n\n## UX notes\nNo user-facing surface. Internally, a contributor should see perf results attached to their PR within the documented turnaround, and a queue that is backed up must be visible rather than silently delaying merges.\n\n## Test plan\nInfrastructure verification rather than unit tests: a smoke workflow that claims a slot, prepares a device, runs a two-minute scenario and uploads a result; a negative test proving a fork PR cannot schedule on the runner; a chaos check that physically disconnects a device mid-job and asserts recovery and quarantine. The runbook is validated by a second person following it to attach a new device.\n\n## Dependencies\n{{SN-PERF-004}}, {{SN-PERF-003}}, {{SN-GPRF-012}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-014",
+    "title": "Add the in-app performance HUD and local jank capture behind a debug flag",
+    "type": "task",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "perf",
+      "devx",
+      "settings"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-STORAGE-2"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-020",
+      "SN-PERF-022",
+      "SN-PERF-015"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nThe jank triage runbook and its automated analyser ({{SN-PERF-020}}) both start from a captured timeline. In the lab that is easy. Everywhere else — a tester's foldable, a beta user's low-end tablet, a maintainer reproducing a report on the train — there is no way to see what the app thinks is happening or to capture the moment it stuttered. The information exists internally: the active ink tier, the renderer ({{SN-PERF-022}}), the quality-ladder step ({{SN-PERF-023}}), the thermal state ({{SN-PERF-015}}), frame times, the latency proxy and the tile-cache size. This issue surfaces it in a debug HUD and adds a one-tap local capture, so a jank report arrives with evidence instead of \"it felt laggy sometimes\".\n\n## Scope\n**In:** an overlay widget showing instantaneous and p99 frame time, fps, the latency proxy, the active tier and renderer, the quality-ladder step, thermal and power state, tile-cache bytes and the last eviction; a rolling in-memory frame-timing ring buffer with a \"capture last 10 seconds\" action that writes a timeline plus run metadata to a local file; a hidden entry point in Settings (a build-flavour toggle in internal builds, a deliberate gesture in release) and a kill switch; the file format consumed directly by the triage CLI.\n**Out:** the triage analyser itself ({{SN-PERF-020}}), the CI dashboard ({{SN-PERF-019}}), field metrics upload ({{SN-TEL-013}}, opt-in and separate), and the diagnostics bundle ({{SN-TEL-008}}, which this capture may be attached to by the user).\n\n## Acceptance criteria\n- [ ] The HUD renders outside the wet-ink repaint scope and costs no measurable frame time when enabled (its own overhead measured and under 0.2 ms at 60 Hz), and zero when disabled.\n- [ ] The HUD is absent from release builds unless explicitly enabled by the documented gesture, and the overlay is never shown to a user who has not enabled it.\n- [ ] Capture writes a timeline plus metadata (device, OS, build, tier, renderer, ladder step, thermal, budgets in force) to app-private storage and the triage CLI parses it without modification.\n- [ ] A capture contains no note content, no page images, no file names and no identifiers; a test asserts the serialised capture against a content deny-list.\n- [ ] The capture file is shareable by the user's explicit action only, through the system share sheet; the app never uploads it.\n- [ ] Enabling the HUD survives a hot restart but not an app update, so a forgotten HUD cannot ship enabled on someone's device forever.\n\n## Technical notes\nDrive the HUD from the same `FrameTiming` stream the harness uses so one source of truth reports build and raster separately; paint it in its own `RepaintBoundary` in an overlay above the editor, never inside the canvas layer. The ring buffer must pre-allocate — a diagnostic that allocates per frame would create the jank it exists to find ({{SN-PERF-021}}). Reuse the redacted logging facade's rules for anything written to disk.\n\n## Security & privacy\nThis is a diagnostics surface in a zero-server, content-free product, so the deny-list is the design: no note text, no titles, no OCR output, no file paths containing user names, no stable device identifiers (ADR-0011; {{SN-TEL-003}} deny-by-default serialiser is the model to follow). Captures live in app-private storage, are excluded from backups where note data is ({{SN-AND-030}}), and are deletable from Settings. No egress path exists in this issue at all (MASVS-PRIVACY-1, MASVS-STORAGE-2).\n\n## UX notes\nInternal-facing. The HUD is a compact, monospaced, translucent panel, draggable out of the way, high-contrast in both themes, and dismissible with one tap; it must never intercept pen input. The Settings entry lives in the advanced/diagnostics area described by {{SN-SET-001}}, with plain language about what a capture contains and what it does not.\n\n## Test plan\nWidget: HUD rendering in light/dark with golden snapshots; a test asserting it paints outside the ink repaint scope. Unit: ring-buffer allocation behaviour, capture serialiser against the content deny-list, enable-state lifetime across restart and update. Integration: enable, ink for ten seconds, capture, and feed the file to the triage CLI in the same test.\n\n## Dependencies\n{{SN-PERF-020}}, {{SN-PERF-022}}, {{SN-PERF-015}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-015",
+    "title": "Measure idle, screen-on and background energy drain beyond the writing soak",
+    "type": "test",
+    "priority": "p2",
+    "platforms": [
+      "ipad",
+      "ios-phone",
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "perf",
+      "compat",
+      "qa"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-PRIVACY-3"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-013",
+      "SN-PERF-014"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nBudget B10 caps a two-hour *continuous writing* session at 12% drain on an iPad Pro ({{SN-PERF-013}}; docs/platform/performance-budgets.md B10). Real sessions are not continuous writing: a notebook sits open on a desk while a student listens, the app sits in the background while they use something else, and a recording runs for an hour with the screen off. Those states have no budget and no measurement, and they are where energy bugs hide — a repaint loop that never idles, a ProMotion panel held at 120 Hz with nothing moving, a sync or index isolate waking every few seconds, an audio session keeping the CPU awake. The remedy list even names the cause (reduce continuous repaint, respect adaptive refresh, coalesce sync — docs/platform/performance-budgets.md section 5 item 6), so the measurement that would catch it should exist.\n\n## Scope\n**In:** three additional energy scenarios and their proposed budgets in the registry — editor open and idle with the screen on (30 minutes), app backgrounded with sync enabled (60 minutes), and background audio recording (60 minutes); per-scenario sampling reusing the {{SN-PERF-013}} protocol and preconditions; wakeup/wake-lock accounting on Android (`dumpsys batterystats`) and energy-impact capture on iOS; an assertion that the idle editor requests no high frame-rate range and produces no repaint; results recorded per device with the thermal timeline.\n**Out:** the writing soak itself ({{SN-PERF-013}}), the idle-refresh draw-path behaviour ({{SN-INK-023}}, {{SN-PERF-014}}), background sync scheduling policy ({{SN-SYNC-001}} area), and fixing whatever the measurements find.\n\n## Acceptance criteria\n- [ ] Three energy scenarios exist with documented preconditions, durations and proposed budgets in the budget registry, each marked with its cadence (nightly or release candidate).\n- [ ] Screen-on idle with a notebook open produces zero app-driven frames after the documented idle period and its drain is within tolerance of a display-only baseline measured on the same device.\n- [ ] Backgrounded with sync enabled records wakeups per hour and CPU time per hour; both are under the documented caps and any wake-lock held longer than its cap fails the run.\n- [ ] Background recording holds only the audio session and its documented wake-lock; no ink, index or render work runs while the screen is off.\n- [ ] Results include the thermal timeline and the refresh-rate timeline so an idle run that quietly sat at 120 Hz is visible.\n- [ ] A regression opens a release-blocking issue on the nightly cadence like the other energy budgets.\n\n## Technical notes\nAndroid: `dumpsys batterystats --reset` before, `--checkin` after, parsing wakeup counts, partial wake-lock durations, and per-uid CPU; `dumpsys power` for held locks. iOS: Instruments Energy Log plus `UIDevice.batteryLevel` sampling, with the app isolated per {{SN-PERF-013}} preconditions. The idle assertion is easiest from the app side: a frame counter exposed in profile builds that must not advance while idle. Keep the display-only baseline per device — energy budgets are meaningless without the panel's own cost subtracted.\n\n## Security & privacy\nNone beyond baseline. Battery statistics are device-level and contain no content; the scenarios use synthetic notebooks and a silent audio input. Background recording is only exercised with the same foreground-service notification and consent posture the feature ships with ({{SN-AND-023}}), never with a test build that bypasses it (MASVS-PRIVACY-3).\n\n## UX notes\nNo user-facing surface. The user-visible payoff is a tablet that is not warm and half-empty after a lecture it spent mostly idle, and an app that does not appear at the top of the battery-usage screen — which, for a note app, is a trust-destroying place to appear.\n\n## Test plan\nLab-run scenarios executed on the iPad and Android Tier 1 slots at the nightly/RC cadence, recorded under `tools/device_lab/results`. Unit: the batterystats parser against captured fixtures. Integration: a profile-build test asserting zero frames and zero isolate messages during a two-minute idle window, which is the cheap proxy the per-commit job can run.\n\n## Dependencies\n{{SN-PERF-013}}, {{SN-PERF-014}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-016",
+    "title": "Gate startup and document-open performance against slow storage and a cold cache",
+    "type": "test",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone",
+      "web",
+      "ipad"
+    ],
+    "areas": [
+      "perf",
+      "storage",
+      "qa"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-STORAGE-1"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-008",
+      "SN-PERF-010",
+      "SN-GPRF-012"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\nCold start (B6) and opening a 1,000-page notebook (B7) are both dominated by I/O: reading the manifest, opening the SQLite database, faulting in blobs, and on web warming the service-worker cache ({{SN-PERF-008}}, {{SN-PERF-010}}). Both are measured in the best possible conditions — a lab device that just ran the same scenario, with the file already in the OS page cache and the database file hot. The low-end reference device has eMMC-class storage, often nearly full, and the user's first open of the day is always cold. A benchmark that only ever measures the warm path will report a passing B6 while real first-launches take twice as long, and the gap will never appear in CI.\n\n## Scope\n**In:** a cold-cache mode for the startup and notebook-open benchmarks (drop the page cache or reboot between runs so each measurement is a genuine first read); a slow-storage mode that runs the same scenarios with background I/O contention on the device; a nearly-full-storage case on the low-end slot; the web equivalent (a cold service-worker/HTTP cache load and an OPFS-cold open); reporting warm and cold numbers as separate series so both trends are visible.\n**Out:** the benchmarks themselves ({{SN-PERF-008}}, {{SN-PERF-010}}), the storage layer ({{SN-CORE-001}} area), web durability and eviction ({{SN-WEB-009}}, {{SN-WEB-032}}), and the statistical protocol ({{SN-GPRF-012}}) that both modes obey.\n\n## Acceptance criteria\n- [ ] The harness can run any startup or open scenario in cold-cache mode, and the method used per platform (reboot, cache drop, fresh install, cache-busted load) is documented and recorded in the result.\n- [ ] Cold and warm numbers are stored as separate series with separate baselines; a change that improves warm and regresses cold is visible rather than averaged away.\n- [ ] A slow-storage run with documented background I/O contention completes within a documented multiple of the warm budget on the low-end slot, and any run that exceeds it fails with the contention level attached.\n- [ ] A near-full storage case (device at the documented free-space threshold) is exercised at least nightly on the low-end slot, and a failure to write is handled by the app as a user-visible, recoverable error rather than data loss.\n- [ ] Web cold load is measured with an empty HTTP and service-worker cache and reported separately from the cached PWA budget, per the rule that the 3 s budget is the cached case.\n- [ ] The lazy-materialisation contract from B7 still holds under cold cache: opening the 1,000-page fixture still reads only the manifest and the current page, asserted by counting file reads, not just wall time.\n\n## Technical notes\nAndroid page cache can be dropped via `sync; echo 3 > /proc/sys/vm/drop_caches` on a rooted lab device, or approximated by a reboot on a stock one — document whichever the lab uses, and never mix the two in one series. Background contention can be generated with a controlled writer process; keep it reproducible and record its rate. Counting reads is more stable than timing them: instrument the store's file access in profile builds so the contract assertion does not depend on device speed.\n\n## Security & privacy\nNone beyond baseline, with one caveat: the near-full-storage case is a durability scenario, and the app must fail closed — an encrypted write that cannot complete must not leave a partial or plaintext artifact, and the journal must recover on next launch ({{SN-CRY-001}}, MASVS-STORAGE-1). The lab must not disable encryption to make I/O numbers look better; the measured path is the shipped path.\n\n## UX notes\nNo user-facing surface, but the error path it exercises is: when the device is out of space the app shows the standard recoverable error with a route to free space or export, never a silent failure. The real payoff is that the first launch of the day feels like the second.\n\n## Test plan\nIntegration: cold-cache and contention variants of the existing startup and 1,000-page-open scenarios on the low-end and iPad slots, plus the web cold-load variant. Unit: the read-count instrumentation and its assertion helper. Manual: one near-full-storage pass per release recorded under `tools/device_lab/results`.\n\n## Dependencies\n{{SN-PERF-008}}, {{SN-PERF-010}}, {{SN-GPRF-012}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-017",
+    "title": "Profile and document Tier 2 browser performance for Safari, Firefox and Samsung Internet",
+    "type": "test",
+    "priority": "p2",
+    "platforms": [
+      "web"
+    ],
+    "areas": [
+      "perf",
+      "compat",
+      "qa"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "OWASP-A05",
+      "MASVS-NETWORK-1"
+    ],
+    "parent": "SN-WEB-001",
+    "depends_on": [
+      "SN-WEB-023",
+      "SN-WEB-024",
+      "SN-WEB-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: owasp-top10"
+    ],
+    "body": "## Context\nOnly Chrome and Edge desktop are Tier 1 on the web, where the 30 ms ink budget and the PWA gates are enforced ({{SN-WEB-024}}). Safari on iPadOS and macOS, Firefox and Samsung Internet are Tier 2: they MUST be functional, and their known cosmetic and performance gaps are documented rather than release-blocking (docs/platform/compatibility-matrix.md sections 1 and 3). {{SN-WEB-023}} builds the cross-browser functional harness, but nobody ever measures these browsers, so \"known gaps are documented\" is currently an empty promise — and iPad Safari is the constraining web target, the browser where a student is most likely to open a shared note. The matrix also carries an unresolved \"(verify)\" on Firefox skwasm support that a measured run would settle.\n\n## Scope\n**In:** a per-browser performance profile run on Safari iPadOS, Safari macOS, Firefox and Samsung Internet covering ink latency proxy, frame time during writing and scrolling, cached and uncached load, and a 600-page PDF scroll; recording which renderer path was taken (CanvasKit vs skwasm) and which progressive-enhancement APIs were honoured (`desynchronized`, coalesced and predicted events, Ink API); writing the results into a Tier 2 known-gaps table in the docs and the compatibility registry; resolving the Firefox skwasm \"(verify)\" cell.\n**Out:** the Tier 1 Chrome gates ({{SN-WEB-024}}), the functional cross-browser harness ({{SN-WEB-023}}), Safari Pencil support ({{SN-WEB-007}}), and fixing the gaps found (each filed separately with its measurement attached).\n\n## Acceptance criteria\n- [ ] Each Tier 2 browser has a recorded profile with the same metric set as the Chrome run, marked non-gating, dated and tied to a browser version.\n- [ ] The renderer path and each progressive-enhancement API is recorded as honoured, ignored or unavailable per browser, not assumed from documentation.\n- [ ] The Firefox skwasm question is answered with evidence and the registry row is updated with `verified` and a date.\n- [ ] A Tier 2 known-gaps table exists in the web platform docs, written in language support can quote to a user, and is regenerated from the results rather than hand-maintained.\n- [ ] iPad Safari is profiled on real hardware with a real Pencil, since it is the constraining target and the one most likely to receive a share link.\n- [ ] A Tier 2 result that falls below \"functional\" (the app cannot take a note) is escalated as a release blocker even though its perf numbers are not gated.\n\n## Technical notes\nReuse the web latency proxy from {{SN-PERF-002}} (`event.timeStamp` to `requestAnimationFrame` present timing) and the Lighthouse/load capture from {{SN-WEB-024}}; the numbers need to be comparable across browsers, so the same scenario code must run everywhere with no Chromium-only path. Detect honoured `desynchronized` by behaviour, not by the constructor accepting the flag — WebKit accepts it and ignores it. Samsung Internet tracks Chromium with a lag, so record its Chromium base version alongside its own.\n\n## Security & privacy\nNone beyond baseline. Runs use synthetic notebooks on a test origin with the production header posture ({{SN-WEB-014}}, {{SN-WEB-015}}, {{SN-WEB-016}}) so a browser that silently drops COOP/COEP or Trusted Types is caught here; a Tier 2 browser that cannot enforce a security header must be recorded, since reduced isolation changes the web key-protection posture ({{SN-WEB-031}}).\n\n## UX notes\nThe output is honesty: a support page and an in-app best-effort notice ({{SN-GPRF-007}}) that say exactly what is slower or missing in a given browser, instead of a user concluding the product is broken. Where a gap is severe (no low-latency path on iPad Safari), the docs should recommend the installed app rather than pretending parity.\n\n## Test plan\nAutomated where the browser can be driven in CI (Firefox, Chromium-family via the cross-browser harness); manual per release for Safari iPadOS with a Pencil and for Samsung Internet on a device. Results land in `tools/device_lab/results/web-<browser>-<version>.md` and regenerate the gaps table. Add a test asserting the gaps table is in sync with the recorded results.\n\n## Dependencies\n{{SN-WEB-023}}, {{SN-WEB-024}}, {{SN-WEB-002}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-018",
+    "title": "Run the OS, browser and target-SDK upgrade readiness cycle on pre-release builds",
+    "type": "task",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "compat",
+      "qa",
+      "release"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "M",
+    "sdlc": "maintenance",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-STORAGE-1"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-GPRF-006",
+      "SN-GPRF-005"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\nThe compatibility matrix is a snapshot, and every year the ground moves: a new iPadOS and iOS, a new Android release with behaviour changes, an annual Play target-SDK deadline, and browser releases every few weeks. The matrix already encodes this reality — Android 16 gets its own Tier 1 slot because its behaviour changes must be handled, iPadOS 26 APIs must sit behind availability checks ({{SN-IPAD-027}}), and browser floors are versioned — but nothing in the plan schedules the work of finding out what the *next* version breaks. The failure mode is well known for a pen-first app: an OS beta changes stylus event delivery or a browser ships a Pointer Events change, and the first report arrives from users on release day. This issue makes readiness a routine, not a rescue.\n\n## Scope\n**In:** a documented readiness cycle run each time a major OS developer preview/beta or a browser pre-release channel appears: install the pre-release on a lab device or channel, run the functional, golden and (non-gating) perf suites, walk a short manual charter focused on ink capture, palm rejection, windowing and file access, and file findings before GA; the annual Play target-SDK and iOS SDK bump checklist with its behaviour-change review; the rule that the compatibility registry ({{SN-GPRF-006}}) is updated in the same cycle; a standing tracking issue template per OS version.\n**Out:** the Android 16 conformance gate ({{SN-GPRF-005}}), availability-gating implementation ({{SN-IPAD-027}}), store submission mechanics ({{SN-REL-011}}), and fixing what the cycle finds.\n\n## Acceptance criteria\n- [ ] A written cycle exists naming triggers (OS developer preview, OS beta, browser pre-release channel, annual SDK deadline), the suites to run, the manual charter, and where findings go.\n- [ ] At least one full dry-run of the cycle is executed against a current pre-release OS or browser channel, producing a dated report and any findings as issues.\n- [ ] The manual charter explicitly covers the pen path: capture and coalesced samples, prediction, palm rejection, hover, pressure and tilt, since these are the APIs most often changed and least covered by functional tests.\n- [ ] The annual target-SDK checklist enumerates the behaviour changes for the new API level, maps each to an owner or a \"no impact\" note with evidence, and is completed before the deadline.\n- [ ] A pre-release run that finds a breakage raises an issue tagged for the release it would affect, with device, OS build and the reproduction attached.\n- [ ] The compatibility registry and matrix doc are updated in the same PR as the cycle report, so tiers never lag the world by a whole release.\n\n## Technical notes\nPre-release OS runs must never be a gate: they are early warning, and their perf numbers are recorded non-gating (beta OSes are routinely slower). Keep at least one lab device reserved for pre-release so a Tier 1 gate device is never upgraded out of its documented OS. On web, run the same suites against Chrome Canary/Beta, Safari Technology Preview and Firefox Nightly using the cross-browser harness ({{SN-WEB-023}}). Availability checks ({{SN-IPAD-027}}) are the mechanism that lets a new OS ship before we adopt its APIs; the cycle verifies they still hold.\n\n## Security & privacy\nPre-release OSes can change security-relevant behaviour: Keystore/StrongBox availability, backup and device-transfer semantics ({{SN-AND-030}}), privacy-manifest and required-reason API rules ({{SN-IPAD-021}}), and permission prompts. The charter includes a security pass over those, and a regression there is treated as a release blocker rather than a compatibility note (MASVS-STORAGE-1, MASVS-PLATFORM-1). Lab devices on pre-release builds hold synthetic data only.\n\n## UX notes\nNo user-facing surface. The user-visible outcome is that the app keeps working on the day a new OS ships, which for a note app is the difference between trust and a support queue — and it lets the release notes say \"supports iPadOS N on day one\" honestly.\n\n## Test plan\nProcess verification: the dry-run report is the evidence. Automation: a scheduled workflow that checks for new OS/browser pre-release versions against the registry and opens the tracking issue from a template, so the cycle starts without anyone remembering. The manual charter lives with the exploratory charters ({{SN-QA-014}}).\n\n## Dependencies\n{{SN-GPRF-006}}, {{SN-GPRF-005}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-019",
+    "title": "Feed Low Power Mode and Battery Saver into the adaptive quality ladder",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "ipad",
+      "ios-phone",
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "perf",
+      "compat",
+      "settings"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-023",
+      "SN-PERF-015",
+      "SN-PERF-014"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe quality ladder has two inputs today: device capability and thermal pressure ({{SN-PERF-023}}, {{SN-PERF-015}}). It is missing the third signal the OS gives us, and the one users deliberately switch on in the second half of a lecture: Low Power Mode on iOS/iPadOS and Battery Saver on Android. Both change the environment underneath the renderer — Battery Saver caps many panels to 60 Hz and restricts background work, Low Power Mode reduces CPU/GPU frequency and can drop ProMotion — and both signal user intent: spend less. An app that keeps requesting 120 Hz, keeps indexing in the background and keeps running prediction overdraw while the user is trying to survive to the end of the day is ignoring an explicit instruction, and it will also silently fail the frame-pacing assumptions in {{SN-PERF-014}} because the panel is no longer where the app thinks it is.\n\n## Scope\n**In:** a power-save probe behind the same capability interface style as the thermal probe (iOS `ProcessInfo.isLowPowerModeEnabled` plus its change notification, Android `PowerManager.isPowerSaveMode` plus `ACTION_POWER_SAVE_MODE_CHANGED`); mapping power-save state onto ladder steps with hysteresis; pausing or deferring optional background work (indexing, thumbnail generation, non-urgent sync, prefetch) while power-save is on; re-reading the display mode when power-save changes so the frame budget follows the panel; recording the power-save timeline in perf and energy results; a diagnostics line in Settings naming the active ladder step and why.\n**Out:** the ladder mechanism ({{SN-PERF-023}}), thermal detection ({{SN-PERF-015}}), refresh-rate measurement ({{SN-GPRF-002}}, {{SN-PERF-014}}), and Reduce Motion, which is an accessibility preference handled in the a11y area and must not be conflated with a power signal.\n\n## Acceptance criteria\n- [ ] Power-save state is exposed as an immutable value through a provider with an explicit unknown state where no API exists (web), and consumers observe it rather than polling.\n- [ ] Entering power-save drops the ladder one step and pauses the documented optional background work within one second; leaving it restores after the documented hysteresis window, proven with a fake clock to not oscillate.\n- [ ] Wet-ink latency, stroke geometry and everything persisted are byte-identical in power-save and out of it; a golden and a round-trip test prove the pen is never degraded.\n- [ ] When power-save changes the display mode, the frame budget used by the jank counter is re-derived, so a Battery-Saver-capped 60 Hz panel is not judged against an 8.3 ms budget or vice versa.\n- [ ] The energy scenarios ({{SN-GPRF-015}}) record the power-save timeline, and a run that entered power-save mid-measurement is annotated rather than silently compared with one that did not.\n- [ ] Settings shows the active quality step and its cause (capability, thermal, power-save) as read-only diagnostics.\n\n## Technical notes\nTreat the three ladder inputs as a max-of-constraints rather than a last-writer-wins: thermal serious plus power-save must not cancel out. Keep the hysteresis windows separate per input, because a user toggling Battery Saver expects an immediate effect while a thermal recovery should be slow. Android's Battery Saver behaviour varies by OEM, so read the panel mode from the platform after the change rather than assuming a 60 Hz cap.\n\n## Security & privacy\nNone beyond baseline. Power state is device-level, not personal, and stays local; it is never used as a fingerprinting signal or sent anywhere (ADR-0011). Pausing background sync under power-save must not weaken durability: queued changes stay in the encrypted local journal and flush when power-save ends or when the user explicitly syncs ({{SN-SYNC-001}} area; MASVS-STORAGE-1).\n\n## UX notes\nNothing flashes, nothing nags. The user gets a subtly cheaper frame and a quieter background, and if they look, Settings tells them why the app is in reduced quality. The one hard rule the design must honour: the pen never changes. Ink feel is the product, and it is the last thing that may be traded, including when the user has asked the whole device to slow down.\n\n## Test plan\nUnit: state mapping and hysteresis with a fake clock; the max-of-constraints resolver across capability, thermal and power inputs. Widget: the Settings diagnostics line. Integration: toggle Battery Saver on a device mid-stroke and assert stroke geometry is unchanged, background work pauses and the frame budget re-derives; the iOS equivalent with Low Power Mode. Golden: ink rendering identical across states.\n\n## Dependencies\n{{SN-PERF-023}}, {{SN-PERF-015}}, {{SN-PERF-014}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GPRF-020",
+    "title": "Automate performance-regression bisect on the physical device runner",
+    "type": "infra",
+    "priority": "p3",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "perf",
+      "ci-cd",
+      "devx"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "SLSA-BUILD-L3",
+      "OWASP-CICD-SEC-4"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-GPRF-013",
+      "SN-PERF-003",
+      "SN-GPRF-012"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: supply-chain"
+    ],
+    "body": "## Context\nThe nightly perf job files a release-blocking issue when a budget regresses ({{SN-PERF-003}}), and the trend dashboard shows the slope ({{SN-PERF-019}}). Neither answers the only question that matters next: which commit did it. A nightly covers a day of merges, and on a codebase built to be worked by autonomous agents that can be dozens of commits. Today someone would hand-bisect by rebuilding and re-running on a lab device, which takes hours and is exactly the work a machine with the harness already attached should do. Without it, perf regressions get triaged late, blamed on the wrong change, or absorbed into a new baseline — which is how a lag-proof product stops being one.\n\n## Scope\n**In:** a bisect job that takes a budget id, a device slot and a commit range, builds and runs the relevant scenario at each probe commit on the physical runner, applies the statistical protocol ({{SN-GPRF-012}}) so a probe is only called regressed when it clears the noise floor, and posts the identified commit and its evidence into the existing release-blocking issue; a cap on probes and wall-clock time with a partial result when it is hit; reuse of build artifacts where a commit was already built.\n**Out:** the gate and issue filing ({{SN-PERF-003}}), the runner itself ({{SN-GPRF-013}}), the triage analyser ({{SN-PERF-020}}, which explains *why* a frame was slow while this finds *when* it started), and any automatic revert (a human decides).\n\n## Acceptance criteria\n- [ ] The job accepts a budget id, slot and commit range and returns the first commit whose measurement is over the threshold, with the per-probe series attached.\n- [ ] Each probe uses the run count and noise floor from the statistical protocol; a range whose endpoints differ by less than the noise floor terminates early with \"no significant regression\" instead of bisecting noise.\n- [ ] Probe results are cached by commit and slot, so re-running a bisect over an overlapping range does not rebuild or re-measure.\n- [ ] The job respects a configured probe budget and wall-clock cap and reports the narrowed range when it stops early.\n- [ ] The result is posted as a comment on the release-blocking issue naming the commit, the metric, the before/after values and the confidence.\n- [ ] A dry-run mode with a synthetic injected regression proves the search converges on the right commit.\n\n## Technical notes\nUse `git bisect run` semantics with a wrapper that turns the harness result into an exit code, but keep the decision in the harness so the protocol is applied consistently. Builds dominate the cost: cache per-commit artifacts keyed by commit and slot, and prefer a profile build with the same flags the gate uses — a bisect on differently-built binaries measures the build, not the change. Serialise access to the device slot so a bisect cannot interleave with a gating run and poison both.\n\n## Security & privacy\nInherits the runner's posture ({{SN-GPRF-013}}): bisect builds arbitrary historical commits, which is trusted-ref code only, never a fork PR, and each probe runs in an ephemeral workspace with no release-signing credentials on the host (sec: supply-chain; OWASP CI/CD-SEC-4). Cached artifacts are content-addressed and purged on a schedule so stale binaries cannot be resurrected into a release path.\n\n## UX notes\nNo user-facing surface. For a maintainer or an agent the experience is that a perf regression issue arrives with a culprit commit and a chart already attached, so the next action is a code review rather than an afternoon of rebuilding.\n\n## Test plan\nUnit: the decision wrapper mapping harness results to bisect exit codes, including inconclusive probes; the cache key derivation. Integration: a dry run over a synthetic history with a known injected regression, asserting the identified commit and the probe count; a second run proving the cache is used. Manual: one real bisect against a historical regression once the runner is live.\n\n## Dependencies\n{{SN-GPRF-013}}, {{SN-PERF-003}}, {{SN-GPRF-012}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  }
+]

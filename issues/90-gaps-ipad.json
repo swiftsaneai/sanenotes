@@ -1,0 +1,488 @@
+[
+  {
+    "key": "SN-GIPAD-001",
+    "title": "Wire the Apple SpeechAnalyzer on-device transcription adapter via sane_ml_native",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "audio",
+      "ai"
+    ],
+    "milestone": "M3 Audio & Recognition",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PLATFORM-1",
+      "MASVS-STORAGE-1"
+    ],
+    "parent": "SN-IPAD-001",
+    "depends_on": [
+      "SN-AUD-020",
+      "SN-HWR-002",
+      "SN-IPAD-027"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nTranscription is a locked on-device-first capability (decision 6), and on Apple platforms the engine is **SpeechAnalyzer / SpeechTranscriber** (iPadOS 26), the same stack behind Notes and Voice Memos (docs/platform/ipad.md §3 and §6 `sane_ml_native`; docs/research/sources/apple-pencil-ipados-capabilities.md §7). The backlog has a generic hand-off issue ({{SN-AUD-020}}) and a Foundation Models *text-generation* adapter ({{SN-AI-005}}), but **no issue actually implements the Apple speech-to-text adapter**, its per-locale asset lifecycle, or the iPadOS 17–25 fallback. Without it the flagship surface has no transcription path and {{SN-SRCH-012}} has nothing to index. This issue delivers the Swift adapter behind the `SaneMlNativePlatform.transcribe` interface.\n\n## Scope\n**In:** the `sane_ml_native` Swift implementation of `transcribe(AudioStream, locale)` using `SpeechAnalyzer` + `SpeechTranscriber`; `SpeechDetector` voice-activity gating; `reportingOptions: [.volatileResults]` for live partials and stable finalized results; `attributeOptions: [.audioTimeRange]` so every run carries a `CMTimeRange` for tap-to-play sync; `AssetInventory` locale model download/allocate/deallocate with progress and disk accounting; `SpeechTranscriber.supportedLocales`/`installedLocales` surfaced through `MlAvailability`; `DictationTranscriber` fallback for uncovered locales; an `SFSpeechRecognizer(requiresOnDeviceRecognition: true)` path for iPadOS 17–25; Dart-side model + tests.\n**Out:** the recorder and segment writer ({{SN-AUD-002}}, {{SN-AUD-008}}); transcript UI ({{SN-AUD-021}}); the Android and web transcription backends; summarisation ({{SN-AI-012}}).\n\n## Acceptance criteria\n- [ ] On iPadOS 26 with an installed locale, a 30-minute recording transcribes fully on-device with the device in Airplane Mode; a network-egress assertion in the test proves zero requests.\n- [ ] Volatile partials stream within 1 s of speech; finalized runs are stable and carry an `audioTimeRange` that resolves to the correct playback offset in {{SN-AUD-011}} (±150 ms on the fixture).\n- [ ] `availability()` reports `unavailable(reason)` with a user-legible cause on iPadOS 17–25, on unsupported locales, and when the locale asset is not installed; the app degrades to the `DictationTranscriber`/`SFSpeechRecognizer` path or offers a download, never a silent failure.\n- [ ] Locale assets are downloadable, resumable, cancellable and deletable from Settings; freed space is reported; deallocating a locale removes its files.\n- [ ] Interruptions (call, route change, backgrounding) pause and resume the analyzer without dropping or duplicating a run.\n- [ ] A transcript of a locked notebook is written through the same encrypted sidecar path as its audio ({{SN-AUD-018}}) — never to a plaintext temp file.\n\n## Technical notes\nLive in `plugins/sane_ml_native/ios/`. Feed the analyzer from the existing capture chain rather than re-opening the microphone. Gate every iPadOS 26 symbol behind `if #available` per {{SN-IPAD-027}}; keep the Dart interface version-agnostic (`MlAvailability` decides). Model assets are system-managed — never bundle them. `NSSpeechRecognitionUsageDescription` is required for the legacy path only; prefer not shipping it if the legacy path is dropped.\n\n## Security & privacy\nAudio and transcripts are the most sensitive content the app touches (lectures may contain third-party voices). All inference stays on-device; no cloud path is permitted here (decision 6, {{SN-HWR-019}}). Transcript text must never be logged (MASVS-PRIVACY-1, CWE-532), must inherit the notebook's encryption ({{SN-CRY-007}}) and Data Protection class ({{SN-GIPAD-003}}), and native→Dart payloads are untrusted input to be shape-validated (MASVS-PLATFORM-1). Asset downloads are OS-managed, so no custom download trust boundary is introduced.\n\n## UX notes\nLive transcription appears in the recorder bar per docs/design/screens-and-flows.md; the \"data leaves device\" indicator stays **off** for this path. A missing language pack shows a download row with size and a Wi-Fi-only hint, not an error. Progress, cancel and failure states follow the design system's inline-status pattern.\n\n## Test plan\nUnit: `plugins/sane_ml_native/test/transcribe_availability_test.dart` (availability matrix, locale resolution, fallback selection). Integration: `plugins/sane_ml_native/example/integration_test/speech_analyzer_test.dart` on a Tier 1 iPad with a fixed 5-minute audio fixture, asserting word-error-rate against a stored baseline and time-range alignment. Manual: interruption matrix (call, Siri, route change, Split View) per docs/platform/ipad.md §11.\n\n## Dependencies\n{{SN-AUD-020}}, {{SN-HWR-002}}, {{SN-IPAD-027}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-002",
+    "title": "Implement Display P3 wide-gamut colour management for ink, UI and export",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "ink",
+      "brushes",
+      "design-system"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "design",
+    "security": [
+      "MASVS-CODE-4",
+      "CWE-20"
+    ],
+    "parent": "SN-IPAD-001",
+    "depends_on": [
+      "SN-INK-006",
+      "SN-BRS-020",
+      "SN-DS-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "needs-design"
+    ],
+    "body": "## Context\nEvery Tier 1 iPad in the device lab has a **Display P3 wide-gamut** panel, and the native wet-ink plugin already takes a `colorSpace` in its `SurfaceConfig` (docs/platform/ipad.md §6) — but nothing in the backlog decides *which* colour space the product works in. Left undecided, the same stroke renders one colour on the Metal front buffer, another in the Flutter/Impeller dry layer, another in a PNG export and another in a PDF, and the cross-platform brush-parity gate ({{SN-BRS-026}}) will be chasing a moving target. Colour is also a design-system contract: the 17 looks ({{SN-DS-002}}) and the ink palettes ({{SN-BRS-020}}) are authored as sRGB hex. This issue fixes the colour pipeline end to end and writes it down.\n\n## Scope\n**In:** an ADR choosing the working colour space (recommended: author tokens in sRGB, render and composite in extended-range sRGB/Display P3 on Apple, tag exports explicitly); `CAMetalLayer.colorspace` and pixel-format configuration in `sane_ink_surface`; matching the Flutter/Impeller surface so wet and dry ink are indistinguishable; colour-space tagging on PNG/PDF/SVG export; ICC handling for imported images and PDFs so they are not double-converted; a golden-image comparison between the wet layer, the dry layer and the exported artefact.\n**Out:** the colour picker UI ({{SN-BRS-021}}); colour-blind palettes ({{SN-A11Y-011}}); HDR/EDR content; Android and web colour management (follow-ups once the ADR lands).\n\n## Acceptance criteria\n- [ ] An ADR under `docs/adr/` states the working space, the per-surface conversion points and the export tagging rules, and is linked from docs/platform/ipad.md.\n- [ ] On a P3 iPad, a stroke drawn wet and the same stroke after commit to the dry layer differ by ΔE00 ≤ 1.0 sampled at 5 points (automated screenshot comparison).\n- [ ] A palette swatch, the on-canvas stroke and the PNG export of that stroke match within ΔE00 ≤ 2.0; the exported PNG carries an explicit colour-space chunk, and the exported PDF an explicit colour space.\n- [ ] An imported sRGB image and an imported P3 image both render with correct colour (no double conversion); an image with a broken or hostile ICC profile is rejected or falls back to sRGB without crashing.\n- [ ] Dark-mode ink inversion ({{SN-INK-030}}) is applied in the working space, not in device pixels, so inverted ink keeps hue.\n- [ ] The brush-parity golden gate ({{SN-BRS-026}}) runs against the documented space and is stable across iPad, Android and web tolerances.\n\n## Technical notes\nTouch `plugins/sane_ink_surface/ios/` (layer `colorspace`, `pixelFormat`, `wantsExtendedDynamicRangeContent = false`), `packages/sane_render`, `packages/sane_ui` token compilation, and the exporters in `packages/sane_export`. Flutter/Impeller renders in extended sRGB on iOS; verify empirically before asserting parity. Keep conversion out of the per-sample draw path — convert once at brush-resolve time and cache ({{SN-PERF-017}}).\n\n## Security & privacy\nICC profiles in imported images and PDFs are attacker-controlled input: parse them inside the hardened decode path ({{SN-SEC-006}}, {{SN-PDF-023}}) with size caps, and prefer the platform decoder over hand-rolled profile parsing (CWE-20, MASVS-CODE-4). No personal data is involved; no new telemetry.\n\n## UX notes\nUsers must never see a colour shift when a stroke \"dries\", when a note is exported, or when a notebook is reopened on another device. Document in the help centre that exported files are colour-tagged. Colour names used for accessibility ({{SN-A11Y-011}}) are derived from the authored sRGB values, not the device-converted ones.\n\n## Test plan\nUnit: `packages/sane_render/test/color_space_test.dart` (conversion math, ΔE00 helper, token round-trip). Golden: wet-vs-dry and export goldens under `test/golden/color/`. Integration: `integration_test/color_pipeline_test.dart` capturing on-device screenshots on a P3 iPad and a non-P3 Tier 2 iPad. Manual: side-by-side swatch card on P3 and sRGB panels.\n\n## Dependencies\n{{SN-INK-006}}, {{SN-BRS-020}}, {{SN-DS-002}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-003",
+    "title": "Apply iOS Data Protection classes to note content, caches, audio and exports",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "security",
+      "storage",
+      "privacy"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-STORAGE-2",
+      "MASVS-PLATFORM-3",
+      "CWE-200"
+    ],
+    "parent": "SN-IPAD-001",
+    "depends_on": [
+      "SN-CRY-008",
+      "SN-CORE-004",
+      "SN-AUD-006"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\ndocs/platform/ipad.md §8 makes `FileProtectionType.complete` the required at-rest default for all note content on Apple platforms — the file key is evicted shortly after the device locks, which is the cheapest strong control the platform offers. The backlog stores *keys* correctly ({{SN-CRY-008}}) and excludes them from backup ({{SN-SEC-023}}), but **no issue actually assigns Data Protection classes to the files the app writes**: the SQLite database and its WAL, the blob store, op-log segments, the FTS index, page/notebook thumbnail caches, audio segments, transcripts and temporary export artefacts. Each of those is a plaintext-adjacent artefact on a device that may be stolen while locked. This issue closes that gap and, crucially, resolves the conflict between \"complete\" protection and background audio recording, which must keep writing while the device is locked.\n\n## Scope\n**In:** a `sane_secure_store.setFileProtection(path, class)` implementation and a single policy table mapping every app-written path to a class — `complete` for the database, blobs, op-log, search index, thumbnails, transcripts and exports; `completeUnlessOpen` for in-flight audio segment files and any file a background task must keep writing; never `none`; setting `NSURLIsExcludedFromBackupKey` where {{SN-SEC-023}} requires it; re-applying the class after atomic replace/rename (a rename can reset protection); a startup self-check that audits the container and reports violations in debug and telemetry-free diagnostics.\n**Out:** key storage and the Secure Enclave ({{SN-CRY-008}}); envelope encryption of content ({{SN-CRY-006}}, {{SN-CRY-007}}); app lock and biometrics ({{SN-SEC-020}}); Android Keystore/EncryptedFile ({{SN-AND-019}}).\n\n## Acceptance criteria\n- [ ] Every file the app creates under its container has an explicit protection class from the policy table; the startup audit finds zero files with `none` or an unset class.\n- [ ] With the device locked, a running background recording continues to write its segment (class `completeUnlessOpen`) while an attempt to open the notes database fails cleanly and the app shows the \"locked, will resume\" state instead of crashing or losing data.\n- [ ] After an atomic write (`write-temp → rename`) the destination file still reports the intended class (regression test for the rename-resets-protection trap).\n- [ ] Export and share temp files are created with `complete`, in the app container (never `/tmp` world paths), and are deleted after the share sheet closes or on next launch.\n- [ ] The policy table is documented in docs/security/ and referenced from docs/platform/ipad.md §8; a MASTG-style verification step is added to {{SN-SEC-029}}.\n\n## Technical notes\nImplement in `plugins/sane_secure_store/ios/` via `FileManager.setAttributes([.protectionKey: …])` / `URL.setResourceValues`. The drift/SQLite isolate ({{SN-CORE-004}}) must apply the class to the database, `-wal` and `-shm` files after creation and after any checkpoint that recreates them. Coordinate with {{SN-AUD-006}} (background recording) and {{SN-GIPAD-004}} (background tasks): a task that runs while locked must only touch `completeUnlessOpen` paths. Handle `NSFileProtectionComplete` read failures as a first-class recoverable state, not an exception.\n\n## Security & privacy\nDirectly implements MASVS-STORAGE-1/2 and the threat-model \"stolen locked device\" case; complements E2EE by protecting plaintext caches and indexes that decryption necessarily materialises (CWE-200). Failure mode must be fail-closed: if the class cannot be applied, refuse to write plaintext-adjacent data rather than writing it unprotected, and surface a diagnostic. No new data collection.\n\n## UX notes\nInvisible when it works. The one visible state is \"Waiting for unlock\" when a background operation defers because the device is locked — reuse the sync-status pattern from {{SN-SYNC-020}}, with no note content in any accompanying notification ({{SN-SEC-019}}).\n\n## Test plan\nUnit: `plugins/sane_secure_store/test/file_protection_policy_test.dart` (policy table completeness, rename re-apply). Integration: `integration_test/data_protection_test.dart` on a passcode-enabled iPad — lock the device, assert database reads fail and recording continues, unlock and assert recovery. Manual/verification: MASTG storage walk-through on a jailbroken or unlocked-bootloader-free extraction of the container, recorded in {{SN-SEC-029}}.\n\n## Dependencies\n{{SN-CRY-008}}, {{SN-CORE-004}}, {{SN-AUD-006}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-004",
+    "title": "Schedule background indexing, OCR and sync with BGTaskScheduler on iPadOS",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "search",
+      "sync",
+      "perf"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PLATFORM-1",
+      "MASVS-STORAGE-2"
+    ],
+    "parent": "SN-IPAD-001",
+    "depends_on": [
+      "SN-SRCH-004",
+      "SN-HWR-006",
+      "SN-SYNC-006"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThree expensive background pipelines are specified — incremental search indexing ({{SN-SRCH-004}}), background handwriting recognition ({{SN-HWR-006}}) and cloud-drive sync ({{SN-SYNC-006}}) — and all of them assume they can make progress while the user is not staring at the app. On iPadOS that only happens through **BGTaskScheduler** (`BGAppRefreshTask` / `BGProcessingTask`); iOS suspends a backgrounded app within seconds otherwise. No issue registers those tasks, declares the identifiers, or defines what happens when the system expires a task mid-batch. Without this, a student who imports a 600-page PDF and switches apps gets no OCR until they reopen the notebook, and sync appears stuck.\n\n## Scope\n**In:** a `sane_background_tasks` capability in the iOS runner/plugin layer: `BGTaskSchedulerPermittedIdentifiers` in Info.plist, registration at launch, submission policy (`requiresNetworkConnectivity` for sync, `requiresExternalPower` for OCR/index batches), an expiration handler that checkpoints and yields within the OS budget, exponential back-off when the system declines to run tasks, and a Dart-facing scheduler API so `sane_sync`/`sane_ml` enqueue work without knowing about UIKit.\n**Out:** the pipelines themselves; Android WorkManager/foreground services ({{SN-AND-023}}); background audio recording, which uses the audio background mode ({{SN-AUD-006}}); push-driven sync ({{SN-SYNC-009}}).\n\n## Acceptance criteria\n- [ ] Both task identifiers are declared, registered before `application(_:didFinishLaunchingWithOptions:)` returns, and are debuggable via the documented `_simulateLaunchForTaskWithIdentifier` procedure recorded in docs/platform/ipad.md.\n- [ ] An expiring task checkpoints within 200 ms of the expiration handler firing; on next run the pipeline resumes from the checkpoint with no duplicated or skipped items (property test over a synthetic queue).\n- [ ] A killed or expired index/OCR task never leaves the FTS index or op-log in a torn state — verified by running the convergence/corruption fixtures of {{SN-CORE-026}} after forced expiry.\n- [ ] Sync tasks are not submitted while the user has auto-sync off, is on cellular with Wi-Fi-only set ({{SN-SYNC-019}}), or has not completed consent; a CI assertion proves no network call originates from a background task in those states.\n- [ ] Battery: a 30-minute background session on the Tier 1 iPad stays inside the energy budget of docs/platform/performance-budgets.md; tasks respect thermal state ({{SN-PERF-015}}) and abort when `ProcessInfo.thermalState` is serious or worse.\n- [ ] The task only touches paths whose Data Protection class allows access while locked ({{SN-GIPAD-003}}); otherwise it defers.\n\n## Technical notes\nImplement in `app/ios/Runner` plus a thin platform channel; keep the Dart side a queue abstraction so web/Android substitute their own driver. Use `BGProcessingTask` for OCR/indexing (long, power-hungry) and `BGAppRefreshTask` for short sync polls. Never assume a task will run — the OS decides; all pipelines must remain correct with zero background executions. Log only counts and durations, never content ({{SN-SEC-021}}).\n\n## Security & privacy\nBackground execution is a classic silent-egress risk: enforce the consent and Wi-Fi-only gates in the task entry point, not only in the UI (MASVS-PRIVACY-1). Validate anything read back from the cloud during a background run through the normal integrity path ({{SN-SYNC-013}}). Task identifiers and Info.plist keys are part of the attack surface review for {{SN-SEC-030}}.\n\n## UX notes\nNo new UI. The sync-status chip ({{SN-SYNC-020}}) and the recognition progress row ({{SN-HWR-008}}) simply reflect that work advanced while the app was away. If iOS has starved tasks for a long period (e.g. Low Power Mode), surface an unobtrusive \"finishing up when you next open\" hint rather than a scary error.\n\n## Test plan\nUnit: `packages/sane_sync/test/background_queue_test.dart`, `packages/sane_ml/test/checkpoint_resume_test.dart` (expiry/resume property tests). Integration: `integration_test/background_task_test.dart` using the simulated-launch debug hook on a real iPad. Manual: Low Power Mode, thermal-throttle and offline matrices from docs/platform/ipad.md §11.\n\n## Dependencies\n{{SN-SRCH-004}}, {{SN-HWR-006}}, {{SN-SYNC-006}}, {{SN-GIPAD-003}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-005",
+    "title": "Index notes in Core Spotlight with locked-notebook and profile exclusions",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "search",
+      "privacy",
+      "notifications"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-2",
+      "CWE-200"
+    ],
+    "parent": "SN-IPAD-001",
+    "depends_on": [
+      "SN-SRCH-015",
+      "SN-IPAD-015",
+      "SN-AUTH-013"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\"Find it from the Home Screen\" is table stakes against Apple Notes, which is fully Spotlight-searchable. {{SN-IPAD-015}} exposes `AppEntity`/`EntityQuery` so Shortcuts and Siri can *act* on notes, but system-wide **Core Spotlight** indexing (`CSSearchableItem`, `CSSearchableItemAttributeSet`, the `NSUserActivity` continuation path) is a different mechanism and is not covered anywhere in the backlog. It is also the single riskiest integration in this lens: the Spotlight index lives **outside** our encryption boundary, so an unqualified \"index everything\" would quietly undo the E2EE and locked-notebook guarantees that {{SN-SRCH-015}} enforces inside the app.\n\n## Scope\n**In:** a `sane_spotlight` bridge that indexes notebook and page titles, subject/tag names and a short OCR-free snippet; a strict allow-list of indexable fields; hard exclusions for locked notebooks, notebooks in a locked profile, guest-profile content, Trash and shared-with-me content the user has not opened; deletion propagation (`deleteSearchableItems` on delete, rename, lock, profile switch and sign-out); a Settings toggle (default **off** until the user opts in, with an honest explanation); deep-linking a Spotlight hit to the exact page through the allow-list router ({{SN-SEC-011}}).\n**Out:** in-app search ({{SN-SRCH-006}}); App Intents/Shortcuts ({{SN-IPAD-015}}); indexing handwriting transcripts or audio transcripts into Spotlight (explicitly excluded — they stay in the encrypted local index); Android App Search.\n\n## Acceptance criteria\n- [ ] With the toggle off (default), the app writes zero items to Core Spotlight; a test asserts the index is empty after creating notebooks.\n- [ ] With the toggle on, a new notebook is findable from the Home Screen within 10 s, and tapping the result opens that exact page in the correct profile.\n- [ ] Locking a notebook, deleting it, renaming it, emptying Trash, switching profile or signing out removes or updates its Spotlight items within one app foreground cycle; a locked notebook is never re-indexed.\n- [ ] Indexed snippets contain no note body text beyond the first N characters of the *title*; the field allow-list is unit-tested and a Semgrep rule blocks new attribute writes that are not on it.\n- [ ] Multi-profile isolation holds: profile B's notebooks are not visible in Spotlight while profile A is active ({{SN-AUTH-013}}).\n- [ ] The privacy dashboard ({{SN-PRV-002}}) lists Spotlight as a place where titles leave the encrypted store, with a one-tap purge.\n\n## Technical notes\nImplement in `plugins/sane_spotlight` (Swift `CSSearchableIndex.default()`), driven by the same change stream that feeds {{SN-SRCH-004}} so indexing is incremental, not a full re-walk. Use a stable `uniqueIdentifier` of `profileId:notebookId:pageId` — hashed, not raw ids — so the index cannot be used to enumerate a user's object graph. Handle `CSSearchableIndexDelegate` reindex requests by rebuilding from the local store. Batch writes off the main isolate.\n\n## Security & privacy\nLINDDUN: this is a deliberate, consented metadata disclosure to the OS. Apply data minimisation (titles only), purpose limitation (find-my-note), and a working purge (MASVS-PRIVACY-1/2, CWE-200). The default-off posture must be enforced in code, not only in the settings UI. Incoming Spotlight `NSUserActivity` payloads are untrusted: validate the identifier, resolve it locally, and never trust an embedded path or URL ({{SN-SEC-011}}, {{SN-SEC-013}}).\n\n## UX notes\nSettings → Privacy & export gains \"Find notes in Spotlight\" with the copy \"Titles of unlocked notebooks are shared with iPadOS search. Locked notebooks are never included.\" Turning it off shows a confirmation that the existing index is being cleared. A Spotlight hit that resolves to a now-locked notebook lands on the unlock screen, not the content.\n\n## Test plan\nUnit: `plugins/sane_spotlight/test/allow_list_test.dart`, `exclusion_rules_test.dart` (locked/guest/trash/profile matrices). Integration: `integration_test/spotlight_test.dart` — index, query via `CSSearchQuery`, lock, assert removal. Security: add a case to {{SN-SEC-030}} verifying no body text or transcript reaches the OS index.\n\n## Dependencies\n{{SN-SRCH-015}}, {{SN-IPAD-015}}, {{SN-AUTH-013}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-006",
+    "title": "Support Handoff continuity of the open note across the user's Apple devices",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "sync",
+      "notifications",
+      "privacy"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PLATFORM-1",
+      "CWE-20"
+    ],
+    "parent": "SN-IPAD-001",
+    "depends_on": [
+      "SN-IPAD-014",
+      "SN-SEC-011",
+      "SN-NOTF-004"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nApple Notes' quiet advantage is Continuity: start on iPad, pick up on iPhone from the App Switcher without hunting. Sane Notes already creates `NSUserActivity` objects for Quick Note linking ({{SN-IPAD-014}}) and App Intents ({{SN-IPAD-015}}), but nothing marks them **Handoff-eligible** or handles an incoming activity on the receiving device, so the feature is one small step away and currently missing from the backlog. This is a cheap parity win on the surface where our competitor is strongest, and it composes with the iPhone shell ({{SN-PHN-003}}).\n\n## Scope\n**In:** marking the editor's current-note `NSUserActivity` with `isEligibleForHandoff = true`, a stable activity type, a title, and a **content-free** `userInfo` carrying only opaque object identifiers plus a viewport hint (page index, scroll offset, zoom); continuation on the receiving device (`application(_:continue:restorationHandler:)`) routed through the deep-link allow-list ({{SN-SEC-011}}); resuming into the correct profile, or prompting to switch; graceful handling when the note is not present locally yet (wait for {{SN-SYNC-016}} catch-up with a progress state) or is locked (land on the unlock screen); an opt-out in Settings.\n**Out:** Universal Clipboard (OS-level, no work); Handoff to a Mac client (no Mac surface yet); AirDrop of `.sanenote` files ({{SN-SHR-010}}); sync itself.\n\n## Acceptance criteria\n- [ ] With the same iCloud account on two devices, opening a notebook on the iPad surfaces the Handoff affordance on the iPhone within a few seconds; accepting it opens the same notebook at the same page.\n- [ ] `userInfo` is asserted by test to contain no title, no body text, no transcript and no file path — identifiers and integers only.\n- [ ] Continuing into a locked notebook shows the unlock gate; continuing into another profile prompts a profile switch; continuing into content that does not exist locally shows a \"fetching from your cloud\" state and completes or fails cleanly.\n- [ ] A malformed or hostile activity payload (unknown type, oversized userInfo, unexpected keys, id for another profile) is rejected without navigation and without a crash (fuzz test).\n- [ ] Settings → Privacy & export exposes \"Continue on other devices\" (default on) and turning it off stops publishing activities immediately.\n- [ ] Guest-mode content never publishes a Handoff activity.\n\n## Technical notes\nOwn the activity in the editor route so it updates on page change and is invalidated on close. Keep one activity type constant shared with {{SN-NOTF-004}}'s route table so all entry points resolve identically. Do not use `requiredUserInfoKeys` to smuggle content. On the receiving side, reuse the router rather than adding a second navigation path.\n\n## Security & privacy\nHandoff payloads traverse the user's iCloud/Bluetooth continuity channel and are outside our E2EE boundary — hence identifiers only (MASVS-PRIVACY-1, CWE-200 avoidance). Incoming activities are untrusted input from another process: validate type, shape and ownership before acting (MASVS-PLATFORM-1, CWE-20), and never auto-mutate — continuation opens a view, never performs a write ({{SN-IPAD-020}} rule).\n\n## UX notes\nFollow the platform affordance exactly; no custom banner. The receiving screen must not flash content before the lock gate. If the note cannot be resolved, show the library with an inline toast (\"That note isn't on this device yet\"), never an error dialog.\n\n## Test plan\nUnit: `app/test/handoff_activity_test.dart` (payload shape, redaction assertions, invalidation on close), `handoff_continue_test.dart` (router validation, malformed payloads). Integration: `integration_test/handoff_test.dart` with a stubbed continuation on one device; manual two-device check on the Tier 1 lab per docs/platform/ipad.md §11.\n\n## Dependencies\n{{SN-IPAD-014}}, {{SN-SEC-011}}, {{SN-NOTF-004}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-007",
+    "title": "Handle iPadOS memory pressure and jetsam termination without losing ink",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "perf",
+      "compat",
+      "storage"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-2",
+      "CWE-400"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-INK-022",
+      "SN-PERF-009",
+      "SN-CORE-026"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\niPadOS does not page to disk: an app that exceeds its footprint is killed by **jetsam**, with no exception and no warning beyond a memory-warning notification. Sane Notes is exactly the shape of app that hits this — 1,000-page notebooks, tiled raster caches ({{SN-INK-022}}), 600-page PDFs ({{SN-PDF-004}}), thumbnails, a search index and audio buffers, often in Split View next to another memory-hungry app where the per-app budget is smaller. The backlog **measures** memory ({{SN-PERF-009}}) and defines an adaptive quality ladder ({{SN-PERF-023}}), but nothing subscribes to memory pressure, sheds caches, or guarantees that an unexpected kill costs the user zero strokes. This issue makes termination survivable and, where possible, avoidable.\n\n## Scope\n**In:** a memory-pressure service that observes `UIApplication.didReceiveMemoryWarningNotification` and `DispatchSource.makeMemoryPressureSource` (warn/critical) and drives a documented shed order — predicted/wet buffers last, PDF tile cache first, then thumbnails, then off-screen page rasters, then the decoded-image cache; footprint sampling via `os_proc_available_memory()`/`task_vm_info` to pre-emptively shed before the warning arrives; a hard cap that switches to the low-memory tier of {{SN-PERF-023}}; scene-aware budgets (two open windows share one budget); a crash-safe commit point so an in-progress stroke and the current op-log segment are durable within 500 ms of pen-up ({{SN-CORE-026}}); a \"restored after a low-memory close\" recovery path.\n**Out:** the measurement harness ({{SN-PERF-009}}); Android low-memory behaviour ({{SN-AND-027}}); the quality ladder itself ({{SN-PERF-023}}); the Extended Memory entitlement (record the decision in the notes, do not adopt it).\n\n## Acceptance criteria\n- [ ] Under a synthetic memory-pressure storm on a Tier 1 iPad with a 1,000-page notebook open, the app sheds caches in the documented order and stays inside the docs/platform/performance-budgets.md steady-state budget without dropping below 60 fps on the draw path.\n- [ ] Simulated jetsam (force-kill during drawing) loses at most the stroke in flight at kill time; on relaunch the notebook reopens at the same page with all committed strokes present (10 repetitions, zero corruption per {{SN-CORE-026}} fixtures).\n- [ ] Two open windows of the same notebook do not double the raster cache: shared caches are accounted once, verified by a memory sampler assertion.\n- [ ] In Split View at 1/3 width with another app active, the app sheds proactively and does not get killed during a 10-minute writing soak.\n- [ ] A shed never discards unsaved model state — only regenerable caches; a unit test enumerates cache registries and fails if a new cache is not classified.\n- [ ] Recovery shows a neutral \"picked up where you left off\" state; no data-loss dialog, no lost bookmark.\n\n## Technical notes\nPut the service in `packages/sane_render`/`packages/sane_core` with a platform hook in the iOS runner; every cache registers with a priority and a `shed(level)` callback (the same registry the Android and web tiers can reuse). Avoid shedding during an active stroke — defer to the next idle frame. Keep the sampler off the draw path ({{SN-PERF-016}}). Record findings and the Extended Memory decision in docs/platform/performance-budgets.md.\n\n## Security & privacy\nAvailability/robustness control (CWE-400): resource exhaustion on a huge or hostile document must degrade, not crash, and must never leave a torn database (MASVS-STORAGE-2). Shed caches must be wiped, not merely dereferenced, when they hold decrypted content from a locked-capable notebook. No new data collection; diagnostics record counts and bytes only.\n\n## UX notes\nInvisible when it works: quality drops before the app dies. If the ladder engages, the existing quality indicator from {{SN-PERF-023}} applies — never a modal. After a low-memory relaunch, restore scroll position, tool and selection per {{SN-IPAD-028}}.\n\n## Test plan\nUnit: `packages/sane_render/test/cache_registry_shed_test.dart` (ordering, classification completeness). Integration: `integration_test/memory_pressure_test.dart` driving the pressure source and a force-kill loop with the 1,000-page fixture. Manual: Instruments Allocations + VM Tracker run on Tier 1 and a Tier 3 iPad, attached to the {{SN-PERF-009}} report.\n\n## Dependencies\n{{SN-INK-022}}, {{SN-PERF-009}}, {{SN-CORE-026}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-008",
+    "title": "Hold the iOS app download size to budget with thinning and on-demand packs",
+    "type": "infra",
+    "priority": "p2",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "perf",
+      "release",
+      "compat"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "M",
+    "sdlc": "release",
+    "security": [
+      "MASVS-CODE-4",
+      "OWASP-A08"
+    ],
+    "parent": "SN-REL-001",
+    "depends_on": [
+      "SN-DS-009",
+      "SN-BRS-007",
+      "SN-TPL-011"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nSane Notes bundles twelve look font families ({{SN-DS-009}}), brush shape/grain textures ({{SN-BRS-007}}), paper and cover art ({{SN-TPL-003}}, {{SN-TPL-009}}), mascot art ({{SN-BRD-002}}), stickers ({{SN-MED-011}}) and a Flutter engine — a combination that trivially pushes an `.ipa` past the size where iPadOS warns about a cellular download and where students on constrained storage abandon the install. The web surface has a bundle-size gate ({{SN-WEB-003}}); **iOS has none**, and no issue plans asset thinning or on-demand delivery. Install size is also a store-listing conversion number we will be judged on, and it only ever grows once shipped.\n\n## Scope\n**In:** a measured budget for thinned download size and installed size on a reference iPad, recorded in docs/platform/performance-budgets.md; a CI job that builds the release archive, reads the App Store Connect/`Bitcode`-free thinned report (or `xcodebuild` + `.ipa` analysis) and fails the build on regression beyond a tolerance; asset-catalog migration for images so per-device variants are thinned; converting large optional assets (extra look fonts, premium templates, sticker packs, brush grains beyond the stock set) into downloadable packs fetched on first use with integrity verification and cache eviction; a size breakdown artefact per build.\n**Out:** the web bundle gate ({{SN-WEB-003}}); Android App Bundle splits ({{SN-AND-022}}); the template store catalogue ({{SN-TPL-011}}) — this issue only provides the delivery mechanism it will use.\n\n## Acceptance criteria\n- [ ] CI publishes a per-build size breakdown (engine, Dart AOT, fonts, textures, art, other) and fails when thinned download size exceeds the budget or grows more than the agreed delta versus the last release.\n- [ ] The app installs and runs fully offline with only the *stock* asset set: the default pen set, the default look, blank/lined/grid paper and the mascot — no feature is dead on a fresh install with no network.\n- [ ] Downloadable packs verify a publisher signature/digest before use; a tampered or truncated pack is rejected, logged without content, and the feature falls back to stock ({{SN-AI-008}} pattern reused, not re-invented).\n- [ ] Packs are evictable from Settings → Storage ({{SN-SET-014}}) and re-downloadable; eviction never deletes user content.\n- [ ] Bundled fonts still satisfy the offline requirement of {{SN-DS-009}} for the default look set and every script fallback required by {{SN-I18N-008}}.\n- [ ] The store listing's size claim and the help-centre storage page are generated from the measured number, not hand-written.\n\n## Technical notes\nPrefer plain hosted packs over On-Demand Resources if ODR complicates the CI/TestFlight path — record the choice in an ADR. Keep pack manifests content-addressed so the blob store ({{SN-CORE-014}}) can hold them. Measure with `xcrun altool`/App Store Connect thinned report for the true number; the raw `.ipa` size is not the user-visible figure. Wire the gate into the release train ({{SN-REL-004}}).\n\n## Security & privacy\nPost-install code or asset delivery is a supply-chain surface: packs must be data only (no executable code, no dylibs — App Review requires it anyway), fetched over pinned TLS ({{SN-SEC-022}}), digest-verified before unpack, and unpacked through the hardened archive reader ({{SN-SEC-007}}) with path-traversal and zip-bomb limits (OWASP-A08, MASVS-CODE-4). Pack fetches must not carry account identifiers.\n\n## UX notes\nA first use of a premium template or extra look shows an inline \"Downloading (2.4 MB)\" row with cancel, not a blocking modal; failure offers retry and keeps the stock alternative selected. Storage settings list packs with sizes and a Remove action.\n\n## Test plan\nUnit: `tools/size_gate/test/report_parse_test.dart` (breakdown parsing, threshold logic); `packages/sane_assets/test/pack_verify_test.dart` (signature, truncation, traversal). Integration: `integration_test/asset_pack_test.dart` (first-use download, offline fallback, eviction). CI: the gate itself, exercised by a deliberate oversize fixture in a dry-run job.\n\n## Dependencies\n{{SN-DS-009}}, {{SN-BRS-007}}, {{SN-TPL-011}}, {{SN-REL-004}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-009",
+    "title": "SPIKE: decide the education deployment posture (Shared iPad, MDM config, ClassKit)",
+    "type": "spike",
+    "priority": "p3",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "compat",
+      "privacy",
+      "settings"
+    ],
+    "milestone": "Backlog",
+    "size": "S",
+    "sdlc": "requirements",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-STORAGE-1",
+      "MASVS-AUTH-1"
+    ],
+    "parent": "SN-IPAD-001",
+    "depends_on": [
+      "SN-AUTH-013",
+      "SN-PRV-007"
+    ],
+    "labels_extra": [
+      "needs-decision"
+    ],
+    "body": "## Context\nThe product's primary persona is a student, and the classroom features ({{SN-COL-017}}, {{SN-COL-018}}) aim straight at schools — yet the backlog contains **no analysis of how the app behaves on managed and shared school iPads**. Three Apple mechanisms decide that: **Shared iPad** (multiple students, temporary sessions, per-user data partitions that can be reclaimed), **Managed App Configuration** (an MDM pushes a `com.apple.configuration.managed` dictionary the app reads from `UserDefaults`, typically to disable cloud/AI features or force a sharing posture), and **ClassKit** (`CLSContext`, assignable activities and progress reporting to Schoolwork). Each has privacy consequences for minors ({{SN-PRV-007}}) and interacts with our device-local profiles ({{SN-AUTH-007}}). A time-boxed spike must decide what, if anything, we support before v1 marketing claims anything about schools.\n\n## Scope\n**In:** a 3-day investigation producing a written decision covering: (a) whether the app functions correctly on Shared iPad, including sign-out data reclamation, temporary sessions and the interaction with our local profiles and guest mode; (b) which Managed App Configuration keys we should honour (suggested: disable cloud AI, force telemetry off, disable share links, pin a sync provider, disable account creation) and how an admin-locked setting is presented; (c) whether ClassKit is worth adopting and what a minimal integration would be; (d) the minor-privacy consequences (COPPA/DPDP, {{SN-PRV-007}}, {{SN-PRV-008}}) and whether an education tier needs its own DPIA appendix; (e) App Store implications (Volume Purchase, managed distribution, Apple School Manager).\n**Out:** implementing any of it — each supported mechanism becomes its own issue; Android enterprise/EMM (a parallel spike); the education pricing decision ({{SN-BILL-015}}).\n\n## Acceptance criteria\n- [ ] A written decision lands in `docs/platform/` (or an ADR) with a support/no-support verdict per mechanism, the reasoning, and the follow-up issues to file for whatever is adopted.\n- [ ] Shared iPad behaviour is empirically checked or explicitly recorded as unverified, including what happens to locally stored notebooks and keys when a student session ends and storage is reclaimed.\n- [ ] A concrete list of Managed App Configuration keys with types, defaults and precedence versus user settings is specified — including the rule that a managed setting may only *restrict*, never *loosen*, a privacy default.\n- [ ] The minor-data analysis states whether school deployment changes the age-gate defaults and whether parental/institutional consent replaces individual consent.\n- [ ] Marketing/website claims about schools are confirmed as supported or removed from the copy plan ({{SN-SITE-003}}).\n\n## Technical notes\nManaged config arrives as `UserDefaults.standard.dictionary(forKey: \"com.apple.configuration.managed\")` — untrusted, admin-supplied, and changeable at runtime; design for observation, not a one-shot read. Shared iPad partitions per-user data automatically but *not* keychain semantics for our E2EE keys ({{SN-CRY-008}}) — check whether a returning student can still decrypt. ClassKit requires an entitlement and App Review justification.\n\n## Security & privacy\nManaged configuration is an external control channel: validate every key and value, ignore unknown keys, and never let a managed value enable data egress that the user has not consented to (MASVS-PRIVACY-1). Shared-device use raises the multi-tenant leakage threat that {{SN-AUTH-013}} addresses for profiles — the spike must confirm no cross-student residue in caches, thumbnails, the search index or Spotlight ({{SN-GIPAD-005}}).\n\n## UX notes\nIf adopted, admin-locked settings show a lock glyph and \"Managed by your school\" helper text instead of silently reverting; guest/temporary sessions must make it obvious that content will not persist. No dark patterns to push institutional accounts.\n\n## Test plan\nNot applicable to a spike beyond the verification steps above; the decision must name the test cases the implementation issues will carry (Shared iPad session end, managed key precedence, minor-consent defaults).\n\n## Dependencies\n{{SN-AUTH-013}}, {{SN-PRV-007}}.\n\n## Definition of done\n- [ ] Document + gate merged, CI green (markdown lint, link check, issues-validate)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md cross-links the new page\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-010",
+    "title": "Add a Focus Filter intent that scopes the library to a subject or profile",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "notifications",
+      "library",
+      "settings"
+    ],
+    "milestone": "Backlog",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PLATFORM-1"
+    ],
+    "parent": "SN-IPAD-001",
+    "depends_on": [
+      "SN-IPAD-015",
+      "SN-LIB-026",
+      "SN-STDY-008"
+    ],
+    "labels_extra": [
+      "innovation"
+    ],
+    "body": "## Context\niPadOS **Focus filters** (`SetFocusFilterIntent`, App Intents) let an app change its own content when the user enters a Focus — Mail hides accounts, Safari switches tab groups. For a study app this is an unusually good fit and nobody in the competitor matrix ships it: entering the \"Study\" Focus could scope the library to one subject or smart collection, mute shared-notebook notifications, and turn on the in-app focus mode that already exists ({{SN-ED-018}}). {{SN-IPAD-015}} covers App Intents for actions, but a Focus filter is a distinct intent type and is not in the backlog. This is a small, high-delight differentiator that reuses machinery we are already building.\n\n## Scope\n**In:** a `SetFocusFilterIntent` implementation exposing user-configurable parameters (subject/smart collection to show, profile to activate, \"hide shared-notebook notifications\", \"start in Focus mode\"); persistence of the active filter and application at launch and on Focus change; a clear in-app indicator that a Focus filter is narrowing what is shown, with one tap to see everything; Settings copy explaining the feature.\n**Out:** the Focus/Pomodoro timer ({{SN-STDY-008}}); notification categories ({{SN-NOTF-002}}); smart collections themselves ({{SN-LIB-026}}); Android's parallel (Do Not Disturb) behaviour.\n\n## Acceptance criteria\n- [ ] The app appears under Settings → Focus → *(a Focus)* → Focus Filters, and the configured filter is applied within one app foreground cycle of the Focus turning on, and reverted when it turns off.\n- [ ] When a filter narrows the library, a persistent, non-modal chip reads \"Focus: Chemistry — Show all\" and one tap clears the narrowing for the session without editing the Focus.\n- [ ] Selecting a profile in a filter requires that profile's lock to be satisfied; a locked profile is never silently entered ({{SN-AUTH-014}}).\n- [ ] A filter never hides content in a way the user cannot escape, and never deletes, archives or mutates anything — it is a view-scoping mechanism only.\n- [ ] With no Focus configured, behaviour is byte-identical to today (regression golden of the library screen).\n- [ ] Accessibility: the filter chip is announced by VoiceOver with its state and action, and the whole flow is reachable without gestures ({{SN-A11Y-009}}).\n\n## Technical notes\nImplement alongside the other App Intents in the iOS app target, sharing the `AppEntity` types from {{SN-IPAD-015}} so a subject can be picked as a parameter. Store the resolved filter in the per-profile preferences repository ({{SN-SET-003}}) as ephemeral state, not synced (it is device-local). Handle the app being launched *by* the filter change (no UI yet) by applying state before the first frame.\n\n## Security & privacy\nThe system passes filter parameters into the app process: treat them as untrusted, validate that referenced ids exist in the current profile, and ignore anything else (MASVS-PLATFORM-1). Do not expose locked-notebook titles in the Focus configuration UI; only subjects and smart collections the user has marked non-sensitive (MASVS-PRIVACY-1). No analytics on Focus usage.\n\n## UX notes\nFollows docs/design/screens-and-flows.md library chrome: the filter chip sits with the existing filter chips, uses the same tokens, and reads as informative rather than restrictive. Copy avoids implying that hidden notebooks are gone.\n\n## Test plan\nUnit: `app/test/focus_filter_intent_test.dart` (parameter resolution, unknown-id rejection, locked-profile refusal). Widget: library screen with a filter applied, including the chip and clear action. Integration: `integration_test/focus_filter_test.dart` toggling the filter through the intent entry point. Manual: configure a real Focus on a Tier 1 iPad.\n\n## Dependencies\n{{SN-IPAD-015}}, {{SN-LIB-026}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-011",
+    "title": "Keep a notebook coherent when it is open in two iPad windows at once",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "editor",
+      "compat",
+      "storage"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-STORAGE-2",
+      "CWE-362"
+    ],
+    "parent": "SN-IPAD-001",
+    "depends_on": [
+      "SN-IPAD-011",
+      "SN-ED-003",
+      "SN-CORE-004"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "needs-design"
+    ],
+    "body": "## Context\n{{SN-IPAD-011}} adopts additive windowing — a scene per note — and {{SN-IPAD-010}} adapts layout to Split View and Stage Manager. Neither answers the question iPadOS 26 users will hit on day one: **what happens when the same notebook is open in two windows**, side by side, with a Pencil in one and a keyboard in the other? That is the natural way to compare two pages, and it is a correctness problem, not a layout problem: two scenes sharing one document must share one CRDT instance and one storage isolate, while keeping per-window undo, selection, tool state, viewport and page position. Getting it wrong produces the worst possible bug class — silently diverging or lost strokes — so it needs its own issue with its own tests.\n\n## Scope\n**In:** a scene-aware document-session layer that vends one shared `sane_core` document + repository per (profile, notebook) with reference counting across scenes; per-scene UI state (tool, colour, selection, viewport, current page, focus mode); a decision and implementation for undo scope (default: per page as {{SN-ED-003}} specifies, with the stack shared by page across windows, and an explicit rule for undoing another window's edit); live propagation so an edit in window A repaints window B within one frame budget; safe teardown when one window closes or the app is backgrounded; the same rules applied when a notebook is open in a window *and* referenced by a widget/Quick Note deep link; routing a deep link to an existing scene instead of opening a duplicate.\n**Out:** cross-device concurrency ({{SN-SYNC-006}}); real-time collaboration ({{SN-COL-004}}); the windowing adoption itself ({{SN-IPAD-011}}); Android multi-instance ({{SN-AND-013}}).\n\n## Acceptance criteria\n- [ ] Opening the same notebook in a second window reuses the existing document instance (asserted by identity in an integration test), not a second store — memory does not double ({{SN-GIPAD-007}}).\n- [ ] A stroke drawn in window A appears in window B within 2 frames at 120 Hz when both show the same page; when they show different pages, neither repaints unnecessarily.\n- [ ] Undo in window B behaves per the documented rule and never resurrects or deletes content the user did not act on; a property test over interleaved two-window edit/undo sequences ends in a single converged document with no orphaned strokes.\n- [ ] Closing one window leaves the other fully functional; closing the last window flushes and releases the store; force-quitting mid-stroke loses at most the in-flight stroke ({{SN-CORE-026}}).\n- [ ] Tool, colour, selection and zoom are independent per window and restored per scene after termination ({{SN-IPAD-028}}).\n- [ ] A Spotlight/Handoff/widget deep link to a notebook already open activates that scene rather than creating a third window, unless the user explicitly asks for a new window.\n- [ ] The same guarantees hold when one window is in Slide Over and the other is full screen.\n\n## Technical notes\nImplement the session registry in `packages/sane_app`/`app/` over the storage isolate from {{SN-CORE-004}}; the isolate is the single writer, so cross-scene coherence is a subscription problem, not a locking problem — but reference counting, disposal and stream fan-out are where races appear (CWE-362). If the Flutter multi-view spike ({{SN-IPAD-009}}) concludes that native scenes are not feasible, apply the identical rules to in-app tabs ({{SN-ED-029}}) and record it in ADR-0001.\n\n## Security & privacy\nA second window must respect the same gates as the first: a locked notebook opened in window B still requires the biometric gate ({{SN-SEC-020}}), and a profile switch must not leave another profile's document live in a second scene (MASVS-PLATFORM-1, {{SN-AUTH-013}}). Torn writes from concurrent scene teardown are a data-integrity threat (MASVS-STORAGE-2).\n\n## UX notes\nWindows carry the notebook title as the scene name ({{SN-IPAD-011}}) and a subtle page indicator so two windows of one notebook are distinguishable in the app menu's window list. No \"this note is open elsewhere\" warnings — it simply works. Selection highlights are local to a window so one user's lasso does not flash in the other.\n\n## Test plan\nUnit: `packages/sane_app/test/document_session_registry_test.dart` (ref counting, disposal, double-open). Property: `test/property/two_window_edit_undo_test.dart` over interleaved operations. Integration: `integration_test/multi_window_test.dart` driving two scenes with `patrol` on iPadOS 26. Manual: Stage Manager with two windows plus an external display, per docs/platform/ipad.md §7.\n\n## Dependencies\n{{SN-IPAD-011}}, {{SN-ED-003}}, {{SN-CORE-004}}, {{SN-IPAD-009}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-012",
+    "title": "Author the iPad editor conformance checklist and enforce it as a PR gate",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "ipad"
+    ],
+    "areas": [
+      "qa",
+      "editor",
+      "docs"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
+    "parent": "SN-QA-001",
+    "depends_on": [
+      "SN-IPAD-010",
+      "SN-IPAD-012",
+      "SN-IPAD-013",
+      "SN-QA-006"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\niPad is the flagship surface, but the editor issues that define the product ({{SN-ED-002}} canvas, {{SN-ED-005}} palette dock, {{SN-ED-026}} gestures, {{SN-ED-004}} lasso, {{SN-ED-013}} text tool, {{SN-PG-005}} viewport) are written platform-neutrally and carry few or no iPad-specific acceptance criteria. Those issues are already published and cannot be rewritten, so the gap has to be closed the way platform teams normally close it: with **one conformance checklist that every editor-touching change is measured against**, plus an automated slice of it. Without this, \"works on iPad\" keeps meaning \"worked in the simulator with a mouse\", and the Pencil/keyboard/pointer/window-size matrix of docs/platform/ipad.md §7 and docs/design/gestures-and-shortcuts.md §3 and §6 is verified by nobody.\n\n## Scope\n**In:** `docs/platform/ipad-editor-conformance.md` — a numbered checklist covering input (Pencil Pro / Pencil 2 / USB-C Pencil / finger / Magic Keyboard / trackpad / mouse), palm rejection and precedence order, keyboard-shortcut and menu-bar parity, pointer hover and right-click parity for every long-press menu, window sizes (full screen, 1/2 and 1/3 Split View, Slide Over, Stage Manager, external display), orientation change, left-handed mode, Dynamic Type and VoiceOver, and the latency/fps budget references; a PR-template section and a CODEOWNERS-backed reminder for changes under the editor packages; an automated subset run in CI (`integration_test` at four window sizes plus a synthetic-input replay) and a documented manual subset for what CI cannot reach; a per-release sign-off record.\n**Out:** the device-lab latency gate itself ({{SN-IPAD-025}}); Pencil capability degradation testing ({{SN-IPAD-029}}); the general integration harness ({{SN-QA-006}}) — this issue consumes it.\n\n## Acceptance criteria\n- [ ] The checklist exists, is linked from docs/platform/ipad.md and CONTRIBUTING.md, and every item states an observable pass condition (not \"looks right\").\n- [ ] The PR template gains an \"iPad conformance\" section that a PR touching `packages/sane_editor`, `packages/sane_ink`, `packages/sane_ui` or the iOS plugins must fill in; CI fails the PR when the section is missing for those paths.\n- [ ] The automated subset runs on a real iPad in CI at four window sizes and asserts: no chrome overlaps the safe area or the Pencil hover zone, the dock stays reachable in Slide Over, every `⌘` shortcut in docs/design/gestures-and-shortcuts.md §6 resolves to an action, and every long-press menu has a right-click equivalent.\n- [ ] The manual subset is a single page a tester can complete in under 30 minutes, with a results table stored per release ({{SN-QA-016}}).\n- [ ] Running the checklist against the current build produces a list of real defects filed as issues — the checklist proves itself on first use.\n- [ ] Left-handed mode, RTL and Dynamic Type at 200% are each an explicit checklist row ({{SN-A11Y-005}}, {{SN-A11Y-012}}).\n\n## Technical notes\nReuse the deterministic synthetic-input replay ({{SN-PERF-005}}) to drive Pencil-like events where hardware is unavailable, and `patrol` for native dialogs. Window sizes are set through scene resizing in the integration harness; where iPadOS blocks programmatic resize, the checklist marks the row manual. Keep the checklist versioned alongside the docs so a change in gesture grammar updates it in the same PR.\n\n## Security & privacy\nVerification artefacts must contain no note content: screenshots captured by failing tests come from synthetic fixtures only, and CI artefacts are retention-limited (MASVS-PRIVACY-1 spirit). Conformance includes one security row: locked-notebook chrome must not render content before the gate ({{SN-SEC-020}}).\n\n## UX notes\nThe checklist encodes the design system's iPad rules (dock edges, hover zone, menu-bar parity, focus ring) so design review and QA argue from the same document. Failures should link to the design source (docs/design/screens-and-flows.md §7) rather than to opinion.\n\n## Test plan\nThe deliverable is itself test infrastructure: `integration_test/ipad_conformance_test.dart` (automated subset), `tools/pr_gate/ipad_conformance_check.mjs` (template enforcement) with unit tests, and the manual page. Dry-run the gate on a sample PR before enabling it as required.\n\n## Dependencies\n{{SN-IPAD-010}}, {{SN-IPAD-012}}, {{SN-IPAD-013}}, {{SN-QA-006}}.\n\n## Definition of done\n- [ ] Document + gate merged, CI green (markdown lint, link check, issues-validate)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md cross-links the new page\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-013",
+    "title": "Insert photos through the out-of-process picker and ship no Photos permission",
+    "type": "security",
+    "priority": "p2",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "privacy",
+      "images-media",
+      "security"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-2",
+      "MASVS-PLATFORM-1"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-MED-005",
+      "SN-PRV-004"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "good first issue"
+    ],
+    "body": "## Context\n{{SN-MED-005}} builds the Insert-media sheet and correctly requests photo access lazily with a rationale — but on iPadOS the *best* answer is to request nothing at all. `PHPickerViewController` runs **out of process**, returns only the assets the user picked, and requires **no photo-library permission and no `NSPhotoLibraryUsageDescription` string**. A Flutter app that reaches for a plugin's legacy path silently triggers the full-library prompt, which is a worse experience, a worse privacy posture, an App Review risk (Guideline 5.1.1 asks for the least-privileged API), and an extra entry in the privacy nutrition label. Nothing in the backlog pins this down, so this issue makes \"no Photos permission on Apple platforms\" a tested invariant.\n\n## Scope\n**In:** routing the Photos source of the Insert-media sheet through the out-of-process picker (`PHPickerViewController`, multi-select, live-photo/HEIC handling) on iPadOS/iOS; removing `NSPhotoLibraryUsageDescription`/`NSPhotoLibraryAddUsageDescription` from the app Info.plist unless a save-to-Photos feature genuinely needs the latter; auditing every Flutter plugin in the dependency graph for a transitively added Photos usage string or `PHPhotoLibrary` call and pinning or replacing offenders; a CI grep gate that fails the build if a Photos usage string or `PHPhotoLibrary.requestAuthorization` reappears; handling the picker's limited results (no asset enumeration, no metadata beyond the returned item).\n**Out:** camera capture and its `NSCameraUsageDescription` ({{SN-MED-005}}, {{SN-MED-009}}); the decode/downscale pipeline ({{SN-MED-003}}); EXIF stripping ({{SN-MED-004}}); Android's Photo Picker ({{SN-AND-001}} scope).\n\n## Acceptance criteria\n- [ ] Inserting an image on iPadOS shows the system picker with **no permission alert**, on a device where the app has never been granted photo access.\n- [ ] The built app's Info.plist contains no Photos usage strings; a CI check (`tools/ci/plist_permission_gate.sh`) fails on reintroduction, including strings injected by a dependency.\n- [ ] The privacy manifest and nutrition label ({{SN-IPAD-021}}, {{SN-PRV-015}}) declare no photo-library access; the permissions panel ({{SN-PRV-004}}) shows Photos as \"not requested\".\n- [ ] Multi-select returns every chosen image through the hardened ingest path ({{SN-MED-003}}) with dimension caps and EXIF stripping applied ({{SN-SEC-006}}, {{SN-MED-004}}).\n- [ ] A user who *has* previously granted limited access experiences no regression: the picker still works and the app never enumerates the library.\n- [ ] HEIC, Live Photos, screenshots, panoramas and iCloud-not-downloaded assets each import or fail with a clear message (no silent no-op).\n\n## Technical notes\nIf the chosen Flutter plugin cannot guarantee the out-of-process path, implement a small Swift platform view/channel in `plugins/sane_media_picker` rather than accepting the legacy API. Beware transitive plugins that ship their own Info.plist entries via CocoaPods — the gate must inspect the built app, not just the source plist. Cross-check with the required-reason API audit in {{SN-IPAD-021}}.\n\n## Security & privacy\nStraight data minimisation (MASVS-PRIVACY-1/2): the app never holds library-wide access, so a compromise of the app cannot enumerate photos. Picker results arrive as file URLs from another process and are untrusted input — validate type and size before decode (MASVS-PLATFORM-1) and never trust the supplied filename when writing to the blob store ({{SN-SEC-007}}).\n\n## UX notes\nNo rationale sheet is needed for Photos on Apple platforms — one fewer interruption. The Insert-media sheet's Photos row therefore opens the picker directly; the rationale pattern from {{SN-ONB-011}} remains for Camera and Microphone. Denial states for Photos simply disappear on iPadOS.\n\n## Test plan\nUnit: `plugins/sane_media_picker/test/picker_result_test.dart` (type/size validation, filename sanitisation). Integration: `integration_test/photo_picker_test.dart` with `patrol` asserting no permission dialog appears. CI: the plist gate, exercised by a fixture app that deliberately reintroduces the string.\n\n## Dependencies\n{{SN-MED-005}}, {{SN-PRV-004}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-014",
+    "title": "Suppress locked-note content on mirrored, AirPlay and captured iPad displays",
+    "type": "security",
+    "priority": "p2",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "security",
+      "privacy",
+      "editor"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "MASVS-PLATFORM-3",
+      "CWE-200"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-SEC-019",
+      "SN-SEC-020",
+      "SN-ED-021"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n{{SN-SEC-019}} blocks screenshots, the app-switcher snapshot and screen recording for locked notes — but on iPad the most likely leak is the one it does not cover: the device is **mirrored to a projector or Apple TV** in a lecture theatre, or joined to Stage Manager on an external display, while the presenter opens a locked personal notebook. The app even ships a presentation mode with external-display output ({{SN-ED-021}}), which makes a second screen a first-class, expected state. iPadOS exposes `UIScreen.isCaptured` and `capturedDidChangeNotification` plus the connected-screen list; nothing in the backlog reads them.\n\n## Scope\n**In:** a display-privacy service that observes capture state and connected screens; a rule set applied when a locked/secure notebook is foreground — either redact the mirrored output (present a neutral \"Content hidden while mirroring\" surface on the external/captured screen) or, if the app cannot address the mirrored surface separately, blur the content and show a one-line banner on the primary screen; the same treatment for AirPlay receivers and wired mirroring; an explicit user override for the case where they *intend* to present a locked notebook (confirmation, session-scoped); interaction with presentation mode so an intentional presentation is never blocked; a diagnostic counter (content-free) for the QA matrix.\n**Out:** screenshot/recording blocking ({{SN-SEC-019}}); the lock feature ({{SN-SEC-020}}); presentation mode itself ({{SN-ED-021}}); the laser pointer ({{SN-ED-020}}).\n\n## Acceptance criteria\n- [ ] With a locked notebook open and mirroring started (AirPlay or cable), content on the mirrored/captured surface is hidden within 500 ms, and the user sees an explanation with a \"Present anyway\" action.\n- [ ] Choosing \"Present anyway\" requires the app-lock gate to be satisfied and applies only to the current session; the next launch reverts to hidden.\n- [ ] Stopping mirroring restores normal rendering with no relayout artefacts and no lost editing state.\n- [ ] Presentation mode ({{SN-ED-021}}) on an *unlocked* notebook is unaffected — no banner, no delay, full output.\n- [ ] Notifications and the recorder bar shown while mirrored carry no note excerpts ({{SN-SEC-019}} rule reused, asserted here for the mirrored path).\n- [ ] The behaviour is documented in docs/security/ and added to the MASVS platform verification set ({{SN-SEC-030}}).\n\n## Technical notes\nImplement in the iOS runner plus a small Dart-facing stream; treat `isCaptured` as covering both recording and mirroring, and additionally watch `UIScreen.screens`/scene connection for an external display, because the two signals do not fully overlap. Coordinate with the multi-window session layer ({{SN-GIPAD-011}}) so hiding applies per scene, not globally. Keep the check cheap and off the draw path.\n\n## Security & privacy\nCloses a real confidentiality gap for the \"locked notebook\" promise (CWE-200, MASVS-PRIVACY-2, MASVS-PLATFORM-3). Fail-closed: if capture state cannot be determined, treat the session as captured while a locked notebook is foreground. No content and no screen identifiers are logged; the diagnostic is a count only ({{SN-TEL-002}} allow-list).\n\n## UX notes\nCopy is factual and non-alarming: \"This notebook is locked, so it's hidden while your screen is shared.\" The override is a single, clearly labelled action, not buried in Settings. Hidden state uses the design system's neutral surface with the lock glyph — never a black screen that looks like a crash.\n\n## Test plan\nUnit: `app/test/display_privacy_rules_test.dart` (state matrix: locked × captured × external × override). Integration: `integration_test/mirroring_test.dart` simulating capture-state changes. Manual: real AirPlay to an Apple TV and a wired projector on the Tier 1 iPad, recorded in the {{SN-GIPAD-012}} checklist.\n\n## Dependencies\n{{SN-SEC-019}}, {{SN-SEC-020}}, {{SN-ED-021}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (format, analyze, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks, OSV-Scanner, CodeQL over Swift)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md kept current\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GIPAD-015",
+    "title": "Complete the App Store DSA trader declaration and EU compliance metadata",
+    "type": "task",
+    "priority": "p2",
+    "platforms": [
+      "ipad",
+      "ios-phone"
+    ],
+    "areas": [
+      "release",
+      "privacy",
+      "docs"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "S",
+    "sdlc": "release",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-REL-001",
+    "depends_on": [
+      "SN-IPAD-023",
+      "SN-PRV-017"
+    ],
+    "labels_extra": [
+      "needs-decision"
+    ],
+    "body": "## Context\n{{SN-IPAD-023}} covers App Store Connect readiness for the nutrition label, encryption export compliance and metadata, and {{SN-REL-011}} adds a pre-submission review gate — but neither covers the **EU Digital Services Act trader requirements**, which Apple now enforces at the account level: a developer distributing a paid app (or any app, depending on account status) in EU storefronts must declare **trader status** and publish verified trader contact details (legal name, address, phone, email), or the app is removed from EU storefronts. It is a hard launch blocker for a paid product ({{SN-BILL-001}}), it needs maintainer-supplied legal identity, and verification takes real calendar time — exactly the kind of item that gets discovered a week before launch.\n\n## Scope\n**In:** determining and recording whether the publishing entity is a trader for DSA purposes; collecting and submitting the trader contact details in App Store Connect and completing Apple's verification; making the same details consistent with the Play Console equivalent, the website imprint/contact page ({{SN-SITE-010}}), the Privacy Policy and Terms ({{SN-PRV-017}}), and the in-app About screen ({{SN-SET-015}}); a release-checklist item ({{SN-REL-013}}) that blocks EU-storefront submission until verification is complete; a note on related EU obligations that touch the listing (consumer withdrawal rights for subscriptions, dispute-resolution contact) with links to where they are handled.\n**Out:** the privacy nutrition label and export compliance ({{SN-IPAD-023}}); Play Data Safety ({{SN-AND-026}}); billing/tax registration ({{SN-BILL-010}}); GDPR data-subject rights ({{SN-PRV-005}}), which are separate obligations.\n\n## Acceptance criteria\n- [ ] A written decision records trader vs non-trader status with its reasoning and the date, stored with the release documentation.\n- [ ] Trader details are submitted and verified in App Store Connect, and the same legal entity, address and contact appear on the website, in the Terms, and in the in-app About screen — checked by a single reviewer against one source of truth.\n- [ ] The release checklist gains a blocking \"EU trader verification complete\" item; the go/no-go runbook ({{SN-REL-013}}) cannot be signed off without it.\n- [ ] The personal-data consequences of publishing contact details (a natural person's address becomes public) are acknowledged in writing, with a mitigation option (business address / registered agent) offered to the maintainer.\n- [ ] A recurring reminder exists to re-confirm details at each major release, since stale trader details are themselves a violation.\n\n## Technical notes\nNo application code. Artefacts live in `docs/release/` and the store-metadata-as-code repository slice ({{SN-REL-010}}) so the About screen and the listing read the same values; add the contact block to the metadata files rather than hard-coding it in the app.\n\n## Security & privacy\nPublishing trader contact details is an intentional disclosure of (possibly personal) data — record it in the processing inventory alongside the DPIA ({{SN-PRV-013}}) and prefer a business address (MASVS-PRIVACY-1 spirit: minimise what is exposed, and make the exposure deliberate). Credentials for App Store Connect follow the release-secrets inventory ({{SN-REL-017}}).\n\n## UX notes\nThe About screen ({{SN-SET-015}}) gains a compact publisher block (legal name, address, email) reachable offline, matching the store listing. Copy is plain, not legalese, and links to the full Terms.\n\n## Test plan\nVerification, not automation: a checklist walkthrough comparing the four surfaces (App Store Connect, Play Console, website, in-app About) against the source-of-truth file, executed as part of the release QA checklist ({{SN-QA-016}}); a CI check that the About screen's publisher strings come from the shared metadata file and are non-empty in release builds.\n\n## Dependencies\n{{SN-IPAD-023}}, {{SN-PRV-017}}, {{SN-REL-010}}.\n\n## Definition of done\n- [ ] Document + gate merged, CI green (markdown lint, link check, issues-validate)\n- [ ] Docs/ADR updated if behaviour or architecture changed; docs/platform/ipad.md cross-links the new page\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

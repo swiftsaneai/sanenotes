@@ -162,6 +162,14 @@ function renderBody(i, numberOf) {
     const body = renderBody(i, numberOf);
     if (state[i.key]) {
       if (UPDATE && !DRY) {
+        // GETs are cheap (primary limit only); PATCHes count against the content-creation
+        // secondary limit, so only write when something actually differs.
+        const live = await api('GET', `repos/${REPO}/issues/${state[i.key].number}`);
+        const liveLabels = (live.labels || []).map(l => l.name).sort().join('|');
+        const same = live.title === i.title && (live.body || '').trim() === body.trim()
+          && liveLabels === [...labels].sort().join('|')
+          && (live.milestone ? live.milestone.number : null) === (milestoneNumber.get(i.milestone) ?? null);
+        if (same) { skipped++; continue; }
         await api('PATCH', `repos/${REPO}/issues/${state[i.key].number}`, { title: i.title, body, labels, milestone: milestoneNumber.get(i.milestone) });
         updated++; await sleep(PACE_MS / 2);
       } else skipped++;
@@ -181,10 +189,19 @@ function renderBody(i, numberOf) {
     await sleep(PACE_MS);
   }
 
-  // Repair pass: if any predicted number was wrong, rewrite bodies with real numbers.
+  // Repair pass: rewrite only the bodies whose rendered form actually changed (predicted number
+  // was wrong, or a referenced key has since been published).
   if (mismatches && !DRY) {
-    console.log(`Repairing cross-references in ${issues.length} issues ...`);
-    for (const i of issues) { await api('PATCH', `repos/${REPO}/issues/${state[i.key].number}`, { body: renderBody(i, k => state[k] && state[k].number) }); await sleep(PACE_MS / 2); }
+    console.log(`Checking cross-references in ${issues.length} issues ...`);
+    let repaired = 0;
+    for (const i of issues) {
+      const want = renderBody(i, k => state[k] && state[k].number);
+      const live = await api('GET', `repos/${REPO}/issues/${state[i.key].number}`);
+      if ((live.body || '').trim() === want.trim()) continue;
+      await api('PATCH', `repos/${REPO}/issues/${state[i.key].number}`, { body: want });
+      repaired++; await sleep(PACE_MS / 2);
+    }
+    console.log(`Repaired ${repaired} bodies`);
   }
 
   // Optional: add to Projects v2

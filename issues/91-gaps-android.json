@@ -1,0 +1,617 @@
+[
+  {
+    "key": "SN-GAND-001",
+    "title": "Register as the Android default notes app and handle the notes-role create intent",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "notifications",
+      "compat",
+      "input-gestures"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PLATFORM-3",
+      "MASVS-PRIVACY-2",
+      "CWE-200"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-024",
+      "SN-AND-025",
+      "SN-PHN-015"
+    ],
+    "body": "## Context\n`docs/platform/android.md` §7 only covers the **ChromeOS** note-taker intent (`org.chromium.arc.intent.action.CREATE_NOTE`, implemented by {{SN-AND-010}}). Stock Android has a second, AOSP-wide entry point that the doc and the backlog both miss: the **notes role** introduced in Android 14 (`RoleManager.ROLE_NOTES`), which lets one app be the system default note taker. The OS routes a create-note intent (`ACTION_CREATE_NOTE`, with an extra that signals stylus mode) to the role holder from the lock screen, the taskbar/stylus shortcut, and OEM pen gestures — exactly the \"pull the pen out, start writing in under a second\" moment that Samsung Notes owns on Galaxy hardware (`docs/research/sources/samsung-notes-nebo-other.md` §1, Air command). Without holding the role, Sane Notes can never be the app a Pixel Tablet or a USI Chromebook user reaches by pen; capture entry points stay app-internal ({{SN-AND-024}}). Exact symbol names, the availability window and lock-screen behaviour are **(verify)** against the API level we ship — the issue owner confirms them on an API 34+ and an API 36 device before implementing.\n\n## Scope\n**In:** declaring the intent filter and manifest metadata that make Sane Notes eligible for the notes role; a Settings row (and a first-run tip) that requests the role through the platform role-request dialog and reflects the current holder; handling the incoming create-note intent to open a **new Quick Note** straight into the editor with the pen tool armed when the stylus extra is present; honouring the \"launched over the lock screen\" case by creating the note in a locked-safe container; a capability probe so the whole surface is inert below API 34 and on devices where the role does not exist.\n**Out:** the ChromeOS `CREATE_NOTE` filter ({{SN-AND-010}}); widgets and dynamic shortcuts ({{SN-AND-024}}); the S Pen remote button action ({{SN-AND-009}}, {{SN-PHN-016}}); App Links ({{SN-AND-025}}); the Quick Notes inbox model ({{SN-PHN-010}}).\n\n## Acceptance criteria\n- [ ] On an Android 14+ device the app appears in the system \"Default notes app\" picker and can be set as the role holder from Sane Notes Settings; the row shows held/not-held accurately and never nags after one decline.\n- [ ] With the role held, the platform create-note entry point opens a new Quick Note in the editor in < 2 s cold (budget from `docs/platform/performance-budgets.md`), with the pen tool active when the stylus-mode extra is set.\n- [ ] Launched above the lock screen, the app shows **only** a blank capture surface: no library, no note titles, no thumbnails, no search, and no existing content is reachable until the device is unlocked ({{SN-PHN-015}}).\n- [ ] A note captured from the lock screen lands in the Quick Notes inbox of the **active profile** and is visible after unlock; in guest mode it stays local and syncs nothing.\n- [ ] On API < 34, on ChromeOS, and on devices with no role, the Settings row is hidden and no manifest entry causes a crash, a duplicate launcher icon or an exported-component finding.\n- [ ] The role-holder activity is not exported beyond what the platform requires and rejects any intent extra that is not on its allow-list ({{SN-AND-029}}).\n\n## Technical notes\nKotlin in `app/android`: an activity declared with the notes-role intent filter plus `showWhenLocked`/`turnScreenOn` only on the locked-capture variant; request the role with the platform role manager (`ROLE_NOTES`) — never assume grant, always re-query. Route the intent through the existing internal router (go_router, ADR-0003) into the editor with a `NewQuickNote` route, reusing {{SN-PHN-010}}. Feature-detect with a capability call in `sane_stylus`/platform channel rather than an SDK_INT-only branch. Keep the locked path on a separate, minimal navigator so no library provider is constructed. Record the (verify) outcome in `docs/platform/android.md` §7.\n\n## Security & privacy\nThe lock-screen surface is the highest-risk entry point in the app: a bug here leaks note content from a locked device (MASVS-PLATFORM-3, MASVS-PRIVACY-2, CWE-200). Controls: locked-capture activity constructs no library/search state; `FLAG_SECURE` policy from {{SN-SEC-019}} still applies; incoming intents are untrusted input and are validated against an allow-list ({{SN-AND-029}}, {{SN-SEC-011}}); the role request is user-initiated only, never auto-requested at first launch; no telemetry event records note existence ({{SN-TEL-002}}).\n\n## UX notes\nSettings → Handwriting & stylus gets a \"Default notes app\" row ({{SN-SET-007}}) with a one-line explanation and a system-dialog trigger; state reads \"Sane Notes is your notes app\" / \"Another app is set\". The locked capture screen uses the current look's paper with a visible \"Locked — unlock to see your notes\" affordance and a single Save action; empty, saving and error states follow `docs/design/screens-and-flows.md` Quick Note.\n\n## Test plan\n`integration_test` + patrol: role granted → create-note intent → editor open with pen armed; role declined → row state; locked launch → assert no library route is constructed and no note titles are in the semantics tree. Unit tests for intent parsing/extra validation. Manual on a Pixel Tablet (USI) and a Galaxy Tab (S Pen) on API 34 and API 36 (`docs/platform/compatibility-matrix.md` §2 Tier 2 pool). New files: `app/android/.../NotesRoleActivity.kt`, `test/platform/notes_role_intent_test.dart`, `integration_test/android_notes_role_test.dart`.\n\n## Dependencies\n{{SN-AND-024}}, {{SN-AND-025}}, {{SN-PHN-015}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-002",
+    "title": "Exclude system gesture regions along the screen edges while inking",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "ink",
+      "input-gestures",
+      "compat"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-006",
+      "SN-AND-015"
+    ],
+    "body": "## Context\n`docs/platform/android.md` §3.4 states the requirement plainly — \"Suppress edge-nav gestures while drawing with `WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`\" — and no issue owns it. On gesture navigation (the default since Android 10, our `minSdk`) the left and right screen edges are back-gesture zones and the bottom edge is the home zone. A student writing in the margin of a PDF, dragging the palette dock to an edge ({{SN-ED-005}}), or lassoing near the page border currently triggers *back* or *home* instead of drawing. Every serious Android ink app handles this; getting it wrong is the single most visible \"this app is not pen-native\" bug on a tablet, and it is invisible on an emulator, which is where most of our functional tests run (`docs/platform/android.md` §11). Android caps how much edge a normal app may claim (a small per-side budget), so this must be a **scoped, dynamic** exclusion around the live drawing surface, not a blanket grab of the whole edge.\n\n## Scope\n**In:** publishing system-gesture exclusion rectangles for the ink canvas and the docked palette while a stroke or drag is in progress; clearing them the moment the gesture ends; an immersive/transient-bars mode for focus mode ({{SN-ED-018}}) and presentation ({{SN-ED-021}}); respecting the platform's per-side exclusion budget and degrading predictably when the budget is exceeded; a settings-free default (always on while drawing) with no user-visible toggle.\n**Out:** palm rejection ({{SN-AND-006}}); edge-to-edge insets and safe areas ({{SN-AND-015}}); predictive back behaviour ({{SN-AND-014}}); iOS edge-protection equivalents (SN-IPAD area).\n\n## Acceptance criteria\n- [ ] Starting a stroke within the edge gesture zone draws ink and does **not** trigger back or home on a gesture-navigation device running API 29, 33 and 36.\n- [ ] Exclusion rects are published only while the pointer is down (or while the palette is being dragged) and are cleared within one frame of pointer-up; a static, always-on full-edge exclusion is rejected in review.\n- [ ] The total excluded height per side stays inside the platform budget; when the canvas is taller than the budget the app prefers the region nearest the active pointer and logs nothing on the draw path (CLAUDE.md draw-path rules, {{SN-PERF-016}}).\n- [ ] Focus mode and presentation mode use transient system bars so a swipe reveals the bars without leaving the note.\n- [ ] Publishing the rects adds no measurable cost to the ≤ 25 ms pen-to-pixel budget ({{SN-INK-031}} instrumentation shows no regression).\n- [ ] On button/3-button navigation devices the code path is a no-op and nothing regresses.\n\n## Technical notes\nKotlin in `plugins/sane_ink_surface/android`: `View.setSystemGestureExclusionRects(List<Rect>)` on the drawing view, driven from the same `ACTION_DOWN`/`ACTION_UP` handling as {{SN-AND-004}}; `WindowInsetsControllerCompat.systemBarsBehavior = BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` for immersive surfaces. Expose a small `setGestureExclusion(List<Rect>)` method on the `sane_ink_surface` platform interface ({{SN-INK-029}}) so the Dart editor can also exclude the docked palette region. Allocate the rect list once and mutate in place — no per-sample allocation ({{SN-PERF-021}}).\n\n## Security & privacy\nNone beyond baseline (MASVS-PLATFORM-1: the app must not degrade system navigation). The exclusion is scoped and transient, so it cannot be used to trap the user in the app; it never suppresses the power/assistant gestures. No data, no logging.\n\n## UX notes\nInvisible when correct. Follow `docs/design/gestures-and-shortcuts.md` §4: the user should never see a back animation start while a stroke is being drawn. The transient-bar behaviour in focus mode matches the hide-UI toggle in `docs/design/screens-and-flows.md` §7.\n\n## Test plan\nWidget/unit test over the rect calculator (canvas geometry + palette dock position → rects, clamped to budget). `integration_test` on a gesture-navigation emulator asserting a stroke that starts 4 dp from the edge produces a stroke and no route pop. Manual on a Galaxy Tab (S Pen) and a Pixel Tablet — emulators do not reproduce every OEM edge behaviour. Files: `plugins/sane_ink_surface/android/.../GestureExclusion.kt`, `test/ink/gesture_exclusion_rects_test.dart`.\n\n## Dependencies\n{{SN-AND-006}}, {{SN-AND-015}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-003",
+    "title": "Restore editor state after Android process death and configuration change",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "editor",
+      "storage"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-1",
+      "CWE-200"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-012",
+      "SN-CORE-004",
+      "SN-ED-027"
+    ],
+    "body": "## Context\niPad has {{SN-IPAD-028}} (\"Restore editor and scene state after termination and window reconnection\"); **Android has no equivalent issue**, yet Android is where process death actually happens. On the 4 GB Snapdragon 680-class reference device (`docs/platform/compatibility-matrix.md` §2) the system kills backgrounded apps constantly, and OEM skins are more aggressive still. {{SN-AND-012}} and {{SN-AND-013}} guarantee no state loss across *configuration* changes (rotation, multi-window, fold) — a different mechanism from the activity being destroyed and the Dart isolate restarted while the user is at lunch. If a student returns to a killed app and lands on the library with the current page, tool, zoom and selection gone (or worse, an unsaved stroke lost), the app has failed its core promise; \"manual sync / lost work\" is the #1 competitor complaint on record (`docs/research/sources/samsung-notes-nebo-other.md` \"What Sane Notes could beat them on\"). Android also offers a hostile-mode switch — Developer options → **Don't keep activities** — which makes this reproducible in CI-adjacent manual testing.\n\n## Scope\n**In:** persisting a small, non-sensitive editor UI state record (open notebook id, page index, scroll/zoom viewport, active tool + colour + width, page-rail state, reading-mode flag) and restoring it on relaunch; wiring Flutter's restoration framework (`RestorationMixin`/`restorationScopeId`) plus the Android saved-instance-state bundle so the restoration id survives; ensuring in-flight ink is durable through {{SN-CORE-004}} before the activity can die; a \"restored where you left off\" path that verifies the target still exists (deleted/moved notebook falls back to the library with a toast).\n**Out:** the durability of committed strokes themselves ({{SN-CORE-026}}, {{SN-INK-021}}); size-class relayout ({{SN-AND-012}}); foldable posture ({{SN-AND-013}}, {{SN-PHN-017}}); iPad scene restoration ({{SN-IPAD-028}}); sync reconciliation ({{SN-SYNC-006}}).\n\n## Acceptance criteria\n- [ ] With \"Don't keep activities\" enabled, backgrounding and returning restores the same notebook, page, zoom/scroll position, active tool and selection; at most the current in-progress stroke is lost.\n- [ ] A real low-memory kill (`adb shell am kill`) mid-edit restores identically and loses no committed stroke.\n- [ ] The saved state bundle is **small** (< 8 KB) and contains **no note content**: no text, no stroke data, no titles, no thumbnails, no search terms — only opaque ids and view parameters.\n- [ ] If the restored notebook/page no longer exists (deleted on another device, restored from Trash), the app opens the library with a non-blocking explanation instead of crashing or showing an empty editor.\n- [ ] Restoration works for guest mode and for a locked profile: a locked target prompts for unlock before restoring ({{SN-SEC-020}}), never rendering content first.\n- [ ] Restore adds nothing to the cold-start budget (< 2 s on the mid Android reference, `docs/platform/performance-budgets.md`).\n\n## Technical notes\n`app/lib/` editor shell: `RestorationMixin` with `RestorableString`/`RestorableInt` properties; set `restorationScopeId` on the root `MaterialApp`; the Android embedding must persist the restoration data (Flutter writes it into the activity bundle — **(verify)** the engine version in use actually round-trips it, as it is a known integration gap). Ids come from the document model ({{SN-CORE-002}}); the viewport comes from {{SN-PG-005}}. Never put content-derived strings in the bundle — the system may write it to disk and it is readable by the platform, not by other apps.\n\n## Security & privacy\nThe Android saved-instance-state bundle is system-managed storage outside our encrypted store: putting note content there breaks the at-rest model (MASVS-STORAGE-1) and could leak through a system crash report (CWE-200). Control: a strict, tested allow-list of primitive fields plus a unit test that fails if any field is not on it. Locked notebooks restore behind the biometric gate ({{SN-SEC-020}}); the bundle is excluded from backup by the rules in {{SN-AND-030}}.\n\n## UX notes\nRestoration is silent — no splash, no \"restoring\" spinner beyond the normal launch. If the target is gone, show the standard toast pattern from {{SN-ED-027}} (\"That page was deleted\"). Reading mode and focus mode restore in the same mode the user left.\n\n## Test plan\nWidget tests using `tester.restartAndRestore()` for each restorable property. `integration_test` + patrol: `am kill` mid-session then relaunch and assert page/tool/zoom. A unit test asserts the serialized bundle matches the field allow-list and stays under the size cap. Manual pass with \"Don't keep activities\" on the 4 GB reference device ({{SN-AND-027}}). Files: `app/test/editor/restoration_test.dart`, `integration_test/android_process_death_test.dart`.\n\n## Dependencies\n{{SN-AND-012}}, {{SN-CORE-004}}, {{SN-ED-027}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-004",
+    "title": "SPIKE: decide Android multi-instance and second-window support on large screens",
+    "type": "spike",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet"
+    ],
+    "areas": [
+      "compat",
+      "editor",
+      "perf"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "design",
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-ED-029",
+      "SN-AND-013"
+    ],
+    "body": "## Context\n{{SN-ED-029}} builds the in-app document tab bar plus an \"additive window\" hook \"where the platform supports it\", and {{SN-PHN-017}} explicitly defers \"Android tablet multi-window specifics\" to the Android epic — where no issue exists. iPad has a dedicated feasibility spike ({{SN-IPAD-009}}) and an implementation issue ({{SN-IPAD-011}}); Android has neither. This matters because the Android large-screen story is built on **two app windows side by side** (split-screen with the same app in both halves, ChromeOS/desktop windowing, Samsung DeX), a workflow Galaxy Tab users already have in Samsung Notes and which `docs/platform/android.md` §7 assumes when it talks about desktop windowing. Flutter's Android embedding has historically supported a single activity/engine well and multiple engines poorly (memory duplication, plugin singletons, texture/front-buffer ownership), and our ink fast path owns a native surface ({{SN-AND-002}}) that cannot be trivially instantiated twice. This is a decision, not an implementation: time-box it and write it down.\n\n## Scope\n**In:** prototyping `android:launchMode`/`documentLaunchMode` + `FLAG_ACTIVITY_LAUNCH_ADJACENT` and/or a multi-engine (`FlutterEngineGroup`) approach on an Android 16 tablet, a foldable and a ChromeOS device; measuring memory, cold start of the second window, and whether two `sane_ink_surface` instances can coexist (front-buffer/texture ownership, Impeller Vulkan contexts); checking CRDT safety of two editors on the same notebook in one process ({{SN-CORE-003}}); a written recommendation (native second window vs in-app tabs + split-pane only) landed as an ADR update and reflected in `docs/platform/android.md` §7.\n**Out:** implementing whichever option wins (a follow-up issue); the in-app tab bar ({{SN-ED-029}}); DeX/connected-display behaviour ({{SN-GAND-005}}); iPad windowing ({{SN-IPAD-009}}, {{SN-IPAD-011}}).\n\n## Acceptance criteria\n- [ ] A throwaway branch demonstrates (or disproves) two Sane Notes windows side by side on an Android 16 tablet, with measured numbers for incremental RSS, second-window cold start and steady-state fps while drawing in one window.\n- [ ] The report states explicitly whether two native ink surfaces can be alive at once, and what the Tier B (pure-Flutter) fallback costs if not.\n- [ ] The report states whether two editors on the **same** notebook in one process converge safely or need a single-writer lock, with a test or a reasoned argument.\n- [ ] A recommendation is recorded with an exit criterion (e.g. \"second window only when incremental memory < 120 MB on the 4 GB reference, otherwise ship in-app tabs\") and linked from {{SN-ED-029}}.\n- [ ] The spike is time-boxed to 3 days and produces a document even if the answer is \"not feasible\".\n\n## Technical notes\nStart from `FlutterEngineGroup` (shared snapshot, lower incremental cost) before considering a second process. Touchpoints: `plugins/sane_ink_surface/android` texture registry, plugin singletons in `sane_secure_store`/`sane_cloud_drive`, drift/SQLite single-writer assumptions in `sane_core` ({{SN-CORE-004}}), Riverpod scope ownership (ADR-0003). Compare against ADR-0001's single-codebase exit criterion. Reuse the measurement harness from {{SN-PERF-002}} rather than hand-timing.\n\n## Security & privacy\nTwo windows must not cross profile boundaries: a second window opened from a locked profile or a different profile must obey the isolation rules in {{SN-AUTH-013}} and the app-lock behaviour in {{SN-SEC-020}}. The spike explicitly records how profile scoping behaves per engine, since a shared engine group shares static state (MASVS-PRIVACY-1).\n\n## UX notes\nIf native second windows are ruled out, {{SN-ED-029}}'s additive-window affordance must be hidden on Android rather than failing silently — record the intended degradation (tabs + split-pane inside one window) so the design in `docs/design/screens-and-flows.md` stays honest.\n\n## Test plan\nNo production tests. Deliverables: a measurement table (memory/start/fps per configuration and device), the prototype branch reference, and an ADR update. If the answer is yes, the follow-up issue carries the real test plan.\n\n## Dependencies\n{{SN-ED-029}}, {{SN-AND-013}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-005",
+    "title": "Support Samsung DeX and connected-display desktop windowing",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "editor",
+      "input-gestures"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PRIVACY-2"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-013",
+      "SN-AND-031",
+      "SN-AND-012"
+    ],
+    "body": "## Context\n{{SN-AND-013}} covers foldables and **ChromeOS** desktop windowing; nothing in the backlog mentions **Samsung DeX**, even though the Tier 1 Android device lab contains a Samsung Galaxy Tab with an S Pen and the Tier 2 pool contains a Galaxy S-Ultra (`docs/platform/compatibility-matrix.md` §2) — the exact devices whose users dock to a monitor or run DeX on the tablet with a Book Cover Keyboard. `docs/platform/android.md` §7 also promises the Extra-large (≥ 1600 dp) window class for \"desktop/connected display\", and Android 16 extends desktop windowing to external displays generally. Samsung Notes is the incumbent here and runs on DeX plus a Windows companion (`docs/research/sources/samsung-notes-nebo-other.md` §1) — \"works on the big screen\" is table stakes on Galaxy hardware, and the failure modes (stretched phone layout, wrong density, mouse that cannot draw, window that will not resize, note lost when the display is unplugged) are exactly the ones users notice first.\n\n## Scope\n**In:** detecting desktop-mode/connected-display configurations and mapping them onto the existing size-class provider ({{SN-AND-012}}) so Extra-large is actually reachable; correct behaviour on continuous free-form window resize (60 fps relayout, no state loss); density/`smallestScreenWidth` changes when the app moves between the built-in panel and an external display; mouse/trackpad as a first-class drawing and pointing device in desktop mode ({{SN-AND-031}}); a documented, tested teardown when the external display disconnects (return to the device layout, keep the open note); an entry in `docs/platform/compatibility-matrix.md` §2 adding DeX to the Tier 2 manual pool.\n**Out:** multi-instance / two app windows ({{SN-GAND-004}}); presentation mode and mirrored output for teaching ({{SN-ED-021}}); ChromeOS note-taker registration ({{SN-AND-010}}); the keyboard/mouse shortcut map itself ({{SN-AND-031}}, {{SN-ED-022}}).\n\n## Acceptance criteria\n- [ ] In DeX (tablet DeX and docked-to-monitor) the app opens in a freely resizable window using the Expanded/Large/Extra-large layouts, never a stretched phone layout and never letterboxed.\n- [ ] Dragging the window edge continuously re-derives the size class and re-lays-out at 60 fps with no jank spike above the frame budget ({{SN-PERF-007}}).\n- [ ] Moving the window between the device panel and the external display (different density/DPI) keeps the open note, page, zoom, tool and selection, and re-rasterises paper/ink crisply at the new density.\n- [ ] Unplugging the external display returns to the on-device layout with no data loss and no crash; a stroke in progress commits.\n- [ ] Mouse/trackpad draws, right-click opens the context menu ({{SN-ED-023}}), hover states appear, and the S Pen still works while a keyboard and mouse are attached.\n- [ ] The app declares no orientation or aspect-ratio lock and does not rely on the restricted-resizability opt-out ({{SN-AND-013}}).\n\n## Technical notes\nRead configuration/`Configuration.densityDpi`, display id and `smallestScreenWidthDp` on every configuration change and feed the same Riverpod size-class provider as {{SN-AND-012}}; handle the display-changed callback rather than assuming a single display. Vendor-specific DeX detection exists but is **(verify)** and must stay a *hint only* — the layout MUST be driven by window metrics, never by a Samsung-only API, so Android 16 desktop windowing gets the same behaviour for free. Tile/raster caches ({{SN-INK-022}}, {{SN-PDF-004}}) must invalidate on density change or ink renders blurry on the external panel.\n\n## Security & privacy\nA connected display is a **public** surface: presentation-adjacent leakage rules apply. Locked notebooks and locked profiles stay locked on the external display, notification excerpts stay suppressed ({{SN-SEC-019}}), and nothing renders a note preview on a screen the user may not be looking at (MASVS-PRIVACY-2). No new permissions; no device identifiers read for detection.\n\n## UX notes\nExtra-large uses the multi-column layout from `docs/design/screens-and-flows.md` adaptive rules; the palette dock defaults to a side column when width ≥ 1200 dp (allowed by `docs/platform/phones.md` §3 only on wide surfaces). Cursor affordances follow {{SN-AND-031}}. Window title = notebook name for the DeX taskbar.\n\n## Test plan\nManual matrix on a Galaxy Tab in DeX and a Galaxy phone docked to a monitor (Tier 2 pool), plus an Android 16 tablet with desktop windowing enabled. Automated: widget tests for size-class mapping at 1200/1600 dp; a golden for the Extra-large layout ({{SN-PHN-020}} harness); an `integration_test` that simulates a density+size configuration change mid-edit and asserts state preservation. Files: `app/test/platform/desktop_windowing_test.dart`, matrix row in `docs/platform/compatibility-matrix.md`.\n\n## Dependencies\n{{SN-AND-013}}, {{SN-AND-031}}, {{SN-AND-012}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-006",
+    "title": "Meet Google Play large-screen and foldable app-quality requirements",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "release",
+      "compat",
+      "qa"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "M",
+    "sdlc": "release",
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-026",
+      "SN-AND-012",
+      "SN-AND-013"
+    ],
+    "body": "## Context\n{{SN-AND-026}} covers the Play readiness items named in `docs/platform/android.md` §9 (Data Safety, target SDK, 16 KB, permissions). It does **not** cover Google Play's separate **large-screen app quality** requirements, which decide whether a tablet/foldable user ever sees the app: Play ranks and filters tablet search results by large-screen quality, shows device-specific listings, and can surface a warning on the store entry for apps that are letterboxed, orientation-locked or that fail the tablet checks in the Play Console pre-launch report. Android is described in `docs/platform/android.md` as \"the surface where competitors are weakest and least consistent — the strategic opening\"; being demoted in the Play tablet ranking would forfeit exactly that opening. The engineering work is already scoped across {{SN-AND-012}}/{{SN-AND-013}}/{{SN-AND-031}}; what is missing is the **gate** that proves it and the store-listing work that depends on it.\n\n## Scope\n**In:** a written checklist derived from Play's large-screen app quality tiers (layout at every size class, no orientation lock, keyboard/mouse/stylus support, multi-window/split-screen, camera/media in any orientation, state preservation across resize/fold) mapped to the issue that satisfies each line; wiring the Play Console **pre-launch report** (including its tablet and foldable device pool) into the release gate so new warnings block promotion; device-type-targeted store listing assets for tablet and foldable ({{SN-BRD-008}}, {{SN-REL-009}} produce the art, this issue defines the requirement); a documented waiver process for any line we deliberately do not meet.\n**Out:** the layout implementations themselves ({{SN-AND-012}}, {{SN-AND-013}}, {{SN-GAND-005}}); Data Safety and permissions ({{SN-AND-026}}); staged rollout mechanics ({{SN-REL-006}}); screenshot production ({{SN-REL-009}}).\n\n## Acceptance criteria\n- [ ] `docs/platform/android.md` §9 gains a \"Large-screen quality\" subsection: every requirement line, the owning issue key, and current pass/fail.\n- [ ] A release-candidate build is run through the Play Console pre-launch report on a tablet and a foldable device pool; crashes, ANRs and layout/accessibility warnings are triaged, and an unwaived warning blocks promotion in {{SN-REL-006}}.\n- [ ] The build declares no `screenOrientation`, no `resizableActivity=\"false\"`, no min/max aspect ratio, and no restricted-resizability opt-out — asserted by an automated manifest check in CI, not by review.\n- [ ] Tablet and foldable store listings carry device-appropriate screenshots (landscape two-pane, unfolded layout) and the listing passes Play's device-specific listing checks.\n- [ ] Keyboard, mouse and stylus support is demonstrated for the checklist (evidence links to {{SN-AND-031}} and {{SN-AND-010}} tests).\n- [ ] Any waiver has a named owner, a reason and a re-review date in the checklist.\n\n## Technical notes\nThe manifest assertion is a small Gradle/CI step over the **merged** manifest (`app/build/outputs/logs/manifest-merger-*.txt` or `bundletool dump manifest`) run in the existing Android CI job ({{SN-FND-013}}) and reused by {{SN-REL-011}}. Pre-launch report retrieval uses the Play Developer API credentials already inventoried in {{SN-REL-017}}/{{SN-AUTH-020}}; no new secrets. Keep the checklist in docs, not in a spreadsheet, so it reviews as a diff.\n\n## Security & privacy\nNo user data. The pre-launch report runs our app on Google-operated devices: the CI-built RC must contain no test accounts, no auth bypass ({{SN-AUTH-021}}), no seeded notes with real content, and no non-public endpoints — assert this in the gate. Credentials for the Play API follow least privilege ({{SN-CI-009}}).\n\n## UX notes\nNo in-app UI. The listing work must show the *tablet* experience first on tablet listings (two-pane library + editor with the page rail) per `docs/design/screens-and-flows.md`, not a phone screenshot scaled up.\n\n## Test plan\nCI: manifest assertion unit test with a fixture manifest containing each banned attribute. Release rehearsal: run one RC end-to-end through the pre-launch report and record triage in the release checklist ({{SN-REL-013}}). Manual: verify the store listing preview on a tablet form factor. Files: `tools/ci/check_android_manifest.mjs`, checklist section in `docs/platform/android.md`, gate row in `docs/release/`.\n\n## Dependencies\n{{SN-AND-026}}, {{SN-AND-012}}, {{SN-AND-013}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-007",
+    "title": "Budget the Android App Bundle size and move heavy assets to Play delivery modules",
+    "type": "infra",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "release",
+      "perf",
+      "ci-cd"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "release",
+    "security": [
+      "MASVS-CODE-4",
+      "CWE-494"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-022",
+      "SN-I18N-008",
+      "SN-HWR-004"
+    ],
+    "body": "## Context\nSane Notes ships a lot of bytes: twelve bundled font families ({{SN-DS-009}}), script-fallback fonts for CJK/Indic/Arabic ({{SN-I18N-008}}), vector paper templates ({{SN-TPL-003}}, {{SN-TPL-004}}), sticker packs ({{SN-MED-011}}), the Flutter engine plus native `.so`s for ink, PDF and ML ({{SN-AND-021}}), and on-device recognition/AI models ({{SN-HWR-004}}, {{SN-AI-008}}). {{SN-AND-022}} configures the App Bundle and per-ABI/density/language splits, and {{SN-I18N-008}} already says CJK should be an on-demand asset — but **nothing owns the overall download-size budget**, and Google Play enforces hard caps on the compressed download an App Bundle may generate. Exceeding them is a hard publish failure discovered at the worst possible moment; sitting just under them is still a conversion problem in India, the first market (`docs/product/` pricing/INR-first positioning) where install size and data cost matter.\n\n## Scope\n**In:** a machine-readable Android size budget (base install-time download, per-ABI, total) added to the performance budget registry ({{SN-PERF-018}}); a CI step that builds the release AAB, derives the per-device download size with `bundletool get-size total`, and fails on regression beyond a threshold; classifying every heavy asset as install-time, fast-follow or on-demand; implementing Play Asset Delivery / dynamic feature modules for the on-demand set (CJK fonts, premium template packs, sticker packs, recognition and AI models) with a download-progress and retry UX; making sure an on-demand asset that is missing degrades instead of crashing.\n**Out:** 16 KB alignment ({{SN-AND-021}}); the model-download manager for ML assets, which owns integrity verification ({{SN-HWR-004}}, {{SN-AI-008}}); font licensing ({{SN-BRD-011}}); the web bundle budget ({{SN-WEB-003}}).\n\n## Acceptance criteria\n- [ ] The release AAB's per-device download size is computed in CI for arm64-v8a/armeabi-v7a/x86_64 at a representative density and compared against the budget; a regression > 5% or any breach of the absolute cap fails the build.\n- [ ] Base install-time download stays inside the documented budget on the low-end reference device profile; the numbers are recorded in `docs/platform/performance-budgets.md`.\n- [ ] CJK/Indic fallback fonts, premium template packs, sticker packs and every ML model are delivered on demand, not in the base install ({{SN-I18N-008}}, {{SN-TPL-008}}).\n- [ ] A user on a metered connection is told the size before an on-demand pack downloads, can cancel, and the app remains fully usable for note-taking without it (a missing pack degrades: tofu-free fallback font, no premium templates, recognition disabled with an explanatory state).\n- [ ] Asset packs are verified before use (integrity check) and a corrupt/partial pack is deleted and re-fetched rather than loaded ({{SN-HWR-004}} pattern).\n- [ ] `docs/platform/android.md` §9 documents the delivery mode of every heavy asset class.\n\n## Technical notes\n`bundletool build-apks --mode=default` + `get-size total --dimensions=SDK,ABI,SCREEN_DENSITY,LANGUAGE` in the Android CI job ({{SN-FND-013}}); Play Asset Delivery `install-time`/`fast-follow`/`on-demand` asset packs declared in `app/android`; Play Feature Delivery only if an asset pack cannot express the need (dynamic features complicate Flutter). Budget rows live beside the other B1–B10 budgets ({{SN-PERF-018}}). Note that split APK sizes differ per ABI — budget arm64 and armeabi-v7a separately ({{SN-GAND-017}}).\n\n## Security & privacy\nAsset packs are code-adjacent inputs fetched at runtime: verify integrity/signature before loading, never execute downloaded code, and treat any pack payload as untrusted input through the existing validation gate ({{SN-SEC-004}}, CWE-494 download of code without integrity check, MASVS-CODE-4). Pack downloads must respect the Wi-Fi-only preference ({{SN-SYNC-019}}) and must not carry identifiers beyond what Play requires ({{SN-PRV-012}}).\n\n## UX notes\nDownload prompts reuse the model-download sheet from {{SN-HWR-004}} (size, Wi-Fi-only hint, cancel, progress) and the empty/degraded states from `docs/design/screens-and-flows.md`. Never block first launch on a pack.\n\n## Test plan\nCI: size job with a golden budget file; a unit test for the budget parser. Integration: launch with a pack absent and assert graceful degradation; simulate a corrupt pack and assert re-fetch. Manual: install from an internal Play track on the 4 GB reference device and record the real download size. Files: `tools/ci/aab_size.mjs`, `docs/platform/performance-budgets.md` rows, `integration_test/asset_pack_missing_test.dart`.\n\n## Dependencies\n{{SN-AND-022}}, {{SN-I18N-008}}, {{SN-HWR-004}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-008",
+    "title": "Use the Android photo picker and handle partial media-permission grants",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "images-media",
+      "privacy",
+      "compat"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PLATFORM-1",
+      "MASVS-STORAGE-2",
+      "CWE-200"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-MED-005",
+      "SN-PRV-004",
+      "SN-MED-003"
+    ],
+    "body": "## Context\n{{SN-MED-005}} builds the insert-media action and source picker, and {{SN-PRV-004}} builds in-context permission requests — but the Android media-permission model is a platform-specific minefield that neither issue names, and getting it wrong costs us both privacy posture and a Play declaration. Since Android 13 the single storage permission is split into `READ_MEDIA_IMAGES`/`READ_MEDIA_VIDEO`; since Android 14 the user can grant **partial** access (`READ_MEDIA_VISUAL_USER_SELECTED`), so an app that assumes all-or-nothing silently shows an empty gallery. The correct answer for a note app is to use the **system photo picker**, which needs **no permission at all**, returns only what the user picked, and matches `docs/platform/android.md` §9 (\"Notes need no broad storage permission\") and the decision-8 promise of \"no data collected\". Declaring broad photo/video permissions also triggers an extra Play Console declaration and undermines the Data Safety story in {{SN-AND-026}}/{{SN-PRV-015}}.\n\n## Scope\n**In:** routing every \"insert image\" and \"pick a photo\" entry point on Android through the system photo picker (`ACTION_PICK_IMAGES` / the Jetpack `PickVisualMedia` contract) with no runtime permission; handling the partial-grant case if any legacy path still requests media permissions (show the \"select more photos\" affordance instead of an empty grid); removing `READ_MEDIA_*` and legacy `READ_EXTERNAL_STORAGE` from the manifest unless a documented feature requires them; importing the returned content URI safely (take the transient read grant, copy into our store, never keep a dangling URI); a CI manifest assertion that no broad media permission reappears.\n**Out:** the cross-platform insert-media UI ({{SN-MED-005}}); image decode/downscale and EXIF stripping ({{SN-MED-003}}, {{SN-MED-004}}); the document scanner ({{SN-MED-009}}); SAF document access for PDFs and sync folders ({{SN-AND-018}}).\n\n## Acceptance criteria\n- [ ] On Android 13+ inserting an image opens the system photo picker and the app holds **no** media runtime permission; `adb shell dumpsys package` shows none granted.\n- [ ] On API 29–32 the app uses the photo picker backport/SAF path and still requests no broad storage permission.\n- [ ] If a media permission is ever requested, a partial grant renders the picked subset plus a visible \"Select more photos\" action — never an empty state or a repeated permission prompt.\n- [ ] The returned URI is read once, copied into the content-addressed blob store ({{SN-CORE-014}}) off the UI isolate, and the URI is not persisted; revoking access later does not break the note.\n- [ ] Size/MIME are validated before decode ({{SN-SEC-006}}); a picked file that is not a real image is rejected with a clear message.\n- [ ] A CI manifest check fails the build if `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, `READ_MEDIA_VISUAL_USER_SELECTED` or `READ_EXTERNAL_STORAGE` appear without a documented waiver; the Play Data Safety form ({{SN-PRV-015}}) matches.\n\n## Technical notes\nJetpack `ActivityResultContracts.PickVisualMedia` / `PickMultipleVisualMedia` behind the existing `sane_*` media entry point, or the equivalent through the Flutter plugin already chosen in {{SN-MED-005}} — the requirement is the *picker*, not a specific plugin. Take the returned URI's read permission for the current call only (`FLAG_GRANT_READ_URI_PERMISSION`), stream it to the ingest pipeline ({{SN-MED-003}}), then drop it. Reuse the manifest checker from {{SN-GAND-006}}.\n\n## Security & privacy\nThis is a privacy-by-design control, not just a compatibility fix: no permission means no access to the user's library, which is exactly what the privacy dashboard claims ({{SN-PRV-002}}) and what the Data Safety form declares (MASVS-PRIVACY-1). Content URIs from another app are untrusted input (MASVS-PLATFORM-1, CWE-20): validate MIME and size caps, decode off-isolate, strip EXIF/location ({{SN-MED-004}}), and never log the URI or filename ({{SN-SEC-021}}, CWE-532).\n\n## UX notes\nFollow `docs/design/screens-and-flows.md` insert-media flow: the picker is the OS sheet, so our chrome disappears — the return must land the image in place with the standard placement handles ({{SN-MED-006}}). The permission-rationale sheet ({{SN-ONB-011}}) is **not** shown for the picker path, because there is nothing to ask for; that is a visible privacy win worth a line in the privacy page.\n\n## Test plan\n`integration_test` + patrol driving the system picker on API 29, 33 and 36 emulators; a widget test for the partial-grant branch using a fake platform channel; a unit test asserting the manifest permission allow-list. Manual on the Galaxy Tab (Samsung's picker skin differs). Files: `app/test/media/android_photo_picker_test.dart`, `integration_test/android_media_pick_test.dart`, manifest fixture in `tools/ci/`.\n\n## Dependencies\n{{SN-MED-005}}, {{SN-PRV-004}}, {{SN-MED-003}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-009",
+    "title": "Schedule Android background sync under Doze, standby buckets and Data Saver",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "sync",
+      "compat",
+      "perf"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-NETWORK-1",
+      "CWE-400"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-SYNC-007",
+      "SN-SYNC-019",
+      "SN-AND-023"
+    ],
+    "body": "## Context\n`docs/platform/compatibility-matrix.md` §6 promises **background sync: ✅ SyncAdapter** on Android — one of the few rows where Android beats iPad and web, and a direct answer to the \"manual sync = the #1 data-loss complaint\" finding in `docs/research/sources/samsung-notes-nebo-other.md`. But {{SN-SYNC-007}} only defines change-detection scheduling with backoff and jitter at the engine level, and {{SN-AND-023}} is about the **recording** foreground service. No issue owns the Android job-scheduling reality: Doze and App Standby buckets defer jobs and cut network for idle apps; Data Saver and metered networks restrict background traffic; Android 14+ requires a declared foreground-service type with justification; and Android 15 puts a running-time ceiling on `dataSync` services, pushing long uploads towards user-initiated data-transfer jobs. Without this, sync either silently stops on the devices students actually own or drains the battery and trips Play's excessive-background-work vitals.\n\n## Scope\n**In:** an Android scheduling adapter behind the existing sync scheduler ({{SN-SYNC-007}}) built on WorkManager: periodic sync with network + battery constraints, expedited work on user-visible change, exponential backoff on failure, and deduplicated unique work; honouring the Wi-Fi-only and auto-sync preferences ({{SN-SYNC-019}}) through WorkManager constraints rather than ad-hoc checks; Data Saver / metered-network detection and behaviour; a foreground path for large attachment uploads ({{SN-SYNC-012}}) using the correct service type, with the Android 15 duration ceiling handled by chunking/resuming rather than by holding a service open; standby-bucket-aware expectations documented so \"sync ran 4 hours later\" is understood, not treated as a bug.\n**Out:** the reconciliation state machine ({{SN-SYNC-006}}); Drive change polling ({{SN-SYNC-008}}); the recording foreground service ({{SN-AND-023}}); OEM-specific power management ({{SN-GAND-010}}); notification UX ({{SN-NOTF-002}}).\n\n## Acceptance criteria\n- [ ] Sync runs on a periodic WorkManager job with `NetworkType.CONNECTED` (or `UNMETERED` when Wi-Fi-only is on) and a battery-not-low constraint; the job is unique and never queues duplicates across app restarts.\n- [ ] Editing a note schedules expedited work so the change reaches the user's Drive promptly while the app is foreground, and falls back to the periodic job when quota is exhausted.\n- [ ] With Data Saver enabled and the app in the background, no metered sync traffic occurs; the sync-status UI ({{SN-SYNC-020}}) explains why and offers \"sync now\" in the foreground.\n- [ ] A large attachment upload survives being backgrounded: it either completes under the declared foreground-service type or checkpoints and resumes ({{SN-SYNC-012}}), and never exceeds the platform's allowed run time.\n- [ ] In Doze (verified with `adb shell dumpsys deviceidle force-idle`) queued work survives and runs at the next maintenance window; no work is lost.\n- [ ] Battery cost of a day of idle background sync stays inside the energy protocol in {{SN-PERF-013}}; no wake-lock is held outside an active transfer (CWE-400).\n- [ ] Manifest declares only the foreground-service types actually used, each with a justification recorded for Play ({{SN-AND-026}}).\n\n## Technical notes\nKotlin `androidx.work` in `app/android` exposed to Dart through the sync plugin surface; `setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)`; `Constraints.Builder().setRequiredNetworkType(...)`; unique work via `enqueueUniquePeriodicWork(KEEP)`. Metered state from `ConnectivityManager.NetworkCapabilities` + `isActiveNetworkMetered`/restrict-background status. `SyncAdapter` is named in `docs/platform/android.md` §2 but WorkManager is the current-generation mechanism — record the substitution in the doc **(verify)** so the matrix stays truthful. Work must not do crypto or I/O on the main thread; it calls into the existing sync isolate ({{SN-SYNC-006}}).\n\n## Security & privacy\nBackground jobs must not weaken the zero-knowledge model: only ciphertext leaves the device ({{SN-CRY-006}}), TLS and pinning apply ({{SN-SEC-022}}), and job inputs carry ids only — never note content, titles or keys (WorkManager input data is stored in an app-private database but is still at-rest state; MASVS-PRIVACY-1, MASVS-STORAGE-1). Failure logs are redacted ({{SN-SEC-021}}). Metadata minimisation per {{SN-SYNC-024}}: no sync-timing beacons to anything but the user's own drive.\n\n## UX notes\nSync status strings follow {{SN-SYNC-020}}: \"Waiting for Wi-Fi\", \"Paused by Data Saver\", \"Syncing 3 of 12\". Never show a scary error for a deferred job — deferral is normal Android behaviour. Settings → Sync & backup ({{SN-SET-006}}) explains the battery-friendly behaviour in one sentence.\n\n## Test plan\nUnit tests for the constraint mapping from preferences. Instrumented tests with `WorkManagerTestInitHelper` driving periodic/expedited paths and backoff. Manual/adb: force-idle Doze, toggle Data Saver, restrict background data, and verify behaviour on the 4 GB reference device. Soak: one day of idle sync measured with {{SN-PERF-013}}. Files: `app/android/.../SyncWorker.kt`, `app/test/sync/android_schedule_constraints_test.dart`.\n\n## Dependencies\n{{SN-SYNC-007}}, {{SN-SYNC-019}}, {{SN-AND-023}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-010",
+    "title": "Survive OEM aggressive power management during long recordings and sync",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "audio",
+      "perf"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PLATFORM-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-023",
+      "SN-GAND-009",
+      "SN-AUD-008"
+    ],
+    "body": "## Context\n{{SN-AND-023}} builds a correct foreground service for recording and {{SN-GAND-009}} schedules sync correctly under AOSP rules — and on a Samsung, Xiaomi, OPPO or OnePlus device both can still be killed. OEM skins ship additional \"app sleeping\"/\"battery optimisation\" layers that suspend background apps, revoke wake-locks and kill foreground services after screen-off, independent of Doze. This is the single most reported class of Android bug for recorder and sync apps, and for Sane Notes it maps straight onto our worst failure: a 90-minute lecture recording that stops at minute 12 while the student is writing, or a sync that never runs until the app is opened. Our Tier 1 lab contains a **Samsung Galaxy Tab** (`docs/platform/compatibility-matrix.md` §2), so this is testable on the hardware we already own. The fix is defensive engineering plus honest UX — not a workaround that fights the platform.\n\n## Scope\n**In:** detecting when the app is on the OEM battery-restriction list / not exempt from battery optimisations and surfacing a one-time, dismissible, contextual explanation at the moment it matters (first long recording, first background sync failure) with a deep link to the correct system settings screen; making the recorder resilient to being killed — segmented writes with resumable auto-split ({{SN-AUD-008}}) so a kill loses at most one segment, plus recovery-on-next-launch that finalises and reattaches orphan segments to their note; detecting on next launch that a foreground service died unexpectedly and telling the user plainly; keeping a short, redacted diagnostic breadcrumb for support bundles ({{SN-TEL-008}}); a documented per-OEM behaviour table in `docs/platform/android.md` §10.\n**Out:** the foreground service itself ({{SN-AND-023}}); WorkManager scheduling ({{SN-GAND-009}}); the recorder UI ({{SN-AUD-010}}); transcription ({{SN-AUD-020}}).\n\n## Acceptance criteria\n- [ ] Killing the app process mid-recording (`adb shell am kill`) loses at most the current unwritten segment; on relaunch the recording is finalised, reattached to its note with correct time anchors ({{SN-AUD-004}}), and the user is told what happened in plain language.\n- [ ] Before a long recording starts, if the app is not exempt from battery optimisation, a single contextual sheet explains the risk and offers \"Open settings\"; it is dismissible, never blocks recording, and is not shown again after a decline (no nagging, no dark pattern — {{SN-BILL-017}} tone rules).\n- [ ] The app does **not** request the restricted \"ignore battery optimizations\" permission silently or at launch; any request is user-initiated and justified, in line with Play policy ({{SN-AND-026}}).\n- [ ] A background sync that was killed retries on the next scheduling window without duplicating work or corrupting the op-log ({{SN-SYNC-006}}).\n- [ ] `docs/platform/android.md` §10 gains an OEM behaviour row per tested vendor with the observed kill behaviour and the mitigation.\n- [ ] A 60-minute screen-off recording on the Galaxy Tab completes with no gaps (manual Tier-1 evidence attached to the issue).\n\n## Technical notes\n`PowerManager.isIgnoringBatteryOptimizations()` for state (read-only, no permission); deep link to the system battery settings screen with a try/catch fallback to app info, since OEM screens vary and some are unreachable. Never poll. Recovery reuses the crash-safe segment writer in {{SN-AUD-008}} and the orphan-scan performed at launch by `sane_core` ({{SN-CORE-026}}). Vendor detection is a *hint for the docs table only* — behaviour must never branch on `Build.MANUFACTURER` in production code paths (`docs/platform/android.md` capability-detection rule).\n\n## Security & privacy\nNo new permissions requested by default; the restricted permission stays unrequested unless the user explicitly opts in, protecting the Data Safety and minimal-permission story ({{SN-AND-026}}, MASVS-PRIVACY-1). The orphan-recovery breadcrumb contains ids, timestamps and reason codes only — never audio, transcript text or note titles ({{SN-TEL-003}} redaction rules). Recovered audio stays encrypted at rest ({{SN-CRY-007}}).\n\n## UX notes\nOne sheet, one sentence of cause, one action, per `docs/design/screens-and-flows.md` permission-rationale pattern ({{SN-ONB-011}}): \"Some phones stop recordings when the screen is off. Allow Sane Notes to keep running?\" On recovery, the recorder bar ({{SN-AUD-010}}) shows \"Recovered 41:20 of audio\" rather than an error.\n\n## Test plan\nInstrumented: kill-and-recover matrix (`am kill`, `am force-stop`, screen-off + 30 min) on the Galaxy Tab and the 4 GB reference device, asserting segment count and anchor integrity. Unit: orphan-segment reattachment given a truncated final segment. Widget: the battery-optimisation sheet shows once and never again after decline. Files: `app/test/audio/orphan_segment_recovery_test.dart`, `integration_test/android_process_kill_recording_test.dart`, doc table in `docs/platform/android.md`.\n\n## Dependencies\n{{SN-AND-023}}, {{SN-GAND-009}}, {{SN-AUD-008}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-011",
+    "title": "Implement the Android on-device speech-recognition adapter for voice notes",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "audio",
+      "ai",
+      "privacy"
+    ],
+    "milestone": "M3 Audio & Recognition",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-3",
+      "MASVS-STORAGE-1"
+    ],
+    "parent": "SN-AUD-001",
+    "depends_on": [
+      "SN-AUD-020",
+      "SN-HWR-002",
+      "SN-AI-006"
+    ],
+    "body": "## Context\n{{SN-AUD-020}} hands recordings to \"on-device transcription with aligned word timings\" and {{SN-AI-006}} wires the Android **text-generation** adapter (ML Kit GenAI over Gemini Nano). Neither issue implements the Android **speech** path, and `docs/platform/android.md` §2 names two concrete options: ML Kit **GenAI Speech Recognition** (alpha, flagship-gated) and the platform `SpeechRecognizer` with `createOnDeviceSpeechRecognizer()` (API 33+). The compatibility matrix §6 marks Android on-device transcription as ⚠️ \"GenAI alpha / platform\", which is a promise with no owner. Without this adapter, Android voice notes either fall back to nothing or push audio to the cloud — breaking decision 6 (on-device first) and the \"no data collected\" posture on the very surface where Samsung ships Transcript Assist today (`docs/research/sources/samsung-notes-nebo-other.md` §1). The iPad side has its Apple equivalent inside {{SN-AUD-020}}/{{SN-AI-005}}; Android needs its own, because availability is per-device and must be probed, never assumed.\n\n## Scope\n**In:** an Android implementation of the `sane_ml` transcription capability ({{SN-HWR-002}}) inside `plugins/sane_ml_native`: availability probe (language pack present, on-device engine present, GenAI speech available on this device tier), streaming partial results and final segments with timestamps, language selection from the recognition language list ({{SN-I18N-010}}), cancellation, and an explicit \"unavailable on this device\" capability result the UI can render; mapping engine output to the `Transcript` model with word/segment timings suitable for tap-to-seek ({{SN-AUD-011}}); a queueing policy so transcription of a finished recording runs while the app is foreground and resumes later otherwise.\n**Out:** the cross-platform transcription orchestration and alignment ({{SN-AUD-020}}); transcript UI/search ({{SN-AUD-021}}, {{SN-SRCH-012}}); cloud transcription (forbidden without the per-request opt-in in {{SN-HWR-019}}); the web whisper path ({{SN-WEB-027}}); text generation/summaries ({{SN-AI-006}}).\n\n## Acceptance criteria\n- [ ] `availability()` returns an accurate per-device, per-language result and never throws; on a device with no on-device engine it returns unavailable and the UI offers no misleading \"Transcribe\" button.\n- [ ] A 10-minute recording transcribes fully on-device with **airplane mode on**; no network request is made (asserted by the egress test harness, {{SN-TEL-010}} pattern).\n- [ ] Partial results stream during live recording where supported and are clearly marked provisional; final segments carry start/end times that tap-to-seek ({{SN-AUD-011}}) can use within ±300 ms.\n- [ ] Language selection honours the user's recognition language ({{SN-I18N-010}}); an unsupported language degrades with a clear message, not silence.\n- [ ] Transcription is cancellable and releases the engine; running it never blocks the draw path or drops the editor below 60 fps ({{SN-PERF-016}}).\n- [ ] The adapter is behind the capability registry ({{SN-AI-003}}/{{SN-HWR-002}}) so the feature is absent, not broken, on Tier 3 devices.\n\n## Technical notes\nKotlin in `plugins/sane_ml_native/android`: platform `SpeechRecognizer.createOnDeviceSpeechRecognizer()` (API 33+) with `RecognizerIntent.EXTRA_PREFER_OFFLINE`, plus the ML Kit GenAI Speech Recognition path where present — the latter is **alpha and device-gated (Pixel 9+/S25+/OnePlus 13+ class)** per `docs/research/sources/android-stylus-capabilities.md` §4, so it must sit behind the same probe. Recognition runs off the platform main thread; results cross to Dart on an `EventChannel` (ADR-0012). Feeding a finished file rather than the live mic may require a decode step — record the approach and its limits **(verify)** in `docs/platform/android.md` §2.\n\n## Security & privacy\nAudio is the most sensitive content the app holds (lectures contain other people's voices). Controls: on-device only, no network by construction (MASVS-PRIVACY-3); the recording-consent flow and visible indicator in {{SN-AUD-015}} still govern capture; transcripts are stored encrypted as sidecars ({{SN-AUD-018}}, {{SN-CRY-007}}); no audio or transcript text is ever logged ({{SN-SEC-021}}, CWE-532); if a device routes recognition through a system service that may be cloud-backed, the probe must classify it as **not on-device** and the feature must then require the explicit cloud opt-in ({{SN-HWR-019}}) — fail closed.\n\n## UX notes\nReuse the transcription states in `docs/design/screens-and-flows.md` audio section: idle → \"Transcribe (on device)\" → progress → transcript with provisional text greyed. Where unavailable, show one honest line (\"Your device can't transcribe offline yet\") rather than hiding the feature silently. The data-leaves-device indicator ({{SN-AI-019}}) must remain off for this path.\n\n## Test plan\nUnit tests with a fake engine for streaming/partial/cancel/error mapping. Instrumented test on an API 33 emulator with the on-device engine installed, plus manual runs on the Galaxy Tab and a Pixel-class device. Airplane-mode egress assertion in `integration_test`. Timing-accuracy test against a fixture recording with known utterance boundaries. Files: `plugins/sane_ml_native/android/.../SpeechAdapter.kt`, `packages/sane_ml/test/transcription_android_test.dart`.\n\n## Dependencies\n{{SN-AUD-020}}, {{SN-HWR-002}}, {{SN-AI-006}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-012",
+    "title": "Degrade gracefully on Android devices without Google Play services",
+    "type": "task",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "ocr-hwr",
+      "auth"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-AUTH-1",
+      "MASVS-CODE-4",
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-HWR-003",
+      "SN-AND-017",
+      "SN-AND-020"
+    ],
+    "body": "## Context\nFour of the Android capabilities the platform doc leans on are **Google Play services**, not AOSP: ML Kit Digital Ink Recognition ({{SN-HWR-003}}) and its downloadable language packs, the ML Kit document scanner ({{SN-MED-009}}), Credential Manager's Sign in with Google ({{SN-AND-017}}), and Play Integrity ({{SN-AND-020}}, {{SN-BILL-008}}). The compatibility matrix (§3) admits **no** device below Android 10 but says nothing about devices *without GMS* — Huawei and other de-Googled or regional devices, AOSP builds, and enterprise-locked tablets — which are a real share of the Android tablet market in the price bands our student persona buys in. {{SN-BILL-008}} already fails open when \"Play services absent\", which proves the case is known but unowned. Today a GMS-less device would hit a hard failure in recognition or sign-in instead of a clean degradation, and we would only find out from a one-star review.\n\n## Scope\n**In:** a single capability probe for Play-services availability consumed by every dependent feature; defined degradation for each: handwriting recognition uses the unbundled/bundled model decision and, if unavailable, disables ink-to-text and background recognition with an explanatory state rather than an error loop; sign-in falls back to the other providers ({{SN-AUTH-004}}, {{SN-AUTH-005}}, {{SN-AUTH-006}}) and guest mode ({{SN-AUTH-010}}), which must remain fully usable; Drive sync still works through the REST API and a web OAuth flow, or the user is steered to the SAF folder adapter ({{SN-SYNC-010}}); Play Integrity checks fail open ({{SN-BILL-008}}) and never gate note-taking; billing degrades to \"manage your subscription on the web\" ({{SN-BILL-009}}); a compatibility-matrix row recording the GMS-less support tier.\n**Out:** implementing each feature ({{SN-HWR-003}}, {{SN-AND-017}}, {{SN-AND-020}}); the web on-device recognition path ({{SN-WEB-025}}); alternative app stores or distribution ({{SN-REL-001}} scope).\n\n## Acceptance criteria\n- [ ] A single `playServicesAvailability()` probe exists; no feature calls a GMS API without checking it first (enforced by a lint/arch-test rule, {{SN-FND-008}} pattern).\n- [ ] On a GMS-less device the app launches, creates a notebook, draws, imports a PDF, exports and syncs through SAF — i.e. the core promise works offline and account-free.\n- [ ] Handwriting recognition either works via a bundled model or is presented as unavailable with one honest sentence; no crash, no repeated download attempt, no silent empty search results (search must not claim handwriting coverage it does not have, {{SN-SRCH-010}}).\n- [ ] Sign-in shows the providers that actually work on this device; \"Sign in with Google\" is hidden rather than shown-and-broken; guest mode is always available.\n- [ ] Play Integrity absence resolves to allow, never to a lock ({{SN-BILL-008}}), and no paid feature is withdrawn from a paying user because of it.\n- [ ] `docs/platform/compatibility-matrix.md` §3 gains a \"no Google Play services\" row with the supported tier and the degraded feature list.\n\n## Technical notes\nProbe via `GoogleApiAvailability.isGooglePlayServicesAvailable` (the check itself is in the base library and safe to call), wrapped in the `sane_*` capability layer so Dart never imports GMS symbols directly. Prefer **bundled** ML Kit model artefacts where the size budget allows ({{SN-GAND-007}}) so recognition survives without GMS; otherwise unbundled + probe. Credential Manager itself is AOSP; only the Google credential provider needs GMS — degrade the provider list, not the API. Record the final matrix in `docs/platform/android.md` §2 beside the feature→API table.\n\n## Security & privacy\nFail-open on integrity is a deliberate, documented risk acceptance: attestation protects the stateless services, never the user's notes ({{SN-AND-020}}), so its absence must not create a lock-out (MASVS-AUTH-1) nor a downgrade path an attacker can force to bypass a real control. Bundled models are code-adjacent assets and must be integrity-verified ({{SN-HWR-004}}, MASVS-CODE-4, CWE-494). The probe must not read device identifiers or report device fingerprints (MASVS-PRIVACY-1).\n\n## UX notes\nDegradation is stated once, where the feature is used, using the honest-limits tone in `docs/design/` microcopy ({{SN-BRD-009}}): \"Handwriting search needs Google Play services, which this device doesn't have.\" Never a modal on launch, never a nag.\n\n## Test plan\nAutomated: unit tests for each degradation branch with the probe faked to unavailable; an arch test that fails if a GMS import appears outside the wrapper. Manual: an AOSP/GMS-less emulator image (or a device without Play services) running the core-flow checklist; record results in the compatibility matrix. Files: `plugins/sane_ml_native/android/.../PlayServicesProbe.kt`, `app/test/platform/gms_absent_degradation_test.dart`.\n\n## Dependencies\n{{SN-HWR-003}}, {{SN-AND-017}}, {{SN-AND-020}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-013",
+    "title": "Declare the Android per-app language config and honour the system language picker",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "i18n",
+      "settings",
+      "compat"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1"
+    ],
+    "parent": "SN-I18N-001",
+    "depends_on": [
+      "SN-I18N-003",
+      "SN-I18N-011"
+    ],
+    "body": "## Context\n{{SN-I18N-003}} defines the supported-locale list and locale resolution and {{SN-I18N-011}} adds an in-app Language & region picker — but on Android 13+ the *system* owns per-app language: Settings → System → Languages → App languages lets a user run one app in Hindi while the phone is in English. An app only appears in that list if it declares `android:localeConfig` pointing at a `locales_config.xml` enumerating its supported locales; otherwise it is invisible there and, worse, a user who sets a per-app language elsewhere gets inconsistent results. For our first market (India, INR-first) this is not cosmetic: bilingual students routinely run a system in English and a note app in Hindi/Marathi/Tamil. The two mechanisms must agree — an in-app picker that silently disagrees with the OS setting is a support nightmare and a localisation QA hole ({{SN-I18N-013}}).\n\n## Scope\n**In:** generating `res/xml/locales_config.xml` from the single supported-locale source of truth ({{SN-I18N-003}}) at build time so the two can never drift; declaring `android:localeConfig` in the manifest; reading and writing the per-app locale through the platform locale API (`LocaleManager`/`AppCompatDelegate.setApplicationLocales`) so the in-app picker ({{SN-I18N-011}}) and the OS picker are one setting, not two; correct behaviour when the OS locale changes at runtime (recreate/relocalise without losing editor state, {{SN-GAND-003}}); RTL mirroring still honoured ({{SN-I18N-007}}); an API < 33 fallback that keeps the in-app picker authoritative.\n**Out:** the ARB pipeline ({{SN-I18N-002}}); the locale list itself ({{SN-I18N-003}}); the in-app picker UI ({{SN-I18N-011}}); handwriting-recognition language packs, which are a separate, independent setting ({{SN-I18N-010}}); fonts ({{SN-I18N-008}}).\n\n## Acceptance criteria\n- [ ] `locales_config.xml` is generated in CI from the supported-locale list; a mismatch between the two fails the build (no hand-maintained duplicate).\n- [ ] On Android 13+ Sane Notes appears under Settings → App languages listing exactly the supported locales.\n- [ ] Changing the language in the OS picker changes the app language on next foreground, and the in-app picker reflects the same value; changing it in-app updates the OS setting.\n- [ ] A locale change mid-edit re-localises chrome without losing the open note, page, tool or unsaved strokes ({{SN-GAND-003}}).\n- [ ] An RTL locale (Arabic/Urdu) mirrors chrome but not the canvas ({{SN-I18N-007}}), and the left-handed mode composition still holds ({{SN-A11Y-012}}).\n- [ ] On API 29–32 the in-app picker works and no manifest entry causes a warning; behaviour is documented.\n\n## Technical notes\nBuild step in the Android Gradle config (or a `tools/` generator run by {{SN-FND-011}}) emitting `locales_config.xml` from the locale list; `AppCompatDelegate.setApplicationLocales(LocaleListCompat)` bridges both API levels; Flutter's `Localizations` must follow the platform locale rather than a cached value — verify the embedding propagates the change **(verify)**. Persist nothing extra: the platform is the source of truth on 13+, and the profile preference ({{SN-SET-003}}) mirrors it for older devices.\n\n## Security & privacy\nNone beyond baseline (MASVS-PLATFORM-1). The locale is a user preference, not personal data; it must not be attached to telemetry beyond the coarse bucket already allowed ({{SN-TEL-002}}) and must not be sent to any service. No new permissions.\n\n## UX notes\nSettings → Language & region ({{SN-I18N-011}}) gains a line explaining that this matches the system App-languages setting on Android 13+, so users do not hunt for two switches. Pseudo-locale builds ({{SN-I18N-004}}) must still be selectable in debug flavours.\n\n## Test plan\nUnit test for the generator (locale list → XML, including regional variants). Instrumented test that sets an application locale and asserts the localised string and layout direction. `integration_test` asserting state preservation across a locale change. Manual on API 33 and 36 devices plus one RTL locale. Files: `tools/gen_locales_config.dart`, `app/test/i18n/per_app_language_test.dart`.\n\n## Dependencies\n{{SN-I18N-003}}, {{SN-I18N-011}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-014",
+    "title": "Build the Android stylus quirk table and per-device axis normalisation",
+    "type": "task",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "input-gestures",
+      "ink",
+      "compat"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-007",
+      "SN-SET-008",
+      "SN-AND-027"
+    ],
+    "body": "## Context\n{{SN-AND-007}} exposes pressure/tilt/orientation/hover and normalises pressure to [0,1] — correct as a contract, but `docs/research/sources/android-stylus-capabilities.md` §2 warns that `getPressure()` \"can exceed 1 by calibration\" and that axis support varies per pen, and `docs/platform/compatibility-matrix.md` §4 rates generic active styluses Tier 2/3 with \"varies\" in four columns. Android stylus hardware is genuinely inconsistent: Wacom EMR digitisers (Samsung), USI 2.0 pens (Chromebook, Pixel Tablet, up to 4096 levels), and cheap capacitive/active pens all report different ranges, resolutions, hover distances and button semantics, and some report tilt with the wrong sign. iPad has one vendor and two-and-a-half pens; Android has dozens. Without an evidence-backed normalisation layer, the same brush feels wildly different across devices, the brush render-parity gate ({{SN-BRS-026}}) becomes unexplainable, and support cannot answer \"why is my pen so light?\". The fix must stay capability-driven — the platform doc forbids branching on device model for behaviour.\n\n## Scope\n**In:** a measured quirk table recorded in `docs/platform/android.md` §4 (per tested pen: reported pressure range and resolution, tilt/orientation availability and units, hover distance range, button bitmask behaviour, whether `TOOL_TYPE_ERASER` is reported); a normalisation layer in `sane_stylus`/`sane_ink` that clamps and rescales out-of-range pressure, falls back to velocity width when pressure is constant or absent, and reports a `StylusProfile` describing what this pen can actually do; a per-pen calibration store so the user's tuning ({{SN-SET-008}}) is remembered per connected device; a capture harness (debug-only screen or adb-driven collector) that records raw axis samples so new hardware can be characterised without a code change.\n**Out:** the axis plumbing ({{SN-AND-007}}); barrel buttons ({{SN-AND-008}}); S Pen Remote ({{SN-AND-009}}); the brush response curves that consume the normalised values ({{SN-BRS-004}}, {{SN-INK-019}}); the settings UI ({{SN-SET-008}}).\n\n## Acceptance criteria\n- [ ] Pressure reported above 1.0 or below 0 is clamped and rescaled so stroke width stays inside the brush's configured range; a device reporting a constant pressure is detected and switches to velocity width within the first stroke ({{SN-PHN-005}} path).\n- [ ] `StylusProfile` reports resolution (e.g. 4096 levels vs 256) and the brush engine quantises accordingly with no visible stair-stepping in width.\n- [ ] Tilt and orientation are normalised to the documented radian conventions ({{SN-AND-007}}) regardless of vendor sign conventions; a fixture replay proves it.\n- [ ] Calibration set in Settings persists per pen (S Pen vs USI vs generic) and is restored when that pen is used again; profiles never leak between user profiles ({{SN-AUTH-013}}).\n- [ ] The debug capture harness exports an anonymised axis trace (no note content) that can be replayed by {{SN-INK-033}}.\n- [ ] `docs/platform/android.md` §4 contains a filled quirk table for at least the S Pen, a USI 2.0 pen and one generic active stylus, each marked measured (not assumed).\n\n## Technical notes\nNormalisation lives with the sample pipeline in `packages/sane_ink` ({{SN-INK-010}}) so every tier shares it; the platform layer supplies raw values plus `InputDevice.getMotionRange(AXIS_PRESSURE)` metadata (min/max/resolution) rather than guessing. Key the calibration store on a stable, non-identifying descriptor (input-device descriptor hash), not a serial number. Reuse the synthetic corpus and replay driver from {{SN-PERF-005}}/{{SN-INK-033}} for regression.\n\n## Security & privacy\nInput-device identifiers are potential fingerprinting vectors: hash the descriptor locally, never transmit it, and keep the calibration store inside the encrypted per-profile preferences ({{SN-SET-003}}, MASVS-PRIVACY-1). Debug traces contain coordinates, so they are debug-flavour only, opt-in, and excluded from crash bundles ({{SN-TEL-008}} redaction).\n\n## UX notes\nInvisible by default; the visible surface is the existing scratch/calibration area ({{SN-SET-008}}), which should name the detected pen (\"Samsung S Pen — 4096 levels, tilt supported\") so the user can trust what the app sees. Where a pen reports no pressure, the area explains the velocity-width substitution instead of hiding the control.\n\n## Test plan\nUnit tests over the normaliser with fixtures per quirk (out-of-range pressure, inverted tilt, constant pressure, low resolution). Replay tests through {{SN-INK-033}} asserting identical geometry across two device profiles for the same gesture. Manual characterisation on Galaxy Tab (S Pen), Pixel Tablet/Chromebook (USI) and one third-party pen, with results committed to the doc table. Files: `packages/sane_ink/lib/src/stylus_profile.dart`, `packages/sane_ink/test/axis_normalisation_test.dart`.\n\n## Dependencies\n{{SN-AND-007}}, {{SN-SET-008}}, {{SN-AND-027}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-015",
+    "title": "Implement Samsung Notes import for Galaxy switchers",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sharing-export",
+      "pdf",
+      "ocr-hwr"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "L",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-4",
+      "MASVS-PLATFORM-1",
+      "CWE-20",
+      "CWE-22",
+      "CWE-400"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-021",
+      "SN-SHR-027",
+      "SN-PDF-006"
+    ],
+    "body": "## Context\nThe import backlog covers Markdown ({{SN-SHR-022}}), Notion ({{SN-SHR-024}}), Goodnotes/Notability ({{SN-SHR-025}}) and OneNote ({{SN-SHR-026}}) — every major **iPad** competitor and none of the Android one. `docs/research/sources/samsung-notes-nebo-other.md` §1 identifies Samsung Notes as \"the reference stylus-native note experience for Android and the app Sane Notes is most likely to be compared against on Galaxy hardware\", bundled free on every Galaxy phone and tablet — which is the exact device in our Tier 1 lab. The same research lists Samsung's weaknesses as our wedge (ecosystem lock-in, \"imported PDFs can't be edited elsewhere\", \"no reliable cross-platform backup\", rasterised unsearchable PDF export). A switcher path is therefore both the highest-volume migration on Android and a direct hit on the incumbent's worst review theme. Samsung Notes exports **PDF, Word, PowerPoint, image and text**, and stores notes natively as `.sdoc`; the native format is undocumented, so this is deliberately a two-tier import.\n\n## Scope\n**In:** a Samsung Notes importer registered in the import pipeline ({{SN-SHR-021}}) with two tiers — **Tier B (must ship):** exported PDF (with per-page ink rasterised by Samsung) and exported DOCX/TXT, imported as PDF-backed pages ({{SN-PG-017}}) or typed text, then OCR'd so the content becomes searchable ({{SN-HWR-011}}), which is strictly better than the source (Samsung's export is unsearchable); **Tier A (best-effort):** unpack a `.sdoc` container and recover what is reliably parseable — page images, embedded media, typed text and, if present, stroke data — behind a feature flag, with a truthful per-import report of what was recovered and what was flattened; bulk import of a folder of exports on Android via SAF ({{SN-AND-018}}); a mapping of Samsung folders/categories onto our folders/subjects ({{SN-LIB-011}}, {{SN-LIB-010}}).\n**Out:** the shared import pipeline, isolation and report UI ({{SN-SHR-021}}); malicious-file hardening, which this consumes ({{SN-SHR-027}}, {{SN-SEC-007}}); other competitors ({{SN-SHR-025}}, {{SN-SHR-026}}); Nebo/MyScript import (separate issue if demand justifies); exporting *to* Samsung formats.\n\n## Acceptance criteria\n- [ ] A Samsung Notes PDF export imports as a notebook with one PDF-backed page per source page, annotatable with ink on top, and searchable after OCR ({{SN-HWR-011}}) — demonstrably better than the source file.\n- [ ] A DOCX/TXT export imports as typed text blocks with headings, bullets and checklists preserved where present ({{SN-TXT-012}}, {{SN-TXT-013}}).\n- [ ] Bulk import of ≥ 50 exported files completes with a per-file report (imported / partially imported / skipped + reason) and never leaves a half-written notebook ({{SN-SHR-021}}).\n- [ ] Tier A `.sdoc` handling, when enabled, either recovers content or fails cleanly to Tier B; it never corrupts the library and never crashes on a malformed container.\n- [ ] Every import runs through the hardened reader ({{SN-SHR-027}}): zip-bomb, path-traversal, oversized-image and malformed-media cases are rejected with a user-visible reason and a security regression test.\n- [ ] A short help-centre page documents exactly how to get files out of Samsung Notes ({{SN-DOC-008}}), including its known limits (translated PDFs cannot be saved, orientation must match).\n\n## Technical notes\n`packages/sane_import/` (or wherever {{SN-SHR-021}} lands) gains a `SamsungNotesImporter` behind the same interface as the Goodnotes/OneNote importers. PDF path reuses {{SN-PDF-006}}/{{SN-PG-017}}; DOCX path reuses the text import from {{SN-SHR-022}} where possible. `.sdoc` is a zip-like container **(verify)** — parse defensively with the bounded unpacker from {{SN-SEC-007}}, treat every entry as hostile, and cap total inflated size and entry count. All parsing happens off the UI isolate.\n\n## Security & privacy\nCompetitor files are the classic untrusted-input vector (MASVS-CODE-4, MASVS-PLATFORM-1): zip bombs (CWE-400), path traversal on entry names (CWE-22), malformed images/PDF (CWE-20) and XML entity expansion in DOCX. Controls: reuse {{SN-SEC-007}} bundle unpacking, {{SN-SEC-005}} PDF parser hardening, {{SN-SEC-006}} image decode caps, XML parsed with external entities disabled; the importer runs in the isolated import context with no network access and no credential access; the per-import report never echoes raw file paths into logs ({{SN-SEC-021}}).\n\n## UX notes\nEntry points: Library → Import, the Android share sheet ({{SN-NOTF-005}}) and open-with. The report screen follows the {{SN-SHR-021}} pattern and names Samsung explicitly (\"Imported 34 notes from Samsung Notes; 2 pages were flattened to PDF\"). The migration story belongs on the website switcher page ({{SN-SITE-008}}).\n\n## Test plan\nFixture corpus: real Samsung Notes exports (PDF, DOCX, TXT, image) plus synthetic malformed/`.sdoc` fixtures added to the fuzz corpus ({{SN-QA-013}}). Unit tests per parser branch; round-trip/fidelity assertions via {{SN-SHR-028}}; security regression tests per attack class; a manual pass importing a real Galaxy Tab library. Files: `packages/sane_import/lib/src/samsung_notes.dart`, `test/import/samsung_notes_test.dart`, corpus under `test/fixtures/import/samsung/`.\n\n## Dependencies\n{{SN-SHR-021}}, {{SN-SHR-027}}, {{SN-PDF-006}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-016",
+    "title": "Generate and ship Android baseline profiles for cold start and first frame",
+    "type": "infra",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "perf",
+      "ci-cd",
+      "compat"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-4"
+    ],
+    "parent": "SN-PERF-001",
+    "depends_on": [
+      "SN-PERF-008",
+      "SN-AND-022",
+      "SN-AND-027"
+    ],
+    "body": "## Context\n`docs/platform/phones.md` §8 sets **cold start < 2 s on mid Android**, and the low-end reference is a 4 GB Snapdragon 680-class device where ART's JIT warm-up dominates the first seconds of an app's life. {{SN-PERF-008}} adds the cold-start trace and budget test — it measures the number but nothing in the backlog *moves* it on Android. The standard Android lever is a **baseline profile** (an AOT/JIT hint profile shipped in the AAB and installed by Play), which typically cuts cold start and first-frame jank on exactly this class of device, and it applies to the Kotlin/embedding/plugin layer that surrounds our AOT Dart code — the ink surface plugin, PDF, Keystore, WorkManager and the Flutter embedding itself. Whether the current Flutter/AGP toolchain generates a useful profile for a Flutter app is **(verify)**: this issue must prove the win with numbers before it becomes permanent build weight.\n\n## Scope\n**In:** adding the baseline-profile Gradle plugin and a `:baselineprofile` module that drives a scripted critical-user-journey (cold launch → library → open a notebook → first stroke) on a managed device; generating `baseline-prof.txt` (plus a startup profile if supported) into the release AAB; a CI job that regenerates the profile on demand and fails if the committed profile is stale relative to the app version; before/after measurements on the Tier 1 low-end reference and the mid tablet feeding the {{SN-PERF-008}} budget; a documented decision to keep or drop the profile based on the measured delta.\n**Out:** the cold-start measurement harness itself ({{SN-PERF-008}}, {{SN-PERF-002}}); R8/ProGuard rules ({{SN-AND-028}}); AAB size budgeting ({{SN-GAND-007}}); iOS startup work.\n\n## Acceptance criteria\n- [ ] A baseline profile is generated from a scripted journey and included in the release AAB; `bundletool`/Play validation shows it present.\n- [ ] Measured cold start and first-frame time on the 4 GB Snapdragon 680-class reference improve versus the same build without the profile, with both numbers recorded in `docs/platform/performance-budgets.md`; if the improvement is < 5% the profile is dropped and the decision recorded (no cargo cult).\n- [ ] The profile-generation job runs on a Gradle managed device in CI and is reproducible; a stale profile (generated for an older version) is detected and flagged.\n- [ ] Adding the profile does not regress the AAB size budget ({{SN-GAND-007}}) or the 16 KB alignment check ({{SN-AND-021}}).\n- [ ] The journey script exercises the real ink path (at least one committed stroke), not just the launcher activity.\n- [ ] Results are added to the perf trend dashboard ({{SN-PERF-019}}).\n\n## Technical notes\n`androidx.baselineprofile` Gradle plugin + `BaselineProfileRule`/macrobenchmark module under `app/android`; Gradle managed devices for reproducibility (an emulator is acceptable for *generation*; the *measurement* must run on the physical Tier 1 device per `docs/platform/android.md` §11, since emulators cannot represent real device timing). Keep the generated profile committed and reviewable so a diff is visible. Coordinate with {{SN-AND-028}}: obfuscation changes symbol names, so the profile must be generated from the same minified configuration as the release build.\n\n## Security & privacy\nThe generated profile is a build artefact derived from our own code; it must be produced by a trusted CI job from a pinned toolchain ({{SN-CI-015}}) and reviewed as a diff so an untrusted profile cannot be slipped into the bundle (MASVS-CODE-4, supply chain). The journey script must use synthetic fixtures ({{SN-QA-011}}) — never a real account, never real notes.\n\n## UX notes\nNo UI. The user-visible effect is the app opening faster on cheap devices, which is a stated product promise (\"lag-proof\", `docs/product/vision-and-principles.md`) and worth a line in release notes only if the measured win is real.\n\n## Test plan\nCI: profile generation job + staleness check; existing cold-start budget test ({{SN-PERF-008}}) runs on both variants during the evaluation. Manual: three cold starts per variant on the low-end reference with the device thermally settled, medians reported. Files: `app/android/baselineprofile/`, `app/android/app/src/main/baseline-prof.txt`, budget rows in `docs/platform/performance-budgets.md`.\n\n## Dependencies\n{{SN-PERF-008}}, {{SN-AND-022}}, {{SN-AND-027}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-017",
+    "title": "Guard 32-bit address-space limits and fuzz the parsers on armeabi-v7a",
+    "type": "task",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "perf",
+      "compat",
+      "security"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-4",
+      "CWE-400",
+      "CWE-190"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-GPRF-003",
+      "SN-AND-022",
+      "SN-PERF-023"
+    ],
+    "body": "## Context\n`docs/platform/compatibility-matrix.md` §3 ships `armeabi-v7a` as **Tier 3 best-effort**: \"MUST launch and take a note; no perf guarantee\". A parallel issue ({{SN-GPRF-003}}) runs the Tier 3 smoke checklist on a 32-bit artifact and observes a memory ceiling; it explicitly defers \"any optimisation work the run uncovers\" to a separate issue. **This is that issue**, and the work is not optimisation in general but the two failure classes unique to a 32-bit process. First, address space: a 32-bit process has a small user virtual-address space, so a 600-page PDF ({{SN-PDF-026}}), a 1,000-page notebook ({{SN-PERF-010}}), tile caches ({{SN-INK-022}}, {{SN-PDF-004}}) and a loaded ML model can exhaust VA long before the device runs out of RAM — producing an `mmap`/native OOM abort rather than slow behaviour, which reads to the user as \"this app crashes on my tablet\". Second, integer sizing: length/offset arithmetic in pdfium, the ink codec and the bundle reader behaves differently where `size_t` is 32 bits, so overflow bugs that arm64 hides become reachable memory-safety issues.\n\n## Scope\n**In:** deriving cache and prefetch ceilings (ink tile cache, PDF tile cache, blob cache, concurrently loaded ML models) from a runtime address-space/memory-class signal rather than a hard-coded per-ABI constant, and documenting the resulting values; a graceful, user-readable \"this document is too large for this device\" state instead of a native abort when a document cannot be held; making the adaptive quality ladder ({{SN-PERF-023}}) engage on 32-bit without a separate code path; running the existing malformed-PDF ({{SN-PDF-024}}) and bundle ({{SN-SEC-007}}) fuzz corpora once per release train against a 32-bit build and promoting every crash to a regression test.\n**Out:** the Tier 3 smoke run and the compatibility-matrix verdict ({{SN-GPRF-003}}); the ABI/build configuration ({{SN-AND-022}}); render-path goldens ({{SN-AND-032}}); 16 KB alignment, which is an arm64 concern ({{SN-AND-021}}); arm64 low-end perf ({{SN-AND-027}}).\n\n## Acceptance criteria\n- [ ] Cache ceilings are computed from a runtime memory/address-space signal (not from `Build.SUPPORTED_ABIS`) and the chosen values are recorded in `docs/platform/performance-budgets.md`.\n- [ ] Opening the 600-page PDF fixture and the 1,000-page notebook fixture on a 32-bit build either succeeds within the reduced ceilings or degrades with an explicit, user-readable limit message — never a native OOM abort.\n- [ ] The adaptive quality ladder ({{SN-PERF-023}}) engages on the 32-bit target with no ABI-specific branch in feature code.\n- [ ] The malformed-PDF and bundle fuzz corpora run against a 32-bit build at least once per release train; any crash becomes a named regression test ({{SN-QA-013}}).\n- [ ] A source audit of the native glue we own ({{SN-AND-002}}, {{SN-PDF-028}}) records that size/offset arithmetic is width-safe and that the hardening flags in `docs/security/secure-coding-checklist.md` §2 are enabled for the 32-bit variant.\n- [ ] Results feed the Tier 3 verdict in {{SN-GPRF-003}} rather than duplicating it.\n\n## Technical notes\nRuntime signals: `ActivityManager.getMemoryClass()`/`getLargeMemoryClass()`, `isLowRamDevice`, `Runtime.maxMemory()`, and where useful the mapped-region headroom — surfaced once through the existing device-capability provider and consumed by `sane_render`/`sane_pdf` cache configuration. Use an `armeabi-v7a` emulator image for the fuzz pass in CI; the physical-device pass rides along with {{SN-GPRF-003}}. Keep the fuzz job out of the blocking path but report failures in the release checklist ({{SN-QA-016}}).\n\n## Security & privacy\n32-bit overflow of length/offset arithmetic in parsers is a memory-safety risk class (CWE-190, CWE-400) that the arm64-only fuzz job cannot reach; running the corpora on 32-bit closes it. Any native crash is triaged as a potential security finding, not just a stability bug ({{SN-QA-013}}, {{SN-SEC-010}}). Cache-ceiling logic must not weaken encryption or spill plaintext to disk when it evicts ({{SN-SRCH-015}} pattern).\n\n## UX notes\nWhen a document exceeds what the device can hold, use the honest-limits pattern from `docs/design/` microcopy ({{SN-BRD-009}}): what happened, what the user can do (open it on another device, split the PDF), no jargon, no stack trace. Nothing else is user-visible.\n\n## Test plan\nUnit tests for the ceiling calculator across memory-class fixtures. `integration_test` on a 32-bit emulator opening the oversized PDF/notebook fixtures and asserting the explicit limit state rather than a crash. A CI fuzz job (`android-armeabi-fuzz`) running the existing corpora against the 32-bit build. Files: `packages/sane_render/lib/src/cache_budget.dart`, `test/perf/cache_budget_32bit_test.dart`, CI job in `.github/workflows/`.\n\n## Dependencies\n{{SN-GPRF-003}}, {{SN-AND-022}}, {{SN-PERF-023}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-018",
+    "title": "Survive app hibernation, permission auto-revoke and Play archiving without data loss",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "storage",
+      "privacy"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PLATFORM-1",
+      "MASVS-PRIVACY-1",
+      "CWE-212"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AND-018",
+      "SN-SYNC-010",
+      "SN-AND-030"
+    ],
+    "body": "## Context\nAndroid hibernates apps the user has not opened for a few months: runtime permissions are auto-revoked, temporary files and caches may be cleared, and Play can **archive** the app — removing part of its installation while keeping user data — freeing the device up for the user and quietly breaking assumptions apps make about persistent grants. Sane Notes is exposed on two fronts. First, the SAF adapter ({{SN-AND-018}}, {{SN-SYNC-010}}) depends on **persistable URI permissions** to reach the user's sync folder; if those grants are lost the app must re-ask cleanly, not fail sync silently forever. Second, a local-first note app is exactly the kind of app a student opens in bursts (a semester on, a holiday off), so hibernation is the normal case, not an edge case — and the promise is that notes are never lost. Nothing in the backlog covers this lifecycle; {{SN-AND-030}} covers backup exclusion, which is a different mechanism.\n\n## Scope\n**In:** detecting on launch that a previously held SAF/URI grant or runtime permission is gone and presenting a single, clear re-grant path that restores sync/recording without re-onboarding; making all note data live outside cache directories that the system may purge (audit `getCacheDir`/`getExternalCacheDir` usage so only regenerable artefacts — thumbnails, tiles, rendered previews — live there, and everything regenerates silently); verifying an archive/unarchive cycle keeps the local database, blobs and keys intact and that the key material still unwraps ({{SN-CRY-014}}); documenting the hibernation posture (we do **not** request an exemption — notes work offline and need no background permission when unused) in `docs/platform/android.md` §9.\n**Out:** backup/transfer exclusion ({{SN-AND-030}}); the SAF adapter itself ({{SN-AND-018}}); sync scheduling ({{SN-GAND-009}}); OEM power management ({{SN-GAND-010}}).\n\n## Acceptance criteria\n- [ ] Revoking the SAF folder grant (or the whole permission set) and relaunching produces one actionable prompt — \"Reconnect your sync folder\" — that restores sync in a single flow, with no data loss and no duplicate notebooks after reconnection ({{SN-SYNC-006}} reconciliation).\n- [ ] Clearing the app cache (`adb shell pm trim-caches` / Settings → Clear cache) loses **no** note, stroke, page, audio, attachment or key; thumbnails and tiles regenerate on demand ({{SN-PG-010}}, {{SN-LIB-014}}).\n- [ ] An archive → unarchive cycle (or its closest reproducible equivalent) leaves the library, encrypted store and recovery path working; the app does not demand re-onboarding and the user's keys still unwrap.\n- [ ] An audit test asserts that no note-bearing path resolves under a cache directory.\n- [ ] The app does not request a hibernation exemption; if any future feature needs one, it is justified in the doc and the Play declaration ({{SN-AND-026}}).\n- [ ] A revoked microphone permission is re-requested in context at the next recording ({{SN-AUD-016}}) rather than failing silently.\n\n## Technical notes\nCheck grant liveness with `ContentResolver.getPersistedUriPermissions()` on cold start and before any sync run; a missing grant transitions the sync state machine to a recoverable error ({{SN-SYNC-020}}) rather than an exception. Storage layout audit belongs with `sane_core` path resolution ({{SN-CORE-004}}, {{SN-CORE-014}}); add an arch-lint rule so new code cannot write documents under cache paths ({{SN-FND-008}} pattern). Keystore keys survive archiving (they are not part of the APK) but the check must be explicit, since a key lost with no recovery code is unrecoverable by design ({{SN-CRY-020}}).\n\n## Security & privacy\nAuto-revoke is a **privacy feature** and we should lean into it rather than seek exemptions (MASVS-PRIVACY-1; the privacy dashboard in {{SN-PRV-002}} claims exactly this posture). The re-grant flow must not be used to widen scope: re-ask for the same narrow grant, never for broad storage. Cache purges must not leave decrypted residue behind — regenerable artefacts derived from note content are themselves sensitive and must be encrypted or non-reversible ({{SN-SRCH-015}} pattern, CWE-212).\n\n## UX notes\nOne banner in the library and one row in Settings → Sync & backup ({{SN-SET-006}}): \"Sane Notes lost access to your sync folder. Reconnect.\" No modal on launch; notes stay editable meanwhile (offline-first, {{SN-SYNC-026}}).\n\n## Test plan\nInstrumented: revoke persisted URI permission via adb, relaunch, assert the recoverable state and a successful reconnect. `pm trim-caches` test asserting zero content loss plus thumbnail regeneration. A path-audit unit test over the storage layer. Manual archive/unarchive on a device with Play archiving available. Files: `app/test/storage/cache_path_audit_test.dart`, `integration_test/android_permission_revoke_test.dart`.\n\n## Dependencies\n{{SN-AND-018}}, {{SN-SYNC-010}}, {{SN-AND-030}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-019",
+    "title": "Expose notebooks and exports through an Android DocumentsProvider",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "sharing-export",
+      "storage",
+      "compat"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PLATFORM-1",
+      "MASVS-PRIVACY-1",
+      "MASVS-STORAGE-1",
+      "CWE-200",
+      "CWE-863"
+    ],
+    "parent": "SN-SHR-001",
+    "depends_on": [
+      "SN-SHR-002",
+      "SN-AND-018",
+      "SN-SEC-020"
+    ],
+    "labels_extra": [
+      "innovation"
+    ],
+    "body": "## Context\n`docs/research/sources/android-stylus-capabilities.md` §7 notes that an app can not only *consume* the Storage Access Framework but also **become a provider** by implementing `DocumentsProvider` — and no issue claims it. This is a genuine \"competitors lack it on Android\" differentiator: Samsung Notes is ecosystem-locked and Nebo hides notes inside its own store, so a student who wants to attach a note to a college portal, an email, or a Word document has to export, find the file, and upload it. With a DocumentsProvider, Sane Notes appears **inside every Android file picker** (\"Sane Notes\" alongside Drive and Downloads), and any app can browse notebooks and pull a PDF/`.sanenote` rendered on demand. It reinforces the \"no lock-in\" promise in `docs/research/sources/samsung-notes-nebo-other.md` (\"What Sane Notes could beat them on\") and rides on the export service that already exists ({{SN-SHR-002}}, {{SN-SHR-003}}, {{SN-SHR-008}}). It is also a security-sensitive surface, hence p3 and a hard gate on lock/profile rules.\n\n## Scope\n**In:** a read-only `DocumentsProvider` exposing the **active profile's** unlocked notebooks as a virtual tree (subjects/folders → notebooks) with on-demand rendering of a chosen export format (PDF by default, `.sanenote` as an alternative) when another app opens a document; document metadata (name, modified time, size estimate, mime) with no note content in the listing beyond the title; an explicit Settings toggle, **off by default**, to enable the provider; full exclusion of locked notebooks, locked profiles, guest data belonging to another profile, and Trash.\n**Out:** write-back/editing from other apps (explicitly out — read-only); the export renderers themselves ({{SN-SHR-002}}/{{SN-SHR-003}}/{{SN-SHR-008}}); consuming SAF for sync ({{SN-AND-018}}, {{SN-SYNC-010}}); share links ({{SN-SHR-013}}); iOS Files integration ({{SN-IPAD-019}}).\n\n## Acceptance criteria\n- [ ] With the toggle on, \"Sane Notes\" appears in the system file picker of another app; browsing shows subjects/folders/notebooks matching the library ({{SN-LIB-011}}).\n- [ ] Opening a notebook from another app produces a correctly rendered PDF with vector ink and a searchable text layer ({{SN-SHR-003}}), generated on demand off the UI isolate with a progress/cancel-safe path.\n- [ ] Locked notebooks, locked profiles and other profiles' data are **never** listed or openable, even when the app itself is unlocked in the foreground ({{SN-SEC-020}}, {{SN-AUTH-013}}); an automated test asserts this per state.\n- [ ] With the toggle off (default) the provider returns an empty root and no metadata whatsoever.\n- [ ] The provider is not writable: any create/delete/rename call is rejected; no path from another app can mutate the library.\n- [ ] Access is per-call authorised against the current lock state; a device that locks mid-read fails the read rather than completing it.\n\n## Technical notes\nKotlin `DocumentsProvider` in `app/android` declared with the SAF provider permission and `exported=true` (required by the framework) but guarded by the toggle, lock state and profile scope on every `queryRoots`/`queryChildDocuments`/`openDocument` call — the framework's exported-ness is exactly why {{SN-AND-029}} must review this component. Rendering calls back into the Dart export service through a platform channel into a background engine, writing to a temporary, profile-scoped file that is deleted after the pipe closes. Document ids must be opaque, non-enumerable handles — never raw database ids or paths (CWE-863).\n\n## Security & privacy\nThis intentionally opens a read path from other apps to note content, so it is fail-closed by construction: default off, read-only, unlocked-active-profile-only, opaque ids, no listing of locked or trashed content, and no note body in metadata (MASVS-PLATFORM-1, MASVS-PRIVACY-1, CWE-200). Temporary rendered files live in app-private storage with restrictive permissions and are deleted deterministically; they are excluded from backup ({{SN-AND-030}}). The threat model ({{SN-SEC-002}}) must be updated with this surface, and it is an explicit target for the pentest plan ({{SN-SEC-033}}) and the MASVS platform verification ({{SN-SEC-030}}).\n\n## UX notes\nSettings → Privacy & export ({{SN-SET-012}}) gains a clearly worded toggle: \"Let other apps browse your notes (read-only). Locked notebooks are never shown.\" A first-enable sheet explains the trade-off honestly. No badge, no nudge to turn it on.\n\n## Test plan\nInstrumented tests driving the provider through `ContentResolver` in each state: toggle off, toggle on + unlocked, app-locked, notebook-locked, other profile, trashed notebook — asserting empty/denied results. A render test asserting the opened PDF matches the export golden ({{SN-SHR-028}}). A security regression test that a crafted document id cannot traverse to another profile. Manual: open a note from Gmail and from a college-portal upload flow. Files: `app/android/.../SaneDocumentsProvider.kt`, `app/test/sharing/documents_provider_access_test.dart`.\n\n## Dependencies\n{{SN-SHR-002}}, {{SN-AND-018}}, {{SN-SEC-020}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-020",
+    "title": "Support shared Android tablets: multi-user and managed school profiles",
+    "type": "feature",
+    "priority": "p3",
+    "platforms": [
+      "android-tablet"
+    ],
+    "areas": [
+      "privacy",
+      "auth",
+      "compat"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-1",
+      "MASVS-AUTH-1",
+      "CWE-200"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-AUTH-013",
+      "SN-AND-030",
+      "SN-CRY-009"
+    ],
+    "body": "## Context\nSane Notes' persona is a student, and a large share of Android tablets in education are **shared or managed**: Android supports multiple device users (and restricted/child users) on tablets, and schools deploy work/school profiles through Android Enterprise. The backlog has app-level profiles ({{SN-AUTH-007}}, {{SN-AUTH-013}}) — \"Who's writing?\" inside one installation — but nothing about the **OS-level** case where two device users each have their own installation instance, or where the app runs inside a managed profile with admin policies (blocked copy/paste across profiles, disabled screenshots, forced backup settings, blocked accounts). The failure modes are serious and silent: keys created under one device user must never be reachable by another (they are not, by Keystore design — but this must be *verified*, not assumed), cross-profile sharing intents may hand a note to the other profile, and a managed device may disable exactly the Google account sign-in we default to.\n\n## Scope\n**In:** verifying and documenting behaviour under a second device user and under a work/managed profile: separate storage and separate Keystore keys, no cross-user data visibility, no cross-user notification or widget leakage; making sharing and open-with behave correctly when a cross-profile intent is offered (explicit user confirmation, no silent cross-profile write); detecting when policies block an assumed capability (account types disabled, screenshots restricted, backup forced) and degrading with an honest message rather than a broken flow; a documented statement of what Sane Notes supports on shared/managed devices in `docs/platform/android.md` §1 and the compatibility matrix.\n**Out:** app-level profiles ({{SN-AUTH-007}}, {{SN-AUTH-013}}); an MDM/EMM managed-configuration feature set or a schools SKU (out of scope for launch; note as a Backlog candidate); age gating and minor defaults ({{SN-PRV-007}}, {{SN-PRV-008}}).\n\n## Acceptance criteria\n- [ ] With two device users on a tablet, notes, thumbnails, search index, preferences and Keystore keys created by user A are unreachable and invisible to user B — verified by test, not assumption.\n- [ ] Widgets, notifications and quick-capture entry points ({{SN-AND-024}}, {{SN-NOTF-011}}) never render another device user's content.\n- [ ] Inside a work/managed profile the app launches, takes notes offline and encrypts at rest; if the policy blocks the Google account type, sign-in offers the remaining providers and guest mode without a dead end ({{SN-GAND-012}} degradation pattern).\n- [ ] A cross-profile share into Sane Notes routes through the same confirm-and-place screen as any other share ({{SN-NOTF-005}}) and never writes into the wrong profile's library.\n- [ ] Where an admin policy disables a feature (screenshots, backup, accounts), the UI says so plainly once, in context.\n- [ ] `docs/platform/compatibility-matrix.md` gains a shared/managed-device row stating the tested tier.\n\n## Technical notes\nDevice-user separation is enforced by the OS (per-user data directories and per-user Keystore), so the work is verification plus not defeating it: never write to a world-readable location, never key anything on a device-wide identifier, and keep profile-scoped paths from {{SN-AUTH-013}}. For managed profiles, read `DevicePolicyManager`/`UserManager` restriction flags defensively (`getUserRestrictions`, account-type restrictions) and treat absence of the ability as a capability-false, reusing the probe pattern from {{SN-GAND-012}}. Cross-profile intents surface as normal share intents and go through the {{SN-NOTF-005}} validator.\n\n## Security & privacy\nThe core control is data isolation across OS users and profiles (MASVS-STORAGE-1, MASVS-PRIVACY-1, CWE-200) — a leak here is the same severity as a profile-isolation bug ({{SN-AUTH-013}}) and is in scope for the pentest plan ({{SN-SEC-033}}) and MASVS storage verification ({{SN-SEC-029}}). Keys must remain non-exportable and per-user ({{SN-CRY-009}}); backup exclusion still applies per user ({{SN-AND-030}}). No device-identifying signal may be collected to detect a managed state ({{SN-TEL-002}}).\n\n## UX notes\nNothing new in the happy path — the app simply behaves. Where a policy blocks something, use the honest-limits microcopy ({{SN-BRD-009}}): \"Your school's settings don't allow screenshots.\" The Settings → Account tab ({{SN-SET-005}}) shows which sign-in methods are available on this device rather than greyed-out mysteries.\n\n## Test plan\nInstrumented/manual matrix on a tablet with a second device user created (`adb shell pm create-user`) asserting invisibility of user A's data from user B; a managed-profile emulator (Test DPC) run of the core-flow checklist with restrictions toggled on. Unit tests for the restriction-probe degradation branches. Files: `app/test/platform/managed_restrictions_test.dart`, checklist + matrix rows in `docs/platform/`.\n\n## Dependencies\n{{SN-AUTH-013}}, {{SN-AND-030}}, {{SN-CRY-009}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-GAND-021",
+    "title": "Define the Android wide-colour-gamut posture so ink colour matches across platforms",
+    "type": "task",
+    "priority": "p3",
+    "platforms": [
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "theming",
+      "ink",
+      "compat"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "S",
+    "sdlc": "design",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-AND-001",
+    "depends_on": [
+      "SN-GIPAD-002",
+      "SN-BRS-026",
+      "SN-DS-002"
+    ],
+    "body": "## Context\n{{SN-BRS-026}} gates **cross-platform brush render parity** with goldens, and {{SN-DS-007}} gates per-look contrast floors — both assume a colour is a colour. It is not: modern iPads render Display P3 by default, many Android tablets and phones have wide-gamut panels that are only used if the app opts in, and Flutter/Impeller's wide-gamut behaviour differs per platform. The practical consequences for a note app are concrete: the same highlighter yellow looks duller on Android than on iPad (a brand and parity problem for the 17 looks), exported PDFs and PNGs may carry a different colour profile than what the user saw ({{SN-SHR-003}}, {{SN-SHR-004}}), and the parity golden gate will produce failures nobody can explain because the two platforms are not even in the same colour space. The Apple side is being decided in {{SN-GIPAD-002}}, whose scope explicitly defers \"Android and web colour management (follow-ups once the ADR lands)\" — this issue is that Android follow-up, and it must land before the parity goldens harden.\n\n## Scope\n**In:** deciding and documenting the colour posture for Android — sRGB everywhere for determinism, or opt into wide gamut and manage conversion — with the decision and its rationale recorded in `docs/design/design-system.md` and `docs/platform/android.md`; implementing the chosen posture (window colour mode declaration, or an explicit statement that we do not opt in); making export colour handling explicit (which profile PDF/PNG/SVG exports embed, and that it matches what was on screen); adding a tolerance and colour-space note to the parity golden gate so {{SN-BRS-026}} compares like with like; a short check that the token palette ({{SN-DS-002}}) round-trips through the chosen space without clipping the saturated highlighter and ink colours.\n**Out:** the token definitions ({{SN-DS-002}}) and contrast gates ({{SN-DS-007}}); the dark-mode ink inversion rule ({{SN-INK-030}}); colour-blind palettes ({{SN-A11Y-011}}); the colour picker UI ({{SN-BRS-021}}); iPad-side colour work.\n\n## Acceptance criteria\n- [ ] A written decision exists (doc section or ADR) stating the Android colour posture, the reason, and the known trade-off, referenced from {{SN-BRS-026}}.\n- [ ] The chosen posture is implemented and verifiable at runtime (the app reports its colour mode in the debug/diagnostics panel, {{SN-TEL-008}}).\n- [ ] The same page rendered on the iPad Tier 1 device and the Android Tier 1 tablet produces highlighter and ink colours within a stated ΔE tolerance, measured once and recorded; the parity gate uses that tolerance rather than an arbitrary pixel threshold.\n- [ ] PDF and PNG exports state and embed a defined colour profile; a round-trip check shows the exported swatch matches the on-screen swatch within the same tolerance.\n- [ ] No look's token palette clips or bands on either a wide-gamut or an sRGB Android panel (visual check across the 17 looks, {{SN-QA-005}} harness).\n- [ ] If the decision is \"sRGB only\", the code contains no accidental wide-gamut opt-in and the doc says why the richer panel is deliberately not used.\n\n## Technical notes\nAndroid opts in per window (`android:colorMode=\"wideColorGamut\"` / `Window.setColorMode`) and only on capable displays (`Display.isWideColorGamut`); Impeller/Skia then needs a matching surface configuration — **(verify)** what the shipped Flutter engine actually supports on Android before choosing, since an unsupported opt-in silently changes nothing or, worse, changes only some surfaces. Exports go through the PDF/PNG writers ({{SN-SHR-003}}, {{SN-SHR-004}}); pdfium and our SVG writer must be told the space explicitly rather than inheriting a default. Keep the native ink surface ({{SN-AND-002}}) and the Flutter layer in the same space or the wet→dry hand-off ({{SN-INK-021}}) will show a colour seam — call that out as an acceptance risk.\n\n## Security & privacy\nNone beyond baseline; reading display capabilities uses no permission and must not be recorded as a device fingerprint in telemetry ({{SN-TEL-002}}, MASVS-PRIVACY-1).\n\n## UX notes\nThe user-visible requirement is simple and worth stating in the design system: \"the same note looks the same on every device\". Where a device cannot show a colour, degrade by clamping predictably rather than shifting hue. No user-facing setting.\n\n## Test plan\nMeasurement: photograph or screen-capture a reference swatch page on the iPad and Android Tier 1 devices; compute ΔE and record it. Golden: extend the parity gate ({{SN-BRS-026}}) with the tolerance and a colour-space assertion. Export: unit test asserting the profile declared in generated PDF/PNG. Visual: 17-look sweep on a wide-gamut Android panel. Files: decision section in `docs/design/design-system.md`, `test/brushes/colour_parity_tolerance_test.dart`.\n\n## Dependencies\n{{SN-GIPAD-002}} (the colour-space ADR), {{SN-BRS-026}}, {{SN-DS-002}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

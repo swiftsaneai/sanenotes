@@ -1,0 +1,468 @@
+[
+  {
+    "key": "SN-GUX-001",
+    "title": "Define the --bgs inverse-ground token and the inverted-surface rule",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "theming",
+      "a11y"
+    ],
+    "milestone": "M0 Foundations",
+    "size": "S",
+    "sdlc": "design",
+    "parent": "SN-DS-001",
+    "depends_on": [
+      "SN-DS-002",
+      "SN-DS-005",
+      "SN-DS-006"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n`docs/design/design-system.md` defines exactly **13 palette keys** per look and mode (`bg sf sf2 ink mu ln ac aci acs ac2 pp pl sh`), and `docs/design/tokens.json` mirrors them. But two component rules consume a fourteenth token that nobody defines: the **active chip** is \"`--ink` bg with `--bgs` text\" (§5 \"Chips · Segmented · Toggle\") and the **toast** — the app's only inverted surface — is \"`--ink` on `--bgs`\" (§5 \"Search result · Toast\"). The web guidance even lists `--bgs` in the emitted custom-property set and glosses it as \"the ground behind, used as inverse text on chips/toasts\". So {{SN-DS-008}} must emit it, {{SN-DS-017}} and {{SN-DS-019}} must read it, and {{SN-DS-002}} has nothing to bind it to. Left undecided, five surfaces will each invent their own inverted text colour (usually a hard-coded `#fff`), which breaks the \"never hard-code a colour\" rule in `CLAUDE.md` §9 and silently fails contrast in the looks whose ground is light-on-light (Brutalism `#ffffff`, Editorial `#ffffff`, Minimalism `#f3f4f7`).\n\n## Scope\n\n**In:** the decision and its encoding — whether `bgs` is derived (the look's `bg` for that mode) or authored per look×mode; the added key in `tokens.json` for all 34 look×mode combinations; the documentation update in `design-system.md` §4 (palette keys becomes 14, with the derivation rule stated); exposure through the Dart `SaneLook` ({{SN-DS-002}}), the web custom properties ({{SN-DS-008}}) and the native resource map; an accessibility-adjusted `bgsA11y` following the pattern of `aciA11y`/`acIconA11y` from {{SN-DS-006}} wherever `ink`-on-`bgs` falls below 4.5:1; and the contrast assertion wired into the gate in {{SN-DS-007}}.\n\n**Out:** the toast and chip widgets themselves ({{SN-DS-019}}, {{SN-DS-017}}), the golden images ({{SN-DS-027}}), and any new inverted surface (the toast stays the only one, per `ux-principles.md` §2).\n\n## Acceptance criteria\n\n- [ ] `tokens.json` carries an explicit `bgs` (and, where needed, `bgsA11y`) for every one of the 34 look×mode combinations, generated or authored by a documented rule — not hand-typed per look.\n- [ ] `design-system.md` §4 states the rule and the palette-key count is corrected from 13 to 14 (or `bgs` is documented as derived, with the derivation formula).\n- [ ] `SaneLook.bgs` exists in the generated Dart, `--bgs` is emitted by the web generator, and the native map includes it; regeneration is byte-identical.\n- [ ] Active chip (`ink` background, `bgs` text) and toast (`ink` on `bgs`) both measure ≥ 4.5:1 in all 34 combinations; any failing pair resolves to the adjusted token, and the pair list is printed by the gate.\n- [ ] A repository grep proves no widget hard-codes `#fff`/`Colors.white`/`Colors.black` for inverted text.\n- [ ] The wallpaper case is covered: toast and active chip stay ≥ 4.5:1 over the frosted 84%-translucent surface at maximum veil ({{SN-DS-014}}).\n\n## Technical notes\n\nTouch `docs/design/tokens.json`, `docs/design/design-system.md`, `packages/sane_ui/tool/gen_looks.dart`, the generated `packages/sane_ui/lib/src/theme/looks.g.dart`, and the web generator from {{SN-DS-008}}. Reuse the contrast maths and the adjustment strategy already specified for `aciA11y` in `docs/design/accessibility.md` §4.1 — do not invent a second algorithm. Note the parsing traps flagged in `design-system.md` \"Implementation guidance\": some grounds are translucent (`rgba(...)` in Glassmorphism and Y2K), so a derived `bgs` must be composited against the look's opaque base before it is used as a text colour.\n\n## Security & privacy\n\nNone beyond baseline — design tokens carry no secrets or personal data. One indirect control: the toast is the app's error channel (\"toasts replace red error text everywhere\"), so an unreadable toast is a security-usability failure — a user who cannot read \"Couldn't import that PDF\" cannot act on it. Keeping the inverted pair legible in every look is therefore part of the {{SN-SEC-021}} no-silent-failure posture.\n\n## UX notes\n\nDesign references: `docs/design/design-system.md` §5 (Chips, Toast), `docs/design/component-inventory.md` §2–3 (`SaneChip`, `SaneToast`), `docs/design/ux-principles.md` §2 (\"One inverted surface only: the toast\"). The toast must read as deliberately inverted in every look — including Brutalism and Editorial, where the ground is pure white and a naive `bgs = bg` yields white-on-black, which is correct, and Neumorphism, where ground and surface are the same colour and the inversion must still be visible.\n\n## Test plan\n\n`packages/sane_ui/test/theme/bgs_contrast_test.dart` — iterate all 34 combinations, assert the two inverted pairings meet 4.5:1 using the shared contrast helper. `packages/sane_ui/test/theme/tokens_shape_test.dart` — assert every look exposes `bgs`. Golden: extend the toast and chip goldens in {{SN-DS-027}} so the inverted surface is captured per look and mode. Manual: switch through all 17 looks with a toast pinned open, in light, dark and wallpaper mode.\n\n## Dependencies\n\n{{SN-DS-002}}, {{SN-DS-005}}, {{SN-DS-006}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-002",
+    "title": "Gate tokens.json against the design canvas source with a drift check",
+    "type": "infra",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "ci-cd",
+      "docs"
+    ],
+    "milestone": "M0 Foundations",
+    "size": "S",
+    "sdlc": "verification",
+    "security": [
+      "CWE-94",
+      "OWASP-A08",
+      "sec-supply-chain"
+    ],
+    "parent": "SN-DS-001",
+    "depends_on": [
+      "SN-DS-007"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n`docs/design/design-system.md` opens by stating that the whole sheet is \"extracted verbatim from the Claude Design canvas bundle: `design/sane-data.js` … and `design/Sane Notes Design Sheet.dc.html`\", and that \"the JSON mirrors `sane-data.js` exactly\". Every downstream artefact is chained to that claim: `tokens.json` → generated Dart ({{SN-DS-002}}) → generated web CSS ({{SN-DS-008}}) → components → goldens. {{SN-DS-007}} gates the *downstream* half (generated files must match `tokens.json`), but nothing gates the *upstream* half. If a maintainer tweaks a look in the canvas — which is the artefact they actually design in — `tokens.json` silently diverges and every platform inherits a stale palette while CI stays green. This is the one link in the \"single source of truth\" chain with no check on it.\n\n## Scope\n\n**In:** a Node script `scripts/check-design-tokens.mjs` that statically extracts the data tables from `design/sane-data.js` (17 look sheets with their light/dark maps and feel tokens, `INK`, `DARK_INK`, `HL`, `WIDTHS`, `PAPER_FILL`, `TINT`/`TINTS`, `WALLS`, the font stack aliases, page `W`/`H`/freeform) and compares them key-by-key against `docs/design/tokens.json`; a readable diff on failure (`looks.cyber.dark.ac: canvas \"#00f0ff\" vs tokens \"#00e5ff\"`); an allow-list file `docs/design/token-divergences.json` where a deliberate divergence is recorded with a reason and a date; a CI job wired next to the {{SN-DS-007}} gate; a \"re-syncing from the canvas\" section in `docs/design/README.md`.\n\n**Out:** the downstream generator drift check ({{SN-DS-007}}), contrast floors ({{SN-DS-006}}/{{SN-DS-007}}), and any change to the canvas bundle itself.\n\n## Acceptance criteria\n\n- [ ] The script compares every look × mode × palette key plus every feel token, and the shared drawing constants, and exits non-zero on any unrecorded difference.\n- [ ] A seeded fixture with one altered hex fails the check and names the exact path.\n- [ ] Divergences listed in `token-divergences.json` (path, canvas value, tokens value, reason, owner) pass, and the report prints them so they stay visible.\n- [ ] The check never executes the design bundle: it parses it (a JS parser or a restricted extraction), and a test proves a bundle containing `process.exit(0)` or a network call does not run.\n- [ ] Runs in under 10 s and is wired into the same workflow as the existing token gate; failure output is copy-pasteable.\n- [ ] `docs/design/README.md` documents the re-sync flow: edit the canvas → run the extractor → review the diff → update `tokens.json` and regenerate.\n\n## Technical notes\n\n`design/sane-data.js` is a plain data module; extract with a real parser (for example `acorn` walking top-level `const` declarations) rather than a regex, and never with `eval`, `vm.runInThisContext` or a dynamic `import()` — the file is a design artefact that can change shape at any time. Keep the script dependency-light and Node-only so it can run in the same job as `scripts/validate-issues.mjs`. Extend, don't fork, the CI job created by {{SN-DS-007}}.\n\n## Security & privacy\n\nThis is a supply-chain control. Executing a design bundle in CI to read its values would turn a design edit into arbitrary code execution inside a workflow that holds a `GITHUB_TOKEN` (CWE-94; OWASP A08 Software and Data Integrity Failures). The static-parse requirement is the mitigation and must be asserted by a test. It also aligns with {{SN-CI-009}} (least-privilege token) — this job needs `contents: read` only.\n\n## UX notes\n\nNot user-facing, but it protects the user-facing invariant that motivates the whole design system: every platform renders identically from one token sheet (`design-system.md` \"Implementation guidance\"). A silent upstream drift shows up to users as a notebook whose chrome changed colour after an update.\n\n## Test plan\n\n`tools/test/check_design_tokens_test.mjs` (or the repo's Node test location): a fixture pair that matches (passes), a fixture with one changed value (fails with the right path), a fixture with a recorded divergence (passes and prints it), and a hostile fixture containing side-effecting code (proves no execution). CI: the job runs on every PR touching `design/**` or `docs/design/**`.\n\n## Dependencies\n\n{{SN-DS-007}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-003",
+    "title": "Author the UI copy deck and enforce it with a no-literal-strings lint",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "i18n",
+      "design-system",
+      "docs"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "CWE-209",
+      "CWE-532"
+    ],
+    "parent": "SN-I18N-001",
+    "depends_on": [
+      "SN-I18N-002",
+      "SN-BRD-009"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n`docs/design/screens-and-flows.md` §16 preserves roughly sixty canonical strings verbatim — \"Who's writing?\", \"Circle some ink to select it\", \"Ink replays in sync\", \"Recording — everything you write is time-linked\", \"Trash is empty — deleted notebooks stay here for 30 days.\", \"No matches for \"<query>\" — try a shorter word, or switch the filter to All.\" — and `docs/design/ux-principles.md` §5 fixes the voice that governs every new line (second person, present tense, limits explained, no exclamation marks). {{SN-BRD-009}} writes the tone-of-voice guide and {{SN-I18N-002}} stands up the ARB pipeline, but nothing connects the three: there is no artefact that says *this exact sentence, this ARB key, this screen*, and nothing prevents a widget shipping `Text('Save')`, which bypasses both translation and the voice rules. Copy is the cheapest part of the product to get wrong and the most visible; every surface an agent builds without a copy deck invents its own wording.\n\n## Scope\n\n**In:** `docs/design/copy-deck.md` (or a generated table rendered from the ARB) listing every user-visible string with: stable id, English source, the screen/component it appears on, its state (empty / error / limit / confirmation / toast), placeholders and ICU plurals, and a translator note for locale-specific lines; seeding `app/lib/l10n/app_en.arb` with the canonical strings from `screens-and-flows.md` §16 and `ux-principles.md` §4.1/§5, verbatim; a lint (custom analyzer rule or a CI script) that fails on a user-facing string literal inside a widget `build` method outside `test/`, `tool/` and a small allow-list; an `// ignore: sane_literal_string — reason` escape hatch that requires a reason.\n\n**Out:** translating into the 12 locales and the linguistic QA gate ({{SN-I18N-012}}); the pseudo-locale truncation gate ({{SN-I18N-004}}); the tone-of-voice guide itself ({{SN-BRD-009}}); website copy ({{SN-SITE-003}}).\n\n## Acceptance criteria\n\n- [ ] Every string in `screens-and-flows.md` §16 and every empty/error/limit line in `ux-principles.md` §4 exists in `app_en.arb` with a stable, screen-prefixed key, byte-identical to the spec (including the em dashes and the absence of exclamation marks).\n- [ ] The copy deck maps each key to its screen/component and state, and a CI check fails when an ARB key exists with no deck row or a deck row references a missing key.\n- [ ] The lint fails a PR that introduces `Text('Save')` in an app or `sane_ui` build method, and passes for an allow-listed non-UI literal.\n- [ ] India-locale lines (\"Everything, for the price of a chai a week\", the `+91` prefix, `₹` prices) are marked locale-specific with a translator note, per `ux-principles.md` §5.\n- [ ] Plurals (\"N result(s)\", \"N stroke(s) selected\", \"N of 5 imports\") use ICU plural syntax, not string concatenation.\n- [ ] Error strings state fact plus recovery and contain no codes, paths or identifiers.\n\n## Technical notes\n\nBuild on the `flutter_localizations` / `intl` ARB setup from {{SN-I18N-002}}; keys namespaced by screen (`editor.toast.recordingSaved`). The lint can start as a `dart analyze` custom rule or a `scripts/check-literal-strings.mjs` grep with an AST-lite heuristic, wired into the same CI job as the arch-lint ({{SN-FND-008}}); prefer the analyzer rule so IDEs surface it. The deck should be generatable from the ARB plus a small metadata block so it cannot rot.\n\n## Security & privacy\n\nError and toast copy is a disclosure surface: it must never interpolate file paths, provider identifiers, tokens, stack traces or user content into a message that is announced, logged or screenshotted (CWE-209 information exposure through an error message; CWE-532 log injection of sensitive data). The lint's allow-list must not become a hole through which unredacted strings reach {{SN-SEC-021}}'s logging path. Locked-note content must never appear in a toast or notification excerpt ({{SN-SEC-019}}).\n\n## UX notes\n\nReferences: `screens-and-flows.md` §16, `ux-principles.md` §5 (the do/don't table), `component-inventory.md` §9 (error = toast, empty = text plus a next step). The deck is also the input to {{SN-GUX-009}}'s state matrix — every cell in that matrix cites a copy-deck key rather than inventing a sentence.\n\n## Test plan\n\n`app/test/l10n/copy_deck_test.dart` — assert the canonical strings resolve and match the spec text exactly; assert plural forms render for 0/1/many. `tools/test/literal_string_lint_test` — a fixture widget with a literal fails, an allow-listed one passes. CI: deck↔ARB consistency check on every PR touching `l10n/` or `docs/design/copy-deck.md`.\n\n## Dependencies\n\n{{SN-I18N-002}}, {{SN-BRD-009}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-004",
+    "title": "Ban look-id branching and colour literals outside the token layer",
+    "type": "infra",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "ci-cd",
+      "theming"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "S",
+    "sdlc": "verification",
+    "parent": "SN-DS-001",
+    "depends_on": [
+      "SN-DS-007",
+      "SN-FND-008"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n`docs/design/ux-principles.md` §9 states the rule as a MUST: \"The behavior of a component MUST derive entirely from tokens — **no component may branch on look id**\", with the feel tokens (`glass`, `inset`, `btnSh`, `cardSh`, `bgi`, `tf`, `hst`, `hw`, `ls`, `pill`, `r`, `rs`, `bw`) as the only sanctioned way a look changes behaviour. `component-inventory.md` repeats it. Today {{SN-DS-007}} greps **only `packages/sane_ui/lib`** for hex literals, and nothing anywhere forbids `if (look.id == 'cyber')`. The moment one screen in `app/` special-cases Cyberpunk or hard-codes `Color(0xFF1F1F24)`, the 17-look promise decays silently: goldens for that look still pass because they were captured after the branch was added, and the a11y-adjusted tokens ({{SN-DS-006}}) get bypassed exactly where they were needed.\n\n## Scope\n\n**In:** two new rules in the existing arch-lint from {{SN-FND-008}}, applied to `app/` and every `packages/*/lib` UI layer: (1) **no colour literals** — `Color(0x…)`, `Colors.*`, `#rrggbb` strings — with a machine-readable allow-list for the generated theme file, the fixed-colour record button (`#e0443a` on `#fff`, the one specified exception), the shared ink/highlighter constants (`INK`, `DARK_INK`, `HL`) and the wallpaper preset gradients; (2) **no look-id branching** — comparisons, switches or map lookups keyed on `SaneLook.id`, `lookId` or a look name string — outside `packages/sane_ui/lib/src/theme/`. Each violation reports the token to use instead. An `// sane-lint: allow-look-branch(reason)` escape hatch that CI counts and reports so the number can only go down.\n\n**Out:** the token drift and contrast gate ({{SN-DS-007}}), the package-DAG rules already in {{SN-FND-008}}, and golden coverage ({{SN-DS-027}}, {{SN-GUX-015}}).\n\n## Acceptance criteria\n\n- [ ] A fixture containing `if (look.id == 'brutal')` in `app/` fails the lint with a message pointing at the feel tokens.\n- [ ] A fixture containing `Colors.white` in a widget fails; the same literal inside the generated theme or the allow-listed record button passes.\n- [ ] The allow-list is a checked-in file with a reason per entry, not an inline regex, and is printed in the CI summary.\n- [ ] The lint runs in the same CI job as the existing arch-lint and adds under 15 s.\n- [ ] The rules are documented in `CONTRIBUTING.md` and `CLAUDE.md` §9 next to the existing \"never hard-code a colour\" line.\n- [ ] Escape-hatch usages are counted and the count is reported; a PR that raises it is flagged for review.\n\n## Technical notes\n\nExtend `tools/arch_lint` (or wherever {{SN-FND-008}} landed) rather than adding a second tool, so contributors have one failure surface. Detect the ink constants by import rather than by value so a legitimate `INK[0]` use is not flagged. For Dart, walk the analyzer AST; for the web target from {{SN-DS-008}}, the equivalent check is \"no literal colour in CSS outside the generated theme block\". Keep messages actionable: name the palette key (`use look.ac, not Colors.blue`).\n\n## Security & privacy\n\nIndirect but real: look-id branching is how the accessibility-adjusted tokens get bypassed (`ux-principles.md` §9.2 — several looks fail contrast on raw `ac`/`aci` and MUST use the adjusted token), and a bypassed contrast floor is an accessibility defect with store-declaration consequences ({{SN-A11Y-017}}). No secrets or data-flow impact otherwise.\n\n## UX notes\n\nThe rule exists so a new component can be authored once in the Paper look and trusted in all seventeen (`ux-principles.md` §9.3). The lint's error message should teach that: point the author at the feel token that expresses what they were trying to special-case (pressed state → `inset`; translucency → `glass`; uppercase → `tf`).\n\n## Test plan\n\n`tools/arch_lint/test/look_purity_test.dart` — fixtures for each rule, each allow-list entry, and the escape hatch. A repository-wide run over the current tree must pass (or produce a recorded, reviewed allow-list) so the gate can be turned on immediately rather than \"later\".\n\n## Dependencies\n\n{{SN-DS-007}}, {{SN-FND-008}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-005",
+    "title": "Add the cross-look invariant test suite for sizes, semantics and selection",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "qa",
+      "a11y"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "verification",
+    "parent": "SN-DS-001",
+    "depends_on": [
+      "SN-DS-003",
+      "SN-DS-027",
+      "SN-DS-029"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n`docs/design/ux-principles.md` §9.2 lists the invariants that MUST hold across all 17 looks: component heights are fixed (chrome button 42, tool button 44, chip 34, toggle 46×28, icon button 40×40, record button 38) while radius and shadow change; **semantics never change with look** — a toggle is a toggle to every accessibility API, and casing (`tf: uppercase` in Brutalism, Retro, Cyberpunk, Editorial) is visual only and never applied to the accessible name; the active tool reads `--ac`/`--aci` in every look; badges are facts, not decoration. {{SN-DS-027}} captures golden images and {{SN-DS-029}} runs per-component accessibility checks, but neither asserts *sameness across looks* — a golden compares a look against its own previous image, so a look-specific regression (Cyberpunk's `pill: 2px` quietly shrinking a chip's height, or Editorial's uppercase transform leaking into `Semantics.label`) is captured as the new truth rather than failed.\n\n## Scope\n\n**In:** a parameterised widget-test suite in `sane_ui` that, for every `(lookId, mode)` pair: measures the rendered size of each size-fixed component at default text scale and asserts equality with `componentSizes` in `tokens.json`; captures the `SemanticsNode` tree for a representative set (button, toggle, chip, segmented, nav item, tool button, badge, toast) and asserts role, label, state and value are identical across all 34 combinations; asserts that in an uppercase look the accessible name is *not* uppercased while the painted text is; asserts a selected/active element carries a non-colour signal (weight, ring, `selected`/`aria-current`) in every look; asserts the record button's fixed colours (`#e0443a`, `#fff`) are look-invariant; asserts each badge exposes its text (\"Audio\", \"PDF\", \"Shared\", \"PRO\") to the accessibility API.\n\n**Out:** pixel goldens ({{SN-DS-027}}), the per-component a11y coverage suite ({{SN-DS-029}}), touch-target minimums ({{SN-A11Y-002}}/{{SN-PHN-019}}), and the text-scale growth rule — {{SN-A11Y-005}} owns how heights grow above default scale; this suite pins the value **at** default scale only and must be updated in lockstep if that rule lands.\n\n## Acceptance criteria\n\n- [ ] The suite runs all 34 look×mode combinations for every listed component and fails with a message naming the look, the component and the measured vs expected value.\n- [ ] Changing one look's `pill` or `rs` token does not change any measured height; a seeded mutation that does change a height fails the suite.\n- [ ] An injected `.toUpperCase()` on an accessible name fails the suite.\n- [ ] An injected colour-only selection state (accent fill with no weight/ring/flag change) fails the suite.\n- [ ] Total runtime under 60 s in CI (no image capture, semantics and layout only) and wired into the standard test job, not the nightly one.\n- [ ] The invariant list in the test file cites `ux-principles.md` §9.2 line by line so the two cannot drift.\n\n## Technical notes\n\nUse `WidgetTester.getSize`, `tester.getSemantics` / `SemanticsTester`, and the `pumpAcrossLooks` helper from {{SN-DS-027}} / `goldenMatrix` from {{SN-QA-005}} so there is one way to enumerate looks. Keep the component list data-driven from the same table the component inventory gate reads ({{SN-GUX-006}}) so a new component is covered by construction. Pin `textScaler` to 1.0 and `devicePixelRatio` explicitly.\n\n## Security & privacy\n\nNone beyond baseline. Indirectly supports the accessibility-conformance claims in {{SN-A11Y-017}}/{{SN-A11Y-018}}, which are legal statements about the product, so a regression here has compliance consequences rather than security ones.\n\n## UX notes\n\nThis suite is the machine-readable form of \"a single component set is authored in the Paper look and restyled by every look's token sheet\" (`ux-principles.md` §9). It is also the guard for §9.3's family heuristic: if the invariants hold in Paper, Minimalism, Pop, Neumorphism and Brutalism, they hold everywhere — the suite proves that claim instead of trusting it.\n\n## Test plan\n\nNew: `packages/sane_ui/test/looks/invariants_size_test.dart`, `packages/sane_ui/test/looks/invariants_semantics_test.dart`, `packages/sane_ui/test/looks/invariants_selection_test.dart`. Each file is parameterised over the 17 looks × 2 modes. Include three negative fixtures (mutated height, uppercased name, colour-only selection) proving the suite can fail.\n\n## Dependencies\n\n{{SN-DS-003}}, {{SN-DS-027}}, {{SN-DS-029}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-006",
+    "title": "Add the component-inventory coverage gate",
+    "type": "infra",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "qa",
+      "docs"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "S",
+    "sdlc": "verification",
+    "parent": "SN-DS-001",
+    "depends_on": [
+      "SN-DS-027",
+      "SN-DS-029"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n`docs/design/component-inventory.md` is the contract for the design system: roughly seventy components across ten tables, each with a proposed `Sane*` widget name, its variants, its states and the screens it appears on, plus a §10 coverage map asserting \"every component traces to a screen\". The document itself warns that \"**Widget names are proposed** … **verify** before treating a name as canonical\". Nothing checks the built package against it. In practice this means a component can be renamed, merged away or never built, and the only signal is a human noticing a missing row months later — while every issue in the backlog keeps citing the inventory as if it were true.\n\n## Scope\n\n**In:** `scripts/check-component-inventory.mjs` that parses the markdown tables into `(widget, table, screens)` tuples and asserts for each: the symbol is exported from `packages/sane_ui` (or appears in a checked-in `app-composition` allow-list that names the owning issue key, for the compositions the design system deliberately does not own, such as `SaneUpsellCard` or `SaneProfileSwitcher`); at least one golden file exists under the golden path convention from {{SN-QA-005}}; the widget appears in the accessibility suite from {{SN-DS-029}}. Output: a coverage report artifact (`built / allow-listed / missing`, with percentages per table) plus a non-zero exit when a row is neither built nor allow-listed. A rename must update the doc and the code in the same PR — the gate is what makes that true.\n\n**Out:** building the missing components (each area's own issues), the golden harness ({{SN-QA-005}}), the a11y suite ({{SN-DS-029}}), and the screens-and-flows coverage side ({{SN-GUX-016}} covers screen-level fidelity review).\n\n## Acceptance criteria\n\n- [ ] Every row in all ten inventory tables resolves to a built symbol, an allow-list entry with an issue key, or a failure.\n- [ ] The gate reports golden and a11y coverage per component and fails when a built component has neither.\n- [ ] Renaming `SaneSwatch` without touching the doc fails the gate; renaming both passes.\n- [ ] The report is published as a CI artifact and summarised in the job output (e.g. \"62/70 built, 6 allow-listed, 2 missing\").\n- [ ] The gate is advisory (warn) until the end of M1 and blocking from M2, with the switch a one-line config change.\n- [ ] Parsing is resilient to table formatting changes (a malformed table fails loudly rather than silently covering nothing).\n\n## Technical notes\n\nNode-only, next to `scripts/validate-issues.mjs` and `scripts/render-issues.mjs`, reusing their conventions (plain ESM, no dependencies, `--json` mode). Extract Dart exports by reading `packages/sane_ui/lib/sane_ui.dart` and its `export` directives rather than parsing every file. Golden discovery uses the structured path from {{SN-QA-005}} (`test/goldens/<component>/<look>-<mode>.png`). Keep the allow-list at `docs/design/component-owners.json` so the inventory stays prose and the machine data stays JSON.\n\n## Security & privacy\n\nNone beyond baseline. The script reads repository files only and must not execute Dart or fetch anything, keeping it safe to run in a least-privilege job ({{SN-CI-009}}).\n\n## UX notes\n\nThe user-visible value is consistency: a component that exists in the inventory but not in the build becomes an ad-hoc reimplementation on one screen, which is precisely the \"platform inconsistency\" failure `ux-principles.md` §10 names as the competitors' biggest gap. The coverage report is also the fastest way for a new agent to see what is left to build in `sane_ui`.\n\n## Test plan\n\n`tools/test/check_component_inventory_test.mjs` — fixtures: a matching doc/package pair passes; a renamed widget fails; an allow-listed row passes and is reported; a built component with no golden is reported as partial; a corrupted table fails loudly. CI: runs on PRs touching `docs/design/component-inventory.md` or `packages/sane_ui/**`.\n\n## Dependencies\n\n{{SN-DS-027}}, {{SN-DS-029}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-007",
+    "title": "Decide which page pixels are look-independent and prove it in goldens",
+    "type": "design",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "theming",
+      "pages-canvas",
+      "design-system"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "S",
+    "sdlc": "design",
+    "parent": "SN-DS-001",
+    "depends_on": [
+      "SN-DS-002",
+      "SN-PG-004",
+      "SN-INK-030"
+    ],
+    "labels_extra": [
+      "needs-decision"
+    ],
+    "body": "## Context\n\nTwo rules in the design corpus contradict each other, and five surfaces will each guess differently. `docs/design/ux-principles.md` §2 says: \"Chrome uses the look's surfaces; the canvas uses the shared ink/paper constants. **The page renders pixel-identically regardless of theme** … A user switching looks must see their notebook's ink unchanged\", and `design-system.md` \"Shared drawing constants\" repeats it: \"the canvas renders pixel-for-pixel the same regardless of theme; only the chrome … reads the look\". But `pp` (paper) and `pl` (paper-line) are two of the **13 per-look palette keys**, and they differ across looks in light mode alone — Paper `#fcf9f1`, Skeuomorphism `#fbf6e7`, Retro `#fdf6e9`, Minimalism `#ffffff`, Cyberpunk dark `#0f1524`. `ux-principles.md` §7 then leans the other way: \"The page paper (`pp`) is a token, so paper darkens in dark mode (e.g. Paper `#fcf9f1` → `#2b251d`). … Do not force a white page in dark mode.\" Both cannot be true. Until someone decides, the editor, the thumbnail generator, the PDF/PNG exporters, the print path and the share recipient's device will disagree about what colour a page is.\n\n## Scope\n\n**In:** a written decision — an ADR under `docs/adr/` plus amendments to `ux-principles.md` §2/§7 and `design-system.md` — that fixes, **per page layer**, whether it reads the look or a shared constant: page fill (`pp`), rule/grid/staff colour (`pl`), tint wash (`TINT`), ink (already settled: index into `INK`/`DARK_INK` at paint time, {{SN-INK-030}}), highlighter (shared `HL`, never inverted), PDF pixels (never recoloured), page drop shadow and 4 px radius, and the freeform ground. The decision must also state what happens for derived artefacts: thumbnails, PDF/PNG/SVG export, print, and a page rendered on a recipient's device whose look differs ({{SN-SHR-013}}), plus how the per-notebook look override ({{SN-LIB-022}}) interacts.\n\n**Out:** implementing the paper renderer ({{SN-PG-004}}, {{SN-TPL-003}}), the dark-ink mapping ({{SN-INK-030}}), the night-filter reading aid for PDFs ({{SN-PDF-027}}).\n\n## Acceptance criteria\n\n- [ ] An ADR records the decision, the two conflicting sources, and the rationale; both design docs are amended in the same PR so the contradiction cannot be read again.\n- [ ] `tokens.json` (or its README) marks each palette key as **chrome-only**, **canvas**, or **both**, so a builder can tell from the data which side a key belongs to.\n- [ ] A golden test renders the same seeded page (lined paper, cream tint, six ink colours, one highlight) in all 17 looks and asserts the documented invariance: either byte-identical canvas pixels, or identity of every layer except the ones the ADR lists as look-driven.\n- [ ] Export goldens prove a PDF/PNG of that page is identical regardless of the active look, so a shared or exported page never changes because of the sender's theme.\n- [ ] Dark mode behaviour is stated explicitly (paper darkens by token vs. paper is constant and only ink inverts) and matches the golden.\n- [ ] The notebook thumbnail path uses the same decision as the editor (no third rendering).\n\n## Technical notes\n\nTouch `docs/adr/`, `docs/design/ux-principles.md`, `docs/design/design-system.md`, `docs/design/tokens.json` (metadata only), and the render entry points in `sane_render`/`sane_pdf` export. The cheapest coherent answer is likely \"the canvas reads `pp`/`pl` from the **active look and mode** for on-screen rendering, but every exported or shared artefact renders against a canonical paper\" — but that must be decided, written down and tested, not assumed. Whatever is chosen, the renderer needs a single `PageSurfaceResolver` so editor, thumbnail, export and print cannot diverge.\n\n## Security & privacy\n\nNone beyond baseline. One integrity note: exports and share links are artefacts other people receive, so making their appearance depend on the sender's local theme would make a document's rendering non-deterministic across devices — an integrity/reproducibility concern for the `.sanenote` format spec ({{SN-DOC-009}}) rather than a confidentiality one.\n\n## UX notes\n\nThe user-facing promise at stake is \"switching looks must never change your notes\". Whatever the ADR decides, the UI must not surprise: if paper does follow the look, the look switcher ({{SN-DS-015}}) should preview a page so the user sees it before committing; if it does not, dark mode still needs a legible page and the ink inversion rule carries that load.\n\n## Test plan\n\n`packages/sane_render/test/goldens/page_look_invariance_test.dart` (all 17 looks × light/dark on one seeded page), `packages/sane_pdf/test/export_look_invariance_test.dart` (export under three looks must be identical bytes), and a unit test that thumbnail, editor and export all call the same resolver. Manual: switch looks with a notebook open and confirm the documented behaviour.\n\n## Dependencies\n\n{{SN-DS-002}}, {{SN-PG-004}}, {{SN-INK-030}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-008",
+    "title": "Implement page-turn, zoom and overlay transition motion with reduce-motion fallbacks",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "pages-canvas",
+      "design-system",
+      "a11y"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-PG-001",
+    "depends_on": [
+      "SN-DS-025",
+      "SN-PG-005",
+      "SN-PG-008"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n{{SN-DS-025}} defines the motion tokens (micro 175 ms, control 200 ms, surface 250 ms, toast dwell 2.4 s, the curves and the reduce-motion helper) but explicitly puts \"page-turn/zoom (editor/pages area)\" **out of scope**, and no pages or editor issue picks it up: {{SN-PG-005}} implements the pan/zoom viewport limits, {{SN-PG-008}} implements prev/next and go-to-page as state changes, {{SN-PG-006}} implements fit-to-viewport as an action. Nothing specifies what the user *sees* between page 3 and page 4, or between a zoomed-in view and fit-to-page. `ux-principles.md` §6 sets the constraints: surface transitions ~200–300 ms, nothing chrome-related over ~350 ms, motion is interruptible (\"a user can start writing mid-animation; input always takes precedence\"), and Reduce Motion replaces directional/scale transitions with cross-fades and \"disable[s] page-turn and zoom animations\".\n\n## Scope\n\n**In:** the page transition for prev/next, go-to-page and jump-to-bookmark (a short directional slide or cross-fade built on the `surface` duration token, ≤ 250 ms, with the direction following reading direction and mirroring under RTL); the animated transform for fit-to-viewport, recenter and zoom-to-fit ({{SN-PG-006}}); the page-rail thumbnail → page focus transition ({{SN-PG-011}}); interruption semantics — a pointer-down on the canvas cancels the in-flight animation and the first ink sample lands on the settled page, never a dropped or misplaced stroke; the reduce-motion path (cross-fade or instant) driven by `reduceMotion(context)`; frame budget adherence on the transition.\n\n**Out:** the ink path itself (never animated — `ux-principles.md` §6), the palette dock drag and edge-glow ({{SN-ED-005}}), scroll modes and continuous scrolling ({{SN-PG-018}}), overlay open/close mechanics owned by `SaneOverlay` ({{SN-DS-019}}) — this issue only ensures the pages surface uses them consistently.\n\n## Acceptance criteria\n\n- [ ] Page next/prev animates within the `surface` token duration and is visually identical in all 17 looks (motion is not a look-specific effect, except where a look's identity permits a spring per §6).\n- [ ] A pointer-down mid-transition cancels it immediately; an integration test writes a stroke starting 80 ms into a page turn and asserts the stroke lands on the destination page at the correct page coordinates with no lost samples.\n- [ ] With Reduce Motion on, page turns and zoom transitions are a cross-fade or instant, and a test asserts no directional/scale animation runs.\n- [ ] No frame exceeds 16.7 ms during a page turn on the Tier 1 device with a 5,000-stroke page ({{SN-PERF-012}} fixture), measured by the existing perf harness.\n- [ ] Transitions mirror correctly under RTL and compose with left-handed mode (rail on the left).\n- [ ] Page turn does not animate during audio playback follow-along in a way that fights the ink-replay dimming ({{SN-AUD-011}}).\n\n## Technical notes\n\nImplement in the pages/editor layer over the transform owned by {{SN-PG-005}}; use `AnimationController` with the `SaneMotion` tokens rather than literal durations, and the `AnimatedX` convention from {{SN-DS-025}}. Guard with `RepaintBoundary` so the transition repaints the page layer only, per {{SN-PERF-021}}. Cancellation must run through the same tool state machine as {{SN-ED-002}} so a cancelled animation cannot leave the viewport transform mid-flight.\n\n## Security & privacy\n\nNone beyond baseline. One correctness-adjacent note: an interrupted transition must never commit a stroke to the wrong page — that would be silent data corruption from the user's point of view, so the interruption test is a data-integrity test as much as a motion test.\n\n## UX notes\n\nReferences: `ux-principles.md` §6 (durations, easing, interruptibility, reduce-motion), §1 (never block the writing thread), `screens-and-flows.md` §7.2/§7.7. The intent is calm: a page turn should read as \"the page moved\", not as an effect. Nothing here may add perceived latency to inking — if a transition and a pen-down race, the pen wins.\n\n## Test plan\n\n`app/test/features/editor/page_transition_test.dart` (duration, direction, RTL mirroring, reduce-motion fallback), `integration_test/page_turn_interrupt_test.dart` (stroke during transition lands correctly), and a perf run added to the jank suite from {{SN-PERF-007}} with the dense-page fixture. Golden: a reduce-motion static frame per representative look.\n\n## Dependencies\n\n{{SN-DS-025}}, {{SN-PG-005}}, {{SN-PG-008}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-009",
+    "title": "Author the cross-surface empty, loading, error and offline state matrix",
+    "type": "design",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "onboarding",
+      "a11y"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "design",
+    "security": [
+      "CWE-209",
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-DS-001",
+    "depends_on": [
+      "SN-DS-022",
+      "SN-LIB-008",
+      "SN-SYNC-020"
+    ],
+    "labels_extra": [
+      "needs-design"
+    ],
+    "body": "## Context\n\n`docs/design/ux-principles.md` §4 writes the defaults for empty, loading, error and offline states and says in its own words that this section \"needs maintainer sign-off but is what a builder MUST implement until overridden\"; `screens-and-flows.md` open question 18 states plainly that \"offline / error / loading states are largely undefined\" and that only a minimal pre-logic Library shell exists. Three issues implement slices — {{SN-LIB-008}} (library empty/loading/error/offline), {{SN-ONB-010}} (first-run tips and the Library/Search/Trash empty states), {{SN-SYNC-020}} (nine sync states) — and {{SN-DS-022}} supplies the primitives. Everything else is uncovered: the Editor (no page, PDF still rendering, render failure, audio device busy), Search (no query, indexing in progress, index unavailable), all six Settings tabs, the five overlays, the Profiles and Login screens, the Ask panel, study and collaboration surfaces. Each of those will be invented separately by a different agent unless the matrix exists first.\n\n## Scope\n\n**In:** `docs/design/states-matrix.md` — one row per surface from `screens-and-flows.md` §1 (six screens, five overlays, nine persistent/inline surfaces) × five columns: **empty**, **loading**, **error**, **offline**, **free-plan-limit**. Each cell states: the exact copy (as a key from the copy deck, {{SN-GUX-003}}), the next step offered, which primitive renders it (`SaneEmptyState` / `SaneSkeleton` / `SaneToast` / inline spinner / disabled control with a hint), whether and how it is announced to assistive technology, and the owning issue key. Plus the decision rules restated as testable checks (content → skeleton → spinner, never a full-screen spinner; toasts replace inline red everywhere; no dead ends; offline is silent for local work; destructive actions confirm with the consequence named) and a line added to the PR checklist.\n\n**Out:** implementing any individual state (the owning area issues do that), the sync engine's state machine ({{SN-SYNC-006}}), and the copy deck itself ({{SN-GUX-003}} — this matrix supplies its error/empty/limit rows).\n\n## Acceptance criteria\n\n- [ ] Every surface listed in `screens-and-flows.md` §1 has all five cells filled, or an explicit \"not applicable — because …\".\n- [ ] Every cell's copy passes the voice rules: second person, fact plus recovery, limits state what Pro does, no exclamation marks, no codes or paths.\n- [ ] Each cell names the primitive and the owning issue; cells with no owner become follow-up issues filed in the same PR.\n- [ ] The matrix states the announce behaviour per cell (polite live region for result counts and toasts; nothing for decorative skeletons).\n- [ ] Maintainer sign-off is recorded in the document (date + who), satisfying the \"needs sign-off\" caveat in `ux-principles.md` §4.\n- [ ] A checklist line (\"states: empty / loading / error / offline / limit handled per states-matrix.md\") is added to the PR template and the review checklist.\n\n## Technical notes\n\nKeep it a single markdown table per surface group so it renders in the docs site ({{SN-DOC-005}}) and diffs cleanly. Cross-link each row to its owning issue key using the same double-brace token convention the other docs use. Where a state depends on plan, record both the Free and Pro rendering. Where a state depends on profile lock or guest mode, say so — several surfaces must degrade differently for a locked profile ({{SN-AUTH-014}}) and for guest ({{SN-AUTH-010}}).\n\n## Security & privacy\n\nError copy is a disclosure surface: the matrix must forbid leaking file paths, provider identifiers, tokens, sync URLs or note content in any error cell (CWE-209), and must state that locked-notebook and guest-mode surfaces show a neutral state rather than a count or a title ({{SN-SEC-019}}). Offline cells must never imply data loss — the app is local-first and the copy must say so, which is also the honest answer.\n\n## UX notes\n\nReferences: `ux-principles.md` §4.1–4.4 (the decisive defaults), `component-inventory.md` §9 (the cross-cutting state table every component must handle), `screens-and-flows.md` §6 and open question 18. The mascot rule belongs here too: at most one Sage, on the Library first-run empty state — not on every empty list ({{SN-GUX-014}} enforces it).\n\n## Test plan\n\nDocumentation-led, but verifiable: a `scripts/check-states-matrix.mjs` (or an extension of the component-inventory gate, {{SN-GUX-006}}) that asserts every surface in `screens-and-flows.md` §1 has a row and every non-N/A cell cites a copy key that exists in the ARB. Per-state widget tests stay with the owning issues; this issue adds the consistency check and the checklist.\n\n## Dependencies\n\n{{SN-DS-022}}, {{SN-LIB-008}}, {{SN-SYNC-020}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-010",
+    "title": "Implement the cloud-only action degradation and queue pattern",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "sync",
+      "design-system",
+      "sharing-export"
+    ],
+    "milestone": "M4 Identity, Sync & Privacy",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-AUTH-2",
+      "MASVS-NETWORK-1"
+    ],
+    "parent": "SN-SYNC-001",
+    "depends_on": [
+      "SN-DS-019",
+      "SN-SYNC-020"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n`docs/design/ux-principles.md` §4.4 sets the rule for anything that genuinely needs a network: \"Cloud-only actions degrade gracefully. If a feature needs the network (real-time collaboration, cloud AI opt-in, share-link creation), it shows a plain, temporary 'Needs a connection — we'll do it when you're back online' and queues where it can.\" {{SN-SYNC-020}} covers the *ambient* sync status (upToDate, syncing, pendingUpload, offline, driveFull, authNeeded …), but nothing implements the pattern for **one-shot user-initiated cloud actions**: creating or rotating a share link ({{SN-SHR-013}}, {{SN-SHR-017}}), sending an invite ({{SN-SHR-016}}), joining a collaboration room ({{SN-COL-009}}), an opted-in cloud inference request ({{SN-AI-019}}), student verification ({{SN-BILL-015}}), purchase and restore ({{SN-BILL-004}}). Today each of those would fail its own way — most likely a spinner that never resolves, which is the exact failure the local-first design is meant to make impossible.\n\n## Scope\n\n**In:** a shared `NetworkGatedAction` helper plus the UI convention that uses it — a capability/connectivity probe; on failure either (a) **queue**: enqueue into a durable, per-profile action queue with a visible pending state, exponential backoff with jitter, an idempotency key, a cancel affordance and an on-success toast, or (b) **live-only**: keep the control enabled, show the canonical toast, and do not pretend to queue; a registry declaring for each cloud action which mode it uses and why; consistent copy from the copy deck; assistive-technology announcements for enqueue, retry and completion; and the guarantee that nothing on this path can block note-taking.\n\n**Out:** the sync engine and its status UI ({{SN-SYNC-006}}, {{SN-SYNC-020}}), the per-feature network calls themselves, attachment transfer resumption ({{SN-SYNC-012}}), and telemetry.\n\n## Acceptance criteria\n\n- [ ] Each cloud action in the registry declares queueable or live-only with a recorded reason; a new cloud action without a registry entry fails a lint/test.\n- [ ] In airplane mode, every registered action produces the canonical \"Needs a connection\" toast within 300 ms — never an indefinite spinner and never a silent no-op.\n- [ ] A queued action survives app restart, replays exactly once on reconnect (idempotency key honoured), and can be cancelled from the pending state.\n- [ ] Retry uses backoff with jitter and stops after a documented ceiling, surfacing a final, actionable state rather than looping.\n- [ ] Note-taking is never blocked: an integration test writes strokes continuously while three actions are queued and asserts no frame regression and no modal.\n- [ ] Sign-out and profile deletion purge the queue; a queued action for profile A never executes under profile B.\n\n## Technical notes\n\nLive in `sane_sync` (or a thin `sane_core` service consumed by `app/`) so it is usable from sharing, collaboration, billing and AI without a dependency inversion; the UI half is a small `SaneSurface`-based pending row plus `SaneToast` from {{SN-DS-019}}. Persist the queue in the encrypted local store with the same per-profile isolation as {{SN-AUTH-013}}. Connectivity must be treated as a hint, not a truth — attempt and fail fast rather than trusting a reachability API.\n\n## Security & privacy\n\nThe queue is a durable store of user intent and must not become a plaintext secrets cache: payloads are wrapped with the profile/items key ({{SN-CRY-002}}, {{SN-CRY-007}}) and never contain bearer tokens — re-acquire credentials at send time. Replay must be idempotent so a retry cannot double-invite or double-rotate a key ({{SN-SHR-017}}). Per-profile isolation is mandatory (MASVS-STORAGE-1, MASVS-AUTH-2). Queue contents must be excluded from OS auto-backup ({{SN-SEC-023}}) and from diagnostics bundles ({{SN-TEL-008}}).\n\n## UX notes\n\nReferences: `ux-principles.md` §4.4 (offline is the default, not an error), §10 (\"every limit has a door\"), `component-inventory.md` §9 (error = toast, never inline red). Tone matters: the message is a fact and a promise, not an apology or an alarm. Nothing about being offline may look like data loss, because there is none.\n\n## Test plan\n\n`packages/sane_sync/test/network_gated_action_test.dart` (queue durability, idempotency, backoff ceiling, cancel, per-profile purge), `app/test/features/share/offline_share_test.dart` (live-only path shows the toast and no fake progress), `integration_test/offline_actions_test.dart` (airplane mode across the registry; writing stays smooth). Manual: toggle airplane mode mid-invite on a device.\n\n## Dependencies\n\n{{SN-DS-019}}, {{SN-SYNC-020}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-011",
+    "title": "Implement the sidebar brand row, plan label and profile switcher",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "library",
+      "design-system",
+      "brand"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PLATFORM-3"
+    ],
+    "parent": "SN-LIB-001",
+    "depends_on": [
+      "SN-DS-020",
+      "SN-BRD-003",
+      "SN-AUTH-007"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n`docs/design/screens-and-flows.md` §2 lays the sidebar out top to bottom: a **brand row** (Sage mark + the \"Sane\" wordmark + the plan label \"Free · Student\" / \"Pro · Student\"), the search launcher, the nav list, subjects, then a bottom block containing the free-plan card, Settings and the **profile switcher** (avatar + name + note → Profiles screen). `component-inventory.md` §3 names both components (`SaneBrandRow`, `SaneProfileSwitcher`). Neither has an owner: {{SN-DS-020}} builds the shell and explicitly puts both out of scope as \"app/library compositions\", {{SN-LIB-009}} wires only the five nav items and the subjects list and punts the upsell card elsewhere, and a search of the whole backlog for \"profile switcher\" returns nothing. The sidebar is on every non-fullscreen screen, so these are the two most-seen components in the product.\n\n## Scope\n\n**In:** `SaneBrandRow` — the Sage mark at ≥ 24 px with clear space equal to the hat-brim height, the wordmark rendered in the **display face of the active look** with \"Sane\" at weight 600 and (where the full name is shown) \"Notes\" at 400 in `--mu`, tracking −.01em, plus the plan label fed by the entitlement provider with the student suffix; the 68 px rail variant that keeps the mark and drops the wordmark and label; `SaneProfileSwitcher` — avatar (initial, per-profile colour), name, note, current-profile ring, tap routes to the Profiles screen, target ≥ 44 pt / 48 dp, accessible name like \"Switch profile, currently Riya, B.Tech · Physics minor\"; guest and signed-out variants.\n\n**Out:** the mascot asset and its tile grounds ({{SN-BRD-003}}), the Profiles screen itself ({{SN-ONB-009}}), profile CRUD and switching logic ({{SN-AUTH-007}}, {{SN-AUTH-015}}), the free-plan upsell card and meters ({{SN-GUX-012}}), the search launcher ({{SN-SRCH-007}}), and the sidebar chrome ({{SN-DS-020}}).\n\n## Acceptance criteria\n\n- [ ] Both components render correctly in all 17 looks × light/dark, in the 248 px sidebar and the 68 px rail, and in wallpaper mode over a frosted surface.\n- [ ] The plan label updates live when a trial starts ({{SN-BILL-011}}) or an entitlement is restored, and reads \"Free · Student\" / \"Pro · Student\" only when student status is verified; otherwise \"Free\" / \"Pro\".\n- [ ] Guest mode shows a guest identity with a plain line about notes staying on this device — never an empty avatar or a sign-in nag ({{SN-AUTH-010}}).\n- [ ] The mark is never recoloured, stretched, flipped or cropped: the widget exposes only a size parameter, and a test asserts a uniform-scale, unflipped render at ≥ 24 px.\n- [ ] Text does not truncate or overflow in the pseudo-locale (+40%) at either sidebar width; the layout mirrors correctly under RTL.\n- [ ] Accessibility: mark is decorative (`ExcludeSemantics`) when the wordmark is present; the switcher exposes name, role (button), and the current profile as its value.\n\n## Technical notes\n\nCompose from `SaneSurface`, `SaneText` (`displayS`/`muted`/`label` roles), `SaneAvatar` and `SaneSageMark`; read the plan from the entitlement provider ({{SN-BILL-004}}) behind a narrow interface so the library layer does not depend on billing internals. Place in `app/lib/features/library/widgets/` (or `sane_ui` if the coverage gate {{SN-GUX-006}} assigns them there — update `component-owners.json` accordingly). The wordmark must use `--fd` of the active look; it is text, not an image, so it restyles with the look and stays localisable.\n\n## Security & privacy\n\nThe profile name and note are user content and appear in the persistent chrome: they must be excluded from screenshots and app-switcher snapshots when a profile or app lock is engaged ({{SN-SEC-019}}, {{SN-AUTH-014}}), must never be written to logs or telemetry ({{SN-SEC-021}}, MASVS-PRIVACY-1), and the switcher must not reveal other profiles' notebook counts or activity, preserving per-profile isolation ({{SN-AUTH-013}}). Plan state is read-only client-side and fails closed to Free ({{SN-BILL-005}}).\n\n## UX notes\n\nReferences: `screens-and-flows.md` §2 and §4, `component-inventory.md` §3, `design-system.md` §1 (wordmark weights and tracking, mark rules). Voice: the plan label is a fact, not an advert — the upsell lives in the card below it ({{SN-GUX-012}}). The switcher's note (\"Sibling · Class 12 · JEE prep\") is what makes multi-profile feel personal; keep it, and truncate with an ellipsis plus a tooltip rather than dropping it.\n\n## Test plan\n\n`app/test/features/library/brand_row_test.dart` (plan label states: free, pro, student, guest; rail variant; pseudo-locale; RTL), `app/test/features/library/profile_switcher_test.dart` (semantics, target size, routing, locked-profile redaction). Golden: both components across a representative look per family × light/dark, plus wallpaper mode. Manual: switch profiles and start a trial with the sidebar open.\n\n## Dependencies\n\n{{SN-DS-020}}, {{SN-BRD-003}}, {{SN-AUTH-007}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-012",
+    "title": "Implement the plan-limit disclosure pattern: upsell card, meters and limit lines",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "billing",
+      "design-system",
+      "library"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "OWASP-A01",
+      "MASVS-RESILIENCE-1"
+    ],
+    "parent": "SN-BILL-001",
+    "depends_on": [
+      "SN-DS-018",
+      "SN-PDF-007",
+      "SN-BILL-012"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nThe same free-plan limit is stated on at least four surfaces in the design, in four different shapes: the sidebar card \"Free plan · N of 5 PDF imports\" with a progress bar and \"Upgrade · ₹83/mo\" (`screens-and-flows.md` §2); the import overlay meter \"N of 5 imports used this month\" plus \"Unlimited with Pro\" (§9); the Share footnote \"Free plan: up to 3 people per notebook. Pro removes the limit.\" (§10); the Settings storage meter \"1.8 GB of 5 GB … Pro raises the limit to 50 GB\" (§12). `component-inventory.md` names `SaneUpsellCard` and `SaneImportMeter`. None of it has an owner: {{SN-DS-020}} lists the upsell card as an out-of-scope app composition, {{SN-LIB-009}} punts it to the billing epic, and no billing issue implements it — {{SN-BILL-011}} builds the Upgrade overlay, {{SN-BILL-012}} the gate routing, {{SN-PDF-007}} the quota logic. Without a shared pattern the four surfaces will disagree about the same number, which is the one thing `ux-principles.md` §10 forbids: \"Every limit has a door\", stated honestly and consistently.\n\n## Scope\n\n**In:** three components plus the view-model that feeds them — `SaneUpsellCard` (free + wide only: title line, `SaneProgress`, upgrade button with the current price, dismissible? no — it is persistent but quiet), `SaneMeter` (a labelled progress wrapper whose accessible value reads \"2 of 5 imports used this month\" and which never signals state by colour alone), `SaneLimitLine` (one honest sentence naming the Free allowance and what Pro does, no pressure, no exclamation mark); and a single `PlanLimit` view-model (id, used, cap, period, reset date, copy keys, upgrade route) so the sidebar, the overlay and Settings render from one source and cannot disagree. Wire the four known limits: PDF imports per month, people per notebook, recording length, cloud storage. All of it hidden entirely on Pro.\n\n**Out:** the entitlement source of truth ({{SN-BILL-002}}, {{SN-BILL-004}}), quota enforcement and the gates themselves ({{SN-PDF-007}}, {{SN-AUD-017}}, {{SN-SHR-016}}), the Upgrade overlay ({{SN-BILL-011}}), pricing and regional formatting ({{SN-BILL-010}}, {{SN-I18N-006}}), anti-dark-pattern policy ({{SN-BILL-017}} — this issue implements to it).\n\n## Acceptance criteria\n\n- [ ] One provider feeds all renderings of a limit; a widget test renders the sidebar card, the import meter and the settings row from the same state and asserts identical numbers and reset periods.\n- [ ] The meter exposes a text value to assistive technology (\"2 of 5 imports used this month\") and does not rely on bar colour to convey \"nearly full\".\n- [ ] At the cap, the gated control stays visible and routes to the Upgrade overlay with the canonical toast (\"Free plan: 5 PDF imports a month\") — never a hidden control, never a dead end.\n- [ ] Anti-dark-pattern rules hold: no countdown urgency, no red, no pre-checked upgrade, and the line always states what Free keeps as well as what Pro adds.\n- [ ] Pro (and trialling) accounts render none of these surfaces; a test asserts the sidebar card is absent.\n- [ ] Copy fits the pseudo-locale (+40%) at the 248 px sidebar width and mirrors under RTL; prices format per locale ({{SN-I18N-006}}).\n- [ ] Renders correctly in all 17 looks × light/dark and over wallpaper's frosted surface.\n\n## Technical notes\n\nComponents in `sane_ui` (they are pure presentation) with the `PlanLimit` view-model in `app/` reading the entitlement provider from {{SN-BILL-004}} — never the store SDK directly. `SaneMeter` wraps `SaneProgress` from {{SN-DS-018}}; do not introduce a second progress primitive. Reset dates must come from the entitlement layer, not be computed locally from a device clock, so a changed clock cannot grant extra imports.\n\n## Security & privacy\n\nEntitlement state is a client-side read of a verified claim and must **fail closed to Free** ({{SN-BILL-005}}); the UI must never be the enforcement point — the gate is enforced where the action happens ({{SN-BILL-012}}), so a tampered meter cannot unlock a feature (MASVS-RESILIENCE, OWASP M4 insufficient validation). The card must not display account identifiers, emails or receipt data. Impression counting, if ever added, is telemetry and requires opt-in consent ({{SN-PRV-009}}, {{SN-TEL-010}}) — this issue adds none.\n\n## UX notes\n\nReferences: `screens-and-flows.md` §2/§9/§10/§12/§14, `ux-principles.md` §3 (\"Pro features are visible but honest\") and §5 (\"Explain limits, never hide them\"), `component-inventory.md` §3/§6. The tone is the product's differentiator: \"Free plan: up to 3 people per notebook. Pro removes the limit.\" — a fact, a door, and no pressure.\n\n## Test plan\n\n`packages/sane_ui/test/components/meter_test.dart` (a11y value, no colour-only state, 17 looks), `app/test/features/billing/plan_limit_consistency_test.dart` (three surfaces, one number), `app/test/features/billing/limit_gate_test.dart` (at cap → Upgrade + toast, control still visible), pseudo-locale layout test. Golden: sidebar card and import meter per look family × light/dark.\n\n## Dependencies\n\n{{SN-DS-018}}, {{SN-PDF-007}}, {{SN-BILL-012}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-013",
+    "title": "Implement recent searches and the no-query search state",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "search",
+      "privacy",
+      "design-system"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-1",
+      "CWE-532"
+    ],
+    "parent": "SN-SRCH-001",
+    "depends_on": [
+      "SN-SRCH-006",
+      "SN-SRCH-015"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n`docs/design/ux-principles.md` §4.1 specifies the Search screen's empty state as \"Show recent searches + 'Search handwriting, typed text, PDFs and audio.'\" — the only empty state in the whole matrix that requires a feature rather than a sentence. {{SN-SRCH-006}} builds the screen and covers \"loading/empty/error states\" for the results area, and {{SN-ONB-010}} covers the no-query copy, but no issue in the backlog implements a recent-query history: a search of every issue body for \"recent search\" returns a single empty-state mention. Without it, Search opens to an empty field above a blank area — a dead surface on the screen the design reaches by ⌘K from everywhere, and the one place a student returns to repeatedly during revision.\n\n## Scope\n\n**In:** a per-profile, on-device recent-query store (most-recent-first, deduplicated case-insensitively, capped at 10 entries and a sane per-entry length); the no-query panel rendering the recents as rows or chips with a per-item remove and a \"Clear\" action, above the placeholder line; restoring the filter that was active when the query was run; keyboard and assistive-technology support (focus order, a labelled list, announcement on clear); a Settings → Privacy toggle \"Remember recent searches\" (default on, off in guest mode); and the privacy rules: query text only (never results or snippets), stored with the encrypted index, never synced, never logged or sent in telemetry, cleared on sign-out and profile deletion, and suppressed while the app or profile lock is engaged.\n\n**Out:** the search screen scaffold and result list ({{SN-SRCH-006}}), saved smart collections ({{SN-SRCH-014}} — a different, deliberate artefact), the index and ranking ({{SN-SRCH-002}}–{{SN-SRCH-004}}), the launcher and shortcut ({{SN-SRCH-007}}).\n\n## Acceptance criteria\n\n- [ ] Opening Search with no query shows up to 10 recents plus the placeholder line; with no history it shows the placeholder line alone and no empty container.\n- [ ] Tapping a recent re-runs it with its saved type filter; the list re-orders to most-recent-first without duplicating.\n- [ ] Remove and Clear take effect immediately and survive a restart; Clear announces \"Recent searches cleared\".\n- [ ] History is stored inside the encrypted search-index store ({{SN-SRCH-015}}) — a test asserts no plaintext query string appears in any on-disk file or in `SharedPreferences`.\n- [ ] Nothing is retained in guest mode beyond the session, and profile A never sees profile B's recents.\n- [ ] With the Settings toggle off, no new entries are recorded and existing ones are purged.\n- [ ] Queries never appear in logs, crash records or the diagnostics bundle ({{SN-TEL-008}}); a redaction test covers it.\n- [ ] Renders in all 17 looks × light/dark; chips use `SaneChip`, rows use the standard list row; RTL mirrored.\n\n## Technical notes\n\nStore in the existing per-profile encrypted database rather than a new file, so key management and profile isolation come for free ({{SN-CORE-004}}, {{SN-SRCH-015}}). Cap entry length before persisting to avoid storing a pasted document as a \"query\". Reuse `SaneChip`/`SaneEmptyState` from `sane_ui`; the panel is a state of the existing screen, not a new route.\n\n## Security & privacy\n\nSearch queries are among the most sensitive derived data in a note app — they reveal what a person is studying, worried about, or hiding. Controls: encryption at rest with the index (MASVS-STORAGE-1), no network egress ever (MASVS-NETWORK-1, LINDDUN detectability/disclosure), exclusion from OS auto-backup ({{SN-SEC-023}}), suppression behind app lock ({{SN-SEC-020}}), no telemetry (CWE-532; {{SN-TEL-003}} deny-by-default serialiser), deletion on account/profile deletion as part of {{SN-PRV-006}}'s guarantees, and a user-visible off switch ({{SN-PRV-002}} \"What leaves this device\" lists it as staying).\n\n## UX notes\n\nReferences: `ux-principles.md` §4.1, `screens-and-flows.md` §11, `component-inventory.md` §8. Keep it quiet: recents are a convenience, not a feed — no \"trending\", no server suggestions, no autocomplete from other users. The removal affordance must be reachable without a drag, per the non-drag alternative rule ({{SN-A11Y-009}}).\n\n## Test plan\n\n`app/test/features/search/recent_searches_test.dart` (cap, dedupe, order, filter restore, remove/clear, toggle off purges), `app/test/features/search/recent_searches_privacy_test.dart` (no plaintext on disk, no logs, guest and locked behaviour, per-profile isolation). Golden: the no-query panel with and without history across a representative look per family.\n\n## Dependencies\n\n{{SN-SRCH-006}}, {{SN-SRCH-015}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-014",
+    "title": "Implement Sage expression states and the one-mascot-per-surface rule",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "brand",
+      "design-system",
+      "a11y"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "M",
+    "sdlc": "implementation",
+    "security": [
+      "MASVS-CODE-1"
+    ],
+    "parent": "SN-BRD-001",
+    "depends_on": [
+      "SN-BRD-003",
+      "SN-BRD-004",
+      "SN-DS-025"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\n{{SN-BRD-004}} *defines* the Sage expression set (idle, welcoming, thinking, listening/recording, done) with animation states and their usage moments — it is a design deliverable producing a spec and art. {{SN-BRD-003}} and {{SN-DS-024}} implement `SaneSageMark` with a single asset indirection and four tile grounds, but with no expression parameter. {{SN-AI-018}} mentions mascot states only inside the Sage assistant overlay. So the expressions have nowhere to land in onboarding, empty states, the recorder or error moments, and nothing enforces the brand rules that `component-inventory.md` §1 states as absolutes — \"**Fixed-color trademark** — never recolor/stretch/flip/crop\", minimum 24 px, clear space equal to the hat brim — or the restraint rule from `ux-principles.md` §4.1: \"at most one Sage on the Library first-run empty state; not on every empty list.\"\n\n## Scope\n\n**In:** extending `SaneSageMark` with an `expression` enum and an asset map (preserving the single indirection so the placeholder swap stays a one-line change, per `docs/design/README.md` §6); a reduce-motion-aware transition between expressions (cross-fade at the `control` duration token, no looping idle animation when Reduce Motion is on — {{SN-DS-025}}); a usage registry mapping surface → permitted expression, with a debug assertion and a widget test that fails when two marks render in one screen subtree; semantics (decorative marks `ExcludeSemantics`; meaningful ones labelled, e.g. \"Sage is thinking\" during an AI request, so the state is not conveyed by picture alone); asset-missing fallback to idle rather than a broken image; and an API shaped so misuse is impossible — size only, no colour, no `Transform` hooks.\n\n**Out:** producing the art ({{SN-BRD-002}}, {{SN-BRD-004}}), the AI overlay's behaviour ({{SN-AI-018}}), app icons and splash ({{SN-BRD-005}}, {{SN-BRD-007}}), the illustration style guide ({{SN-BRD-010}}), and the watermarked-placeholder purge ({{SN-BRD-012}}).\n\n## Acceptance criteria\n\n- [ ] `SaneSageMark(expression: …)` renders each defined expression on each of the four tile grounds (accent-soft, ink, paper, Cyberpunk night) in all 17 looks × light/dark.\n- [ ] A widget test asserts the mark is never rendered below 24 px, never with a non-uniform or negative scale, and never with a colour filter — the API does not expose those knobs, and a fixture attempting them fails.\n- [ ] Clear space equal to the hat-brim height is enforced by the widget's own padding, not by each caller.\n- [ ] Rendering two marks in one screen subtree fails a test (and asserts in debug builds); the registry documents the single permitted placement per surface.\n- [ ] With Reduce Motion on, expression changes cross-fade or snap, and no idle animation runs; a test asserts it.\n- [ ] A meaningful mark exposes a text label to assistive technology; a decorative one exposes nothing, and the accompanying text carries the meaning.\n- [ ] A missing expression asset falls back to idle and logs a redacted warning, never a broken box or an exception in release.\n\n## Technical notes\n\nKeep the asset table in one place (`packages/sane_ui/lib/src/brand/sage_assets.dart`) so the master-art swap from {{SN-BRD-002}} touches a single file; assets bundled, never fetched. Expression is a pure presentation input driven by the calling surface's state (onboarding step, empty state, recording, AI request) — the widget owns no business logic. Compose transitions with `AnimatedSwitcher` plus the `SaneMotion` tokens rather than bespoke durations.\n\n## Security & privacy\n\nBrand assets are bundled and must never be loaded from the network or from user-writable storage — a remotely sourced mascot would be an unsigned-content injection path in the app's most trusted chrome (OWASP M8 / MASVS-CODE-1). The \"Sage is thinking\" label must not include the prompt, note content or a filename ({{SN-SEC-021}}). The mark must not be used as a status signal for anything security-relevant (for example encryption or lock state), which must remain text plus icon.\n\n## UX notes\n\nReferences: `design-system.md` §1 (the mark rules, minimum size, clear space, tile grounds), `component-inventory.md` §1, `ux-principles.md` §4.1 (mascot restraint), {{SN-BRD-004}} (the expression↔moment mapping). The Sage is a welcome, not a wallpaper — over-using it turns the calm brief into a cartoon. One per surface, at the moment it means something.\n\n## Test plan\n\n`packages/sane_ui/test/brand/sage_expression_test.dart` (enum coverage, fallback, reduce-motion, semantics), `packages/sane_ui/test/brand/sage_usage_rules_test.dart` (min size, uniform scale, clear space, one-per-subtree), goldens `test/goldens/sage/<expression>-<ground>-<look>-<mode>.png` for a representative look per family. Manual: onboarding, Library first-run empty state, recording and an AI request on one device.\n\n## Dependencies\n\n{{SN-BRD-003}}, {{SN-BRD-004}}, {{SN-DS-025}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-015",
+    "title": "Add screen and overlay golden coverage across looks and dark mode",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "web"
+    ],
+    "areas": [
+      "qa",
+      "design-system",
+      "theming"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "L",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-PRIVACY-1"
+    ],
+    "parent": "SN-QA-001",
+    "depends_on": [
+      "SN-QA-005",
+      "SN-DS-027"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n\nGolden coverage today stops at the component boundary and at two screens: {{SN-DS-027}} captures `sane_ui` components across the 17 looks, {{SN-QA-005}} builds the harness, {{SN-LIB-028}} covers the Library, {{SN-PHN-020}} covers compact phone layouts. Nothing captures the **composed screens and overlays** that `design-system.md` §\"Screens\" calls the proven token sheets — Login, Who's writing, Onboarding, Library, Editor, Templates, Share/Import/Upgrade, Search, Settings, rendered at the 1180×820 iPad-landscape reference frame. Composition is exactly where look regressions appear: a 26 px Claymorphism radius colliding with a 132 px page rail, Brutalism's 2 px borders doubling along the sidebar seam, Y2K's translucent surfaces stacking three deep under an overlay, Editorial's uppercase headings overflowing the Upgrade plan cards.\n\n## Scope\n\n**In:** golden sets at the 1180×820 reference frame plus one medium (840 dp) frame for: Login (methods, phone, OTP), Profiles, Onboarding steps 0–2, Editor (dock at each of the four edges; audio bar idle / recording / has-recording; selection bar; text-edit bar; focus mode), Search (results, Ask panel, no results), Settings (all six tabs), and the five overlays (Templates new and page mode, Import with the free meter, Share, Upgrade yearly and monthly). Default gate: one look per family (Paper, Minimalism, Pop, Neumorphism, Brutalism) × light/dark. Nightly: the full 17 looks for a smoke subset (Library, Editor, Upgrade). Deterministic fixtures — pinned date and greeting, fixed notebook seed, fixed strokes, fixed audio duration, fixed locale — plus Free and Pro variants wherever the plan changes the UI.\n\n**Out:** the harness ({{SN-QA-005}}), component goldens ({{SN-DS-027}}), Library internals ({{SN-LIB-028}}), compact phone layouts ({{SN-PHN-020}}), on-device screenshot and device-farm runs ({{SN-QA-006}}, {{SN-QA-009}}), and wallpaper-mode goldens ({{SN-DS-014}} owns those).\n\n## Acceptance criteria\n\n- [ ] Every screen and overlay listed above has committed goldens for the five representative looks × light/dark at both frames, and the file paths follow the {{SN-QA-005}} convention.\n- [ ] Two consecutive CI runs on an unchanged tree produce byte-identical images (fonts preloaded, animations disabled, `devicePixelRatio` and clock pinned).\n- [ ] The nightly 17-look job completes within a documented budget and publishes a diff artifact on failure.\n- [ ] Free and Pro variants are captured for Library (sidebar card), Import (meter), Share (people limit) and Upgrade.\n- [ ] A seeded token change (one look's `rs`) fails the gate with a readable side-by-side diff.\n- [ ] The `--update-goldens` review flow is documented, and a PR updating goldens must state why in its description.\n\n## Technical notes\n\nBuild on `goldenMatrix` from {{SN-QA-005}}; drive screens through their real routes with Riverpod overrides supplying the seeded repositories from {{SN-QA-011}} so goldens exercise real composition rather than stub widgets. Keep CI time bounded by the family-representative default (`ux-principles.md` §9.3 justifies it: if it reads in one look per family, it reads in all seventeen) and push the exhaustive sweep to the nightly job. Mask nothing that carries design meaning; if a region is genuinely non-deterministic, fix the fixture instead of masking.\n\n## Security & privacy\n\nGoldens are committed images of the app's UI: fixtures must contain only synthetic data — no real names, emails, phone numbers, notebook content, share links or tokens (a share-link golden must use the documented `sane.app/n/…` placeholder). Add a DoD check that a golden never captures a dev-bypass watermark ({{SN-ONB-014}}) or a debug affordance. This keeps the repository clear of inadvertent PII (LINDDUN disclosure; MASVS-PRIVACY-1).\n\n## UX notes\n\nReferences: `design-system.md` §\"Screens\" (1180×820 reference frame, page geometry), `screens-and-flows.md` §1 (the full inventory of screens, overlays and inline surfaces), `ux-principles.md` §9.3 (the one-look-per-family heuristic these goldens implement). The Editor set doubles as the visual contract for the dock's four dock positions and the audio bar's three states, which no other test pins.\n\n## Test plan\n\nNew golden suites under `app/test/goldens/screens/` and `app/test/goldens/overlays/`, one file per screen with a parameterised look×mode loop; a `goldens-nightly` workflow job for the 17-look subset; a negative test proving the gate fails on a token mutation. Manual: review the first generated set against the design canvas frames before committing ({{SN-GUX-016}}).\n\n## Dependencies\n\n{{SN-QA-005}}, {{SN-DS-027}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "key": "SN-GUX-016",
+    "title": "Establish the design-fidelity review gate against the design canvas",
+    "type": "design",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "qa",
+      "docs"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "S",
+    "sdlc": "verification",
+    "security": [
+      "MASVS-RESILIENCE-4",
+      "OWASP-A05"
+    ],
+    "parent": "SN-DS-001",
+    "depends_on": [
+      "SN-GUX-015",
+      "SN-GUX-003"
+    ],
+    "labels_extra": [
+      "needs-design"
+    ],
+    "body": "## Context\n\nGoldens prove the build matches *itself*; nothing proves the build matches the *design*. The canvas bundle (`design/Sane Notes.dc.html`, `design/Sane Notes Design Sheet.dc.html`, `design/sane-data.js`) and the four specs in `docs/design/` are the source of truth for what each screen should look like, and they carry explicit caveats that make drift the expected state: `component-inventory.md` says widget names are \"proposed … **verify** before treating a name as canonical\", and `screens-and-flows.md` closes with twenty open design questions. Without a review step, the first implementation of each screen silently becomes the specification, and the specs rot into fiction that later agents read as truth.\n\n## Scope\n\n**In:** `docs/design/fidelity-checklist.md` — a per-screen checklist covering regions present and in order; spacing drawn only from the `4 6 8 10 12 14 16 18 22 28 32` scale; type roles used as specified (displayXL/L/M/S, body, muted, label, mono); the fixed component heights; copy verbatim from the copy deck ({{SN-GUX-003}}); all five states present per the state matrix ({{SN-GUX-009}}); accessibility hooks (labels, focus order, targets); look coverage evidence (the goldens from {{SN-GUX-015}}). A sign-off table `docs/design/fidelity-signoff.md` (screen, reviewer, date, deviations with reasons, follow-up issue keys). A PR-template line for any change under `app/lib/features/**`. The standing rule: an intentional deviation **updates the spec in the same PR**; an unintentional one is filed as a bug.\n\n**Out:** the goldens themselves ({{SN-GUX-015}}), the component coverage gate ({{SN-GUX-006}}), the accessibility audit ({{SN-A11Y-017}}), and answering the twenty open design questions (each belongs to its area epic).\n\n## Acceptance criteria\n\n- [ ] The checklist exists, is short enough to actually use (one screen reviewable in ~10 minutes), and cites the doc section behind each item.\n- [ ] The PR template gains the fidelity line and links the checklist.\n- [ ] Every screen shipped by the end of M2 has a signed row or a recorded deviation with a reason and an owner.\n- [ ] Each recorded deviation either updates the design doc in the same PR or has a filed issue key in the table — no orphan deviations.\n- [ ] The review explicitly checks that no dev-only affordance (auth-bypass watermark, debug menu, placeholder art) is present on the reviewed screen.\n- [ ] The sign-off table is rendered into the docs site ({{SN-DOC-005}}) so the maintainer can see coverage at a glance.\n\n## Technical notes\n\nKeep it markdown and human-run: an automated pixel comparison against a static HTML canvas would be brittle (different renderers, fonts and rasterisers) and would produce noise that trains reviewers to ignore it. The automatable parts are already covered — token drift ({{SN-DS-007}}, {{SN-GUX-002}}), component coverage ({{SN-GUX-006}}), invariants ({{SN-GUX-005}}), goldens ({{SN-GUX-015}}), copy ({{SN-GUX-003}}). This gate is the human layer that catches what none of those can: \"this is technically compliant and still wrong.\"\n\n## Security & privacy\n\nTwo review items carry security weight: the reviewer confirms no development affordance ships in a reviewed screen ({{SN-ONB-014}}, {{SN-FND-012}} assertAuthBypassSafe), and that any screen showing user content honours the locked/guest redaction rules ({{SN-SEC-019}}, {{SN-AUTH-013}}) before sign-off. Deviations touching consent, plan gates or privacy copy must route to the privacy reviewer ({{SN-PRV-013}}) rather than being signed off in a design review.\n\n## UX notes\n\nReferences: `docs/design/README.md` (how the specs relate to the canvas), `design-system.md` §\"Screens\", `component-inventory.md` §10 (component→screen map), `ux-principles.md` §0 (\"Pen-first. Calm. Never lags.\"). The checklist's last question should stay qualitative and blunt: does this screen feel calm, and is the page still the hero?\n\n## Test plan\n\nProcess, verified by artifacts: a sample review of one already-built screen (Library) completed and signed before the gate turns on; a `scripts/check-fidelity-signoff.mjs` (or an extension of the states-matrix check) asserting every screen in `screens-and-flows.md` §1 that has a route in `app/` also has a sign-off row, warning in M2 and failing from M7 ({{SN-QA-016}} release gate).\n\n## Dependencies\n\n{{SN-GUX-015}}, {{SN-GUX-003}}\n\n## Definition of done\n\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  }
+]

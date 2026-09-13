@@ -1,0 +1,657 @@
+[
+  {
+    "key": "SN-GOPS-001",
+    "title": "Turn the roadmap milestone exit criteria into a tracked gate register",
+    "type": "task",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "qa",
+      "docs",
+      "ci-cd"
+    ],
+    "milestone": "M0 Foundations",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "SSDF-PO.1",
+      "SSDF-PW.8",
+      "OWASP-A09"
+    ],
+    "parent": "SN-QA-001",
+    "depends_on": [
+      "SN-FND-015",
+      "SN-QA-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n`docs/roadmap.md` gives every milestone M0-M8 an **Exit criteria** checklist (perf gates, security gates, \"no note content leaves the device\", \"store privacy declarations accurate\"), and `docs/security/ssdlc-process.md` §2 gives every SDLC phase an exit gate. Neither is tracked anywhere machine-readable: the criteria live in prose, nothing links a criterion to the issue that satisfies it or to the evidence that it held, and nothing stops a milestone being declared done with an unmet gate. {{SN-QA-014}} derives *manual test plans* from the same checklists and {{SN-QA-016}} / {{SN-REL-013}} gate a *release*, but a milestone can close months before a release. This issue makes milestone closure evidenced and auditable.\n\n## Scope\n**In:** `docs/qa/milestone-gates.yaml` — one row per roadmap exit criterion with a stable id (`GATE-M2-03`), the criterion text, the owning issue key(s), the evidence kind (CI job name, perf budget id, test file, document, sign-off) and status; `scripts/validate-gates.mjs` checking that every roadmap criterion appears, every referenced issue key exists in `issues/*.json`, and no gate row is orphaned; a `.github/ISSUE_TEMPLATE/milestone-close.yml` that renders the milestone's gates as a sign-off checklist; the gate table rendered into `docs/backlog/` by `scripts/render-issues.mjs`.\n**Out:** the release go/no-go checklist ({{SN-REL-013}}, {{SN-QA-016}}); the manual test plans ({{SN-QA-014}}); the perf budget registry itself ({{SN-PERF-018}}); changing any roadmap criterion.\n\n## Acceptance criteria\n- [ ] Every exit criterion in `docs/roadmap.md` M0-M8 exists as a row in `milestone-gates.yaml` with an id, owning issue key(s) and an evidence kind.\n- [ ] `node scripts/validate-gates.mjs` exits non-zero on: a roadmap criterion with no row, a row citing an unknown issue key, a row with no evidence kind.\n- [ ] The validator runs in the issues-schema CI job ({{SN-FND-015}}) on every PR touching `docs/roadmap.md` or `issues/*.json`.\n- [ ] Closing a milestone requires the generated checklist issue with a recorded sign-off (Maintainer per `ssdlc-process.md` §1) and an evidence link per gate.\n- [ ] The rendered gate table appears in `docs/backlog/` and states, per milestone, how many gates are evidenced.\n\n## Technical notes\nMirror `scripts/validate-issues.mjs`: plain Node 22, no dependencies, exit 1 on error and warn on unresolved future keys so the register can be written before the owning issues exist. Parse roadmap criteria from the `- [ ]` bullets under each `**Exit criteria**` heading; match on a normalised hash of the criterion text so re-wording is detected as drift rather than silently dropped. Reuse the issue key index from `validate-issues.mjs` rather than re-parsing.\n\n## Security & privacy\nThis is the audit trail for the security gates themselves (SSDF PO.1/PW.8; OWASP-A09 logging and monitoring failures applied to process evidence): without it, \"pentest P0/P1 fixed or risk-accepted\" (M7) or \"no note content leaves the device\" (M1) can be asserted without proof. The register holds no user data; it must not embed credentials, staging URLs or unpublished advisory detail (CWE-200) — evidence links point at CI runs and documents, never at raw artefacts containing user content.\n\n## UX notes\nDeveloper-facing only. The rendered `docs/backlog/milestone-gates.md` table uses the same column style as the rendered backlog; the milestone-close issue template groups gates by SDLC phase so the reviewer reads requirements-first. No app UI, no design tokens involved.\n\n## Test plan\n`tools/test/validate_gates_test.mjs` with fixture roadmaps: (1) all criteria mapped -> exit 0; (2) a criterion missing from the register -> exit 1 with the criterion text in the message; (3) an unknown issue key -> exit 1; (4) a re-worded criterion -> drift error. Manual: run against the current `docs/roadmap.md` and confirm the report lists exactly the criteria that have no owning issue yet.\n\n## Dependencies\n{{SN-FND-015}} (issues-schema CI job to hang the validator on), {{SN-QA-002}} (test strategy defines the evidence vocabulary).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Every M0-M8 gate row has an owning issue key or an explicit `unassigned` marker\n"
+  },
+  {
+    "key": "SN-GOPS-002",
+    "title": "Maintain the maintainer decision register with due-by milestones",
+    "type": "docs",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "docs",
+      "devx"
+    ],
+    "milestone": "M0 Foundations",
+    "size": "S",
+    "sdlc": "requirements",
+    "security": [
+      "SSDF-PO.1",
+      "OWASP-A09"
+    ],
+    "parent": "SN-FND-001",
+    "depends_on": [
+      "SN-FND-021"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nCLAUDE.md §13 lists roughly twenty decisions the maintainer still owes the project — the **licence**, relay/TURN hosting, PDF SDK escape hatch, MyScript vs ML-Kit, default share posture, web at-rest posture, storage caps, cloud-AI provider policy, Sage mascot art, per-profile vs per-account entitlement. Issues that depend on one carry `needs-decision`, but nothing records *which* decision blocks *which* issue, when it must be resolved by, or what the proposed default is if it is not. The failure mode is discovering at M8 that the licence is still undecided (a hard M8 exit criterion in `docs/roadmap.md`) or at M6 that relay hosting was never chosen. This issue turns §13 into a tracked register with due-by milestones.\n\n## Scope\n**In:** `docs/decisions/register.md` (plus a machine-readable `docs/decisions/register.json`) with one row per decision: `DEC-###`, statement, owner, proposed default and where it is documented, the issue keys it blocks, the **due-by milestone** (the earliest milestone of any blocked issue), status (open / decided / superseded), decision date and the ADR or issue that records the outcome; a check in the issues validation job that every issue labelled `needs-decision` names a `DEC-###` in its body and that no `DEC-###` is still open past its due-by milestone; a short \"how a decision gets made and recorded\" section pointing at the ADR process ({{SN-FND-021}}).\n**Out:** making any of the decisions (explicitly the maintainer's, CLAUDE.md §13); the ADR template itself ({{SN-FND-021}}); design-specific open questions owned by `docs/design/screens-and-flows.md` §Open beyond linking them.\n\n## Acceptance criteria\n- [ ] Every decision in CLAUDE.md §13 (product, engine/dependency, security/privacy posture, design, credentials) has a `DEC-###` row with owner, proposed default, blocked issue keys and a due-by milestone.\n- [ ] Every issue carrying `needs-decision` in `issues/*.json` references its `DEC-###`; the validator reports any that do not.\n- [ ] The register records, for each decided item, the date and the ADR/issue that captured the outcome — no decision is \"remembered\" only in chat.\n- [ ] A decision whose due-by milestone is the current one is surfaced in the milestone-close checklist ({{SN-GOPS-001}}).\n- [ ] `docs/README.md` and CLAUDE.md §13 link to the register as the authoritative list; §13 stops being a second, drifting copy.\n\n## Technical notes\nKeep `register.json` as the source and generate the Markdown table in CI so the two cannot drift (same pattern as the rendered backlog). Due-by milestone is computed from the blocked issue keys' `milestone` fields in `issues/*.json` — do not hand-maintain it. Statuses are a closed vocabulary. Where a doc already states a proposed default (ADR-0013 relay hosting, ADR-0010 web posture, PRD-CO-036 share posture), cite the file and anchor rather than restating the reasoning.\n\n## Security & privacy\nSeveral open decisions are security postures: default share posture, web PWA at-rest protection, anti-tamper stance, cloud-AI provider guarantees. Leaving them implicit means an agent silently picks one (SSDF PO.1 — security requirements must be explicit and owned). The register is the control that makes an unresolved posture visible before it ships; pair it with the build-time flags the docs mandate. No user data; the register must not contain credentials or vendor contract terms (CWE-200).\n\n## UX notes\nDeveloper/maintainer surface only. The rendered table is sorted by due-by milestone then priority so the maintainer sees \"what must I decide before this milestone closes\". Mark the proposed default visually so an agent knows what to implement behind a flag while the decision is open.\n\n## Test plan\nValidator fixtures: an issue labelled `needs-decision` with no `DEC-` reference fails; an open `DEC` whose due-by milestone has closed fails; a decided `DEC` with no recorded outcome link fails. Manual: generate the register from the current CLAUDE.md §13 and confirm every `needs-decision` issue in `issues/*.json` maps to a row.\n\n## Dependencies\n{{SN-FND-021}} (ADR process, where decisions are recorded).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] CLAUDE.md §13 points at the register instead of duplicating it\n"
+  },
+  {
+    "key": "SN-GOPS-003",
+    "title": "Run the milestone-boundary threat-model revision cycle",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "privacy",
+      "docs"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "requirements",
+    "security": [
+      "SSDF-PO.1",
+      "SSDF-PW.1",
+      "TM-REVIEW",
+      "OWASP-A04"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-SEC-002"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: threat-model"
+    ],
+    "body": "## Context\n`docs/security/ssdlc-process.md` §2.1 makes the requirements gate *\"threat model updated\"*: whenever a change introduces or alters a **trust boundary, data flow, stored asset or third-party dependency**, the STRIDE/LINDDUN rows in `docs/security/threat-model.md` must be revised. {{SN-SEC-002}} baselines that model once at M0 and {{SN-GSEC-009}} gates individual feature designs, but every milestone after M0 moves the boundary wholesale: M2 adds hostile-file parsers and a blob store, M3 adds a microphone and downloadable ML models, M4 adds the user's cloud drive and key material, M5 adds OS entry points (widgets, share targets, intents), M6 adds a relay, WebRTC peers and an LLM reading note content, M8 adds payment providers and a public website. Nothing schedules that revision, so the model silently ages into fiction.\n\n## Scope\n**In:** a written revision cycle in `docs/security/threat-model.md` — a dated revision log (milestone, date, reviewer, new/changed/retired `TM-*` rows, new assets, new external entities) plus a per-milestone checklist of what to re-walk (assets, actors, trust boundaries, data flows, dependencies, privacy/LINDDUN rows); running the first two revisions for real (M2 content ingest + blob store; M3 microphone, transcripts and model supply chain) and filing the resulting `TM-*` rows into `docs/security/controls-matrix.md`; a gate row in the milestone register ({{SN-GOPS-001}}) so a milestone cannot close with a stale model; a \"no boundary changed\" attestation form for milestones that genuinely add none.\n**Out:** the per-feature design review gate ({{SN-GSEC-009}}); the M0 baseline ({{SN-SEC-002}}); the DPIA ({{SN-PRV-013}}); implementing any control the revision discovers (those become their own issues).\n\n## Acceptance criteria\n- [ ] `threat-model.md` carries a revision log with an entry per milestone boundary, naming the reviewer and the rows added/changed/retired.\n- [ ] The M2 revision covers PDF/image/font/bundle ingest, the content-addressed blob store, thumbnail and index caches, and the multi-profile boundary; each new threat has a `TM-*` id, a control and an owning issue key.\n- [ ] The M3 revision covers microphone capture, on-device model download and integrity, transcripts as a new sensitive asset class, and any cloud-recognition escalation path.\n- [ ] Every new/changed `TM-*` row is reflected in `controls-matrix.md` with a named verification (test or CI job), per `ssdlc-process.md` §2.2.\n- [ ] A milestone with no boundary change records an explicit signed attestation rather than an empty log entry.\n- [ ] The cycle is referenced from the milestone-close checklist and from `docs/security/README` navigation.\n\n## Technical notes\nKeep the revision diff-friendly: one Markdown table per STRIDE category with stable `TM-<letter>-<nn>` ids, never renumber. Derive the \"what changed\" candidate list mechanically — new packages in the workspace, new plugins under `plugins/`, new `services/` endpoints, new OS permissions in the manifests/Info.plist — so the reviewer starts from evidence, not memory. Cross-link each row to the issue that implements the control so {{SN-GOPS-020}} can verify traceability.\n\n## Security & privacy\nThis *is* a security control: SSDF PO.1/PW.1 and Microsoft SDL practice 3 (threat modelling before each major feature). LINDDUN rows matter as much as STRIDE here — M3 transcripts and M6 collaboration metadata are the two places where a zero-knowledge product most easily leaks by inference (`docs/security/threat-model.md` privacy section, MASVS-PRIVACY-1/2). The revision must not copy note content or real user data into the document as examples.\n\n## UX notes\nNo end-user UI. The reviewer's surface is the Markdown table and the revision log; keep the per-milestone checklist short enough that it is actually run (one page), and put the newest revision at the top of the log.\n\n## Test plan\nProcess, not code: (1) run the M2 revision against the merged M2 work and confirm at least the ingest, blob-store and profile-isolation boundaries produce rows; (2) confirm each row has a verification that exists (grep the named test/CI job); (3) confirm the milestone-close checklist fails when the log has no entry for the milestone; (4) have the Security Owner sign off in the issue.\n\n## Dependencies\n{{SN-SEC-002}} (baselined model to revise), {{SN-GOPS-001}} (gate register that enforces it).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Security Owner sign-off recorded on the revision log entry\n"
+  },
+  {
+    "key": "SN-GOPS-004",
+    "title": "Apply the chosen licence: SPDX headers, dependency gate and NOTICE",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "release",
+      "docs",
+      "ci-cd"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "release",
+    "security": [
+      "SSDF-PS.2",
+      "OWASP-A06",
+      "CWE-1104"
+    ],
+    "parent": "SN-FND-001",
+    "depends_on": [
+      "SN-FND-023",
+      "SN-CI-004",
+      "SN-SET-015"
+    ],
+    "labels_extra": [
+      "needs-decision",
+      "sec: supply-chain"
+    ],
+    "body": "## Context\n{{SN-FND-023}} lands a placeholder `LICENSE` and an SPDX-header *policy*, and explicitly leaves out both the licence choice (maintainer, CLAUDE.md §13) and any CI enforcement. `docs/roadmap.md` M8 makes *\"License chosen and a `LICENSE` file present\"* a launch exit criterion, the SBOMs ({{SN-CI-004}}) carry licence fields that must be true, the in-app About screen ({{SN-SET-015}}) must show third-party notices, and both stores ask about third-party licences at submission. Nothing currently turns the decision into applied reality: headers, a dependency-licence allow-list, and generated attribution. This issue is the fast-follow that closes the loop once the maintainer picks a licence.\n\n## Scope\n**In:** apply the chosen SPDX identifier to `LICENSE`, every `pubspec.yaml`, package `README`s and the website footer; a lightweight SPDX-header lint (new or changed Dart/Kotlin/Swift/JS source files carry `// SPDX-License-Identifier: <id>`) wired into the existing lint job; a dependency-licence allow/deny list evaluated from the CycloneDX SBOM ({{SN-CI-004}}) with a documented exception process (an explicit, reviewed entry per accepted outlier); generation of `NOTICE` / `third_party_licenses.json` as a build artefact consumed by the About screen ({{SN-SET-015}}) and published on the website; store-submission answers about third-party content.\n**Out:** choosing the licence (`needs-decision`, maintainer); the SBOM pipeline itself ({{SN-CI-004}}); art/font/icon provenance ({{SN-BRD-011}}); template licensing metadata ({{SN-TPL-013}}).\n\n## Acceptance criteria\n- [ ] `LICENSE` contains the chosen licence text and its SPDX id; the placeholder wording from {{SN-FND-023}} is gone and `README.md` / `CONTRIBUTING.md` state the terms.\n- [ ] The SPDX-header lint fails a PR that adds a source file without a header, and passes on the existing tree after a one-off sweep.\n- [ ] CI fails when a dependency's licence is outside the allow-list (default deny for copyleft licences incompatible with app distribution) unless an approved exception row exists with a reason and a reviewer.\n- [ ] A generated attribution artefact lists every bundled dependency, its version and licence text; the About screen renders it offline and the website publishes the same file.\n- [ ] The generated attribution is byte-identical to what the release SBOM reports — a CI check compares them.\n\n## Technical notes\nDrive both the gate and the attribution from one source: parse the CycloneDX SBOM produced at release, not a second dependency walk, so they cannot disagree. Native and WASM components that are vendored rather than resolved (PDFium, SQLite, zstd, whisper.cpp, CanvasKit) need explicit rows — see {{SN-GOPS-013}} for their inventory. Keep the allow-list in `docs/dev/license-policy.md` next to the policy {{SN-FND-023}} wrote.\n\n## Security & privacy\nSupply-chain hygiene (SSDF PS.2, OWASP-A06, CWE-1104 use of unmaintained components): a licence gate is also a dependency-review choke point, and an accurate SBOM licence field is part of release integrity. A wrong attribution is a legal exposure, not a security one, but a *missing* dependency row usually means a component nobody is tracking for CVEs. No user data is involved.\n\n## UX notes\nUser-visible only through Settings -> About -> Licences ({{SN-SET-015}}): a scrollable, searchable list, readable offline, rendered with the design-system list rows and respecting Dynamic Type. The website page mirrors it. No mascot, no marketing language — legal text verbatim.\n\n## Test plan\nUnit: attribution generator against a fixture SBOM (missing licence field, dual licence, vendored component). CI: a PR adding a file without an SPDX header fails; a PR adding an AGPL dependency fails; the same PR with an approved exception row passes. Golden/widget: the About -> Licences screen renders the fixture attribution across looks and at 200% text scaling. Manual: confirm the published website file and the in-app file match the release SBOM.\n\n## Dependencies\n{{SN-FND-023}} (policy + the pending decision), {{SN-CI-004}} (SBOM), {{SN-SET-015}} (About/licences screen).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] The M8 roadmap exit criterion 'License chosen and a LICENSE file present' is evidenced in the gate register\n"
+  },
+  {
+    "key": "SN-GOPS-005",
+    "title": "Establish repository governance: conduct, contribution terms and triage SLA",
+    "type": "docs",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "docs",
+      "devx"
+    ],
+    "milestone": "M0 Foundations",
+    "size": "S",
+    "sdlc": "requirements",
+    "security": [
+      "SSDF-PO.2",
+      "OWASP-A09"
+    ],
+    "parent": "SN-FND-001",
+    "depends_on": [
+      "SN-FND-023"
+    ],
+    "labels_extra": [
+      "needs-decision"
+    ],
+    "body": "## Context\n`CONTRIBUTING.md`, `CODEOWNERS`, PR and issue templates exist, but three governance pieces do not: there is **no Code of Conduct**, **no contribution licensing mechanism** (DCO sign-off vs CLA — undecidable until the licence decision in CLAUDE.md §13 lands), and **no stated response commitment** for outside contributions. The repository is public-facing enough to carry a security policy and a vulnerability disclosure programme ({{SN-SEC-036}}), which means strangers will file issues, and a classroom-facing product attracts student contributors. Without conduct rules and IP terms, the maintainer cannot safely merge an outside PR, and moderation of abusive or spam issues has no written basis.\n\n## Scope\n**In:** `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) with a working enforcement contact and an escalation ladder (warning -> temporary interaction limit -> block), and the enforcement record kept privately; a decision row and the chosen mechanism for contribution terms — DCO (`Signed-off-by` trailer + a CI check) or a CLA — wired as a required check; a triage section in `CONTRIBUTING.md`: label taxonomy for inbound issues, first-response target (7 days), what gets closed as out-of-scope (CLAUDE.md §13 scope lock) and how to say so kindly; the stance on GitHub Discussions (on/off) and who moderates; a reminder that security reports never go in public issues ({{SN-SEC-036}}, `SECURITY.md`).\n**Out:** the licence choice itself ({{SN-FND-023}}, `needs-decision`); end-user support ({{SN-GOPS-006}}); in-product abuse handling for classroom rooms ({{SN-GOPS-007}}); the bug-triage severity taxonomy ({{SN-QA-010}}) which this links to rather than restates.\n\n## Acceptance criteria\n- [ ] `CODE_OF_CONDUCT.md` exists, is linked from `README.md`, `CONTRIBUTING.md` and the issue templates, and names a monitored enforcement contact.\n- [ ] The contribution-terms mechanism is decided (register row per {{SN-GOPS-002}}) and enforced: either a DCO check fails a PR whose commits lack `Signed-off-by`, or the CLA bot blocks until signed.\n- [ ] `CONTRIBUTING.md` states the first-response target, the triage labels an inbound issue receives, and the criteria for closing as out-of-scope with a pointer to the locked decisions.\n- [ ] Issue templates route security reports to the private advisory path and say so in the form description.\n- [ ] Moderation actions are recorded (privately) with date, action and reason; the ladder is documented before it is first used.\n\n## Technical notes\nPrefer DCO over a CLA for a solo-maintainer open project — it is a commit trailer plus a CI check, with no contributor paperwork — but the choice depends on the licence and is the maintainer's. Wire the check as a required status so branch protection ({{SN-CI-003}}) enforces it. Keep the enforcement contact as a role address that also serves support ({{SN-GOPS-006}}), not a personal inbox.\n\n## Security & privacy\nSSDF PO.2 (roles and responsibilities) and the coordinated-disclosure commitment in `SECURITY.md`: a public issue tracker with no routing rule eventually receives a working exploit in the open. Moderation records contain personal data about reporters and contributors — keep them minimal, private, and retained only as long as the enforcement action lasts (GDPR/DPDP data minimisation, MASVS-PRIVACY-1 spirit applied to project operations). Never publish an enforcement record naming an individual.\n\n## UX notes\nContributor-facing text only. Keep the tone consistent with the product's voice guide ({{SN-BRD-009}}): direct, kind, non-bureaucratic. The templates should make the private-report path visually obvious (a first-line callout), because the failure we care about is a well-meaning reporter publishing a vulnerability.\n\n## Test plan\nCI: a PR without the required contribution-terms artefact fails; with it, passes. Manual: file a test issue via each template and confirm the labels, the routing note and the first-response clock behave as documented; walk the enforcement ladder on paper with one hypothetical case to check the escalation contact is reachable.\n\n## Dependencies\n{{SN-FND-023}} (licence choice gates the contribution-terms mechanism).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Contribution-terms decision recorded in the decision register\n"
+  },
+  {
+    "key": "SN-GOPS-006",
+    "title": "Stand up the user support operation: inbox, SLA and escalation path",
+    "type": "docs",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "docs",
+      "privacy",
+      "qa"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "maintenance",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "CWE-359",
+      "CWE-532",
+      "OWASP-A09"
+    ],
+    "parent": "SN-DOC-001",
+    "depends_on": [
+      "SN-DOC-010",
+      "SN-QA-010",
+      "SN-TEL-008"
+    ],
+    "labels_extra": [
+      "needs-credentials",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\nThe product has an in-app **Contact support** action that composes an email referencing a user-initiated redacted diagnostics bundle ({{SN-DOC-010}}, {{SN-TEL-008}}), and `docs/roadmap.md` M8 lists \"support & docs live\" as a launch deliverable — but nothing defines where that email lands, who answers it, in what time, how a support thread becomes an `SN-` issue, or what happens to the note-bearing screenshot a user inevitably attaches. That last point is the sharp edge: a zero-knowledge product that architecturally never sees note content will, through support, receive note content by email. Without a written handling rule this becomes an unmanaged personal-data store and a privacy incident waiting to happen.\n\n## Scope\n**In:** `docs/support/runbook.md` — the support address and routing (shared mailbox or a minimal helpdesk), operating expectations for a solo maintainer (first response target, triage cadence, holiday expectations stated honestly on the help page), the severity mapping onto the bug taxonomy ({{SN-QA-010}}) and the rule for opening an `SN-` issue (reproduce first, never paste user content into a public issue, attach only redacted extracts); a data-handling policy for inbound attachments (treat as user personal data: store only in the support mailbox, never in the repo or a shared drive, delete on resolution, mailbox retention window, no forwarding); canned answers keyed to help-centre slugs ({{SN-DOC-008}}); a monthly support -> backlog digest; the escalation path to the private advisory channel when a report looks like a vulnerability.\n**Out:** the in-app entry point ({{SN-DOC-010}}); the diagnostics bundle format ({{SN-TEL-008}}); help-centre content ({{SN-DOC-008}}); store-review replies ({{SN-GOPS-016}}); data-subject requests ({{SN-GOPS-015}}).\n\n## Acceptance criteria\n- [ ] A monitored support address exists, is published in-app and on the website, and the runbook names its owner and first-response target.\n- [ ] The runbook states the attachment-handling rule: user content stays in the mailbox, is never copied into a public issue, and is deleted when the thread closes; the retention window is written down.\n- [ ] Every support thread that becomes a defect produces an `SN-` issue using the {{SN-QA-010}} severity taxonomy with a reproduction written from the reporter's description, not from their data.\n- [ ] A report that describes a security weakness is redirected to the private advisory path within the acknowledgement SLA (`ssdlc-process.md` §3) and never answered in public.\n- [ ] A monthly digest records volume by category and feeds recurring causes into the backlog.\n\n## Technical notes\nKeep the tooling boring: a shared mailbox with labels beats a helpdesk that becomes another sub-processor to declare ({{SN-GSEC-004}}). If a helpdesk is adopted, it is a processor and must appear in the RoPA and the privacy policy. The canned answers should be generated from the same Markdown as the help centre so they cannot drift. `needs-credentials`: the mailbox/domain and any helpdesk account come from the maintainer.\n\n## Security & privacy\nThreats: sensitive personal data in a support mailbox (CWE-359), note content forwarded into a public issue (CWE-200), diagnostics bundles containing more than the allow-list (CWE-532 — the bundle's redaction is verified in {{SN-TEL-003}}), and social engineering of support to unlock an account (impossible by design — there is no vendor key-recovery path, {{SN-CRY-014}}: state this explicitly so support never invents one). Controls: MASVS-PRIVACY-1 minimisation applied to operations, retention limits, and a scripted refusal for \"please recover my notes\" that points at {{SN-GOPS-018}}.\n\n## UX notes\nUser-facing pieces: the Settings -> Help & support entry ({{SN-DOC-010}}) already exists; this issue supplies the honest wording around response times (never promise 24/7), the explicit \"we cannot read your notes, so please describe rather than attach\" guidance shown before composing, and the consent line on the diagnostics bundle.\n\n## Test plan\nDry run the loop end to end before launch: send a support mail from a test device with a diagnostics bundle attached; confirm routing, the acknowledgement template, the redaction of the bundle, the creation of an `SN-` issue without user content, and deletion of the attachment on close. Table-top the security-report path and the \"recover my notes\" path. Verify the published response target matches the runbook.\n\n## Dependencies\n{{SN-DOC-010}} (in-app contact), {{SN-TEL-008}} (diagnostics bundle), {{SN-QA-010}} (severity taxonomy).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Support mailbox retention and deletion rule reflected in the privacy policy\n"
+  },
+  {
+    "key": "SN-GOPS-007",
+    "title": "Build the abuse-report intake and trust-and-safety response for rooms",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "collaboration",
+      "security",
+      "privacy"
+    ],
+    "milestone": "M6 Collaboration, Sharing & Sage AI",
+    "size": "L",
+    "sdlc": "maintenance",
+    "security": [
+      "MASVS-PRIVACY-2",
+      "OWASP-A01",
+      "CWE-359",
+      "CWE-770"
+    ],
+    "parent": "SN-COL-001",
+    "depends_on": [
+      "SN-COL-019",
+      "SN-COL-018",
+      "SN-PRV-007"
+    ],
+    "labels_extra": [
+      "needs-decision",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\n{{SN-COL-019}} gives a room the in-product abuse floor — draw approval, rate limits, wipe and a **report** action — and {{SN-COL-018}} gives a classroom host moderation controls. Neither defines what happens *after* someone taps report: where it goes, who reads it, what we can even see (rooms are end-to-end encrypted; the relay forwards ciphertext only, {{SN-COL-008}}), what actions exist at our end, and what the duty of care is when the participants are minors ({{SN-PRV-007}} age gate, {{SN-GSEC-012}} minor-safe gating). A classroom product without a trust-and-safety process is both a user-safety failure and a store-policy risk: both stores require a reporting mechanism and a response process for user-generated content shared between users.\n\n## Scope\n**In:** `docs/trust-and-safety/runbook.md` — the report payload spec (what the client may send without breaking zero-knowledge: room id hash, timestamp, reporter's role, reporter-authored description, and an **optional, explicitly consented, reporter-decrypted excerpt** they choose to attach), the intake channel and SLA, the response ladder (guidance to the host -> revoke the share link and rotate the content key {{SN-SHR-017}} -> block a device key from re-joining {{SN-CRY-019}} -> block a room id at the relay -> refer to law enforcement for the narrow legally mandated categories), the minors-specific path, evidence retention limits, and an appeal path; the relay-side room-id block list with its retention and its non-content log allow-list ({{SN-COL-023}}); a user-facing **community and classroom rules** page in the help centre; a transparency statement of what we can and cannot see.\n**Out:** the in-room controls themselves ({{SN-COL-018}}, {{SN-COL-019}}); relay operation ({{SN-COL-023}}); the age gate ({{SN-PRV-007}}); repo-side conduct ({{SN-GOPS-005}}).\n\n## Acceptance criteria\n- [ ] The report payload carries no plaintext note content unless the reporter explicitly attaches it, with a clear consent string; the default report contains only metadata the relay already handles.\n- [ ] The runbook defines an acknowledgement target, a decision target, the ladder of actions with who may authorise each, and the record kept per case.\n- [ ] Revocation actions are the cryptographic ones that already exist ({{SN-SHR-017}} key rotation, {{SN-CRY-019}} device revocation) — no new backdoor, no server-side content access is introduced by the process.\n- [ ] A minors-involved report follows the documented expedited path and records the guardian/institution contact route.\n- [ ] Evidence (reporter-supplied excerpts) has a stated retention window, is stored outside the repo, and is deleted on case closure unless a legal hold applies.\n- [ ] The community/classroom rules page is published, linked from the join-a-room consent screen ({{SN-COL-009}}), and written at a student reading level.\n\n## Technical notes\nThe client sends the report over the same relay transport with a distinct frame type; the relay stores it in a small, access-controlled queue with the room-id block list, and nothing else. Blocking a room id must be enforceable without decrypting anything — the relay already sees room ids ({{SN-COL-003}}). Rate-limit report submission itself (CWE-770) so the report channel cannot be used to flood the operator, and keep the block list short-lived with an expiry.\n\n## Security & privacy\nThreats: abuse of the report channel to deanonymise or harass (report metadata must not reveal other participants to the reporter), operator over-reach (a process that quietly grants us content access would break the product's central promise — the runbook must state that no such capability exists), retention of sensitive excerpts about minors (CWE-359), and denial of service against the queue (CWE-770). Controls: MASVS-PRIVACY-2, OWASP-A01 access control on the queue, minimisation and deletion, and an explicit statement in the privacy policy ({{SN-PRV-017}}) about what a report collects.\n\n## UX notes\nTwo user-facing surfaces, both in the design system: the report sheet (what you are reporting, a free-text field, an explicit \"attach what I can see\" toggle that is **off** by default with an honest explanation, and a confirmation that says what happens next), and the rules page in the help centre. Empty/confirm/error states per the standard overlay pattern; nothing implies that we can see the room.\n\n## Test plan\nIntegration: submit a report from a room and assert the frame contains no ciphertext payload and no other participant's identity unless attached; assert rate limiting after N reports. Unit: block-list enforcement rejects a join for a blocked room id and expires correctly. Manual/table-top: walk three scenarios (harassment in a classroom room, an adult joining a minors' room, a spam-draw flood) end to end through the ladder and confirm every action maps to an existing cryptographic or relay capability.\n\n## Dependencies\n{{SN-COL-019}} (report action and abuse floor), {{SN-COL-018}} (host moderation), {{SN-PRV-007}} (age gate).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Store policy requirements for user-generated-content reporting are evidenced for both stores\n"
+  },
+  {
+    "key": "SN-GOPS-008",
+    "title": "Track service and tooling running costs with budgets and spend alerts",
+    "type": "infra",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "ci-cd",
+      "release",
+      "billing"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "S",
+    "sdlc": "maintenance",
+    "security": [
+      "OWASP-A04",
+      "CWE-770",
+      "OWASP-A09"
+    ],
+    "parent": "SN-REL-001",
+    "depends_on": [
+      "SN-COL-023",
+      "SN-CI-018",
+      "SN-BILL-010"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe architecture is deliberately zero-server (`docs/adr/0004-local-first-zero-server.md`) so running costs are small — but they are not zero, and nobody is tracking them. The recurring spend is: the optional ciphertext relay and its TURN bandwidth ({{SN-COL-023}} computes a cost per session-hour), the stateless entitlement service ({{SN-BILL-004}}), website hosting/CDN ({{SN-SITE-013}}), the domain, Apple Developer and Play Console fees, payment-gateway and store commissions ({{SN-BILL-009}}, {{SN-BILL-010}}), a GIF provider API ({{SN-MED-014}}), cloud device-farm minutes ({{SN-QA-009}}), CI minutes and the self-hosted perf runner ({{SN-GPRF-013}}), and CDN egress for downloadable ML models ({{SN-AI-008}}, {{SN-HWR-004}}). Two risks follow: a surprise bill from a runaway classroom relaying video-grade traffic, and Pro unit economics (₹83/month reference) that are underwater once TURN and gateway fees are counted.\n\n## Scope\n**In:** `docs/ops/cost-model.md` — every recurring cost line with its driver (per session-hour, per GB egress, per device-minute, per transaction), the expected monthly baseline at three usage levels, and the per-Pro-user marginal cost checked against the reference price; provider budget alerts at 50/80/100% of the monthly budget routed to the maintainer; hard usage ceilings where the provider supports them (TURN bandwidth cap, CDN egress cap, device-farm minute cap) and the documented **degrade-not-bill** behaviour when a ceiling is hit (relay refuses new rooms with a clear client message; notes keep working); a monthly cost line in the ops review; a note in the pricing page source ({{SN-SITE-005}}) if the model changes the plan story.\n**Out:** pricing and plan definition ({{SN-BILL-002}}, {{SN-BILL-010}}); the relay hosting decision ({{SN-COL-023}}, `needs-decision`); tax/GST invoicing mechanics; performance budgets (unrelated meaning of the word, {{SN-PERF-018}}).\n\n## Acceptance criteria\n- [ ] `cost-model.md` lists every recurring cost line with owner, driver, unit price and the monthly budget; no line is \"unknown\".\n- [ ] The per-Pro-user marginal cost (relay + TURN + gateway/store commission + support overhead) is computed and compared to the reference price, with the break-even user count stated.\n- [ ] Budget alerts exist for every provider that supports them and are proven to fire in a test.\n- [ ] Each service has a documented ceiling and a degrade path that never blocks local note-taking or sync through the user's own drive.\n- [ ] A monthly cost check is part of the ops checklist and its result is recorded.\n\n## Technical notes\nDerive the relay/TURN numbers from the measured bandwidth in {{SN-COL-021}} rather than guessing; a classroom of 40 with video-off ink traffic is the sizing case. Prefer providers whose budget alerting is free and whose caps are enforceable server-side; where only alerting exists, add the ceiling in the relay's own rate limiter ({{SN-COL-023}}). Keep the model as a small table plus the formula, so it can be recomputed when a price changes.\n\n## Security & privacy\nCost is an availability and abuse control as much as an accounting one: an unmetered TURN relay is a bandwidth amplifier for abusers (CWE-770 uncontrolled resource consumption, OWASP-A04 insecure design) and a route to denial of wallet. Ceilings and alerts are the mitigation; the degrade path must fail closed for the *service* and open for the *user's local data*. The cost document must contain no account numbers, provider credentials or contract terms (CWE-200); it references accounts by the register in {{SN-GOPS-014}}.\n\n## UX notes\nNo end-user UI except the honest failure message when a ceiling is reached: a toast/dialog in the collaboration surface saying live collaboration is temporarily unavailable and that notes and sync are unaffected — written per the tone guide, using the standard error-state pattern.\n\n## Test plan\nManual/drill: set a temporary low budget on one provider and confirm the alert reaches the maintainer; set a low TURN ceiling and confirm the relay refuses new rooms with the documented client message while an existing local session keeps writing. Unit: the cost calculator spreadsheet/script reproduces the documented baseline from the {{SN-COL-021}} bandwidth numbers.\n\n## Dependencies\n{{SN-COL-023}} (relay hosting and measured cost per session-hour), {{SN-CI-018}} (services pipeline), {{SN-BILL-010}} (pricing).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Monthly cost review added to the ops checklist with a recorded first run\n"
+  },
+  {
+    "key": "SN-GOPS-009",
+    "title": "Define service SLOs and wire health checks, uptime probes and alerting",
+    "type": "infra",
+    "priority": "p1",
+    "platforms": [
+      "core",
+      "web"
+    ],
+    "areas": [
+      "ci-cd",
+      "collaboration",
+      "release"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "maintenance",
+    "security": [
+      "OWASP-A09",
+      "MASVS-PRIVACY-1",
+      "CWE-532",
+      "ASVS-V16"
+    ],
+    "parent": "SN-REL-001",
+    "depends_on": [
+      "SN-CI-018",
+      "SN-COL-023",
+      "SN-BILL-004"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThree tiny services exist at launch: the ciphertext relay (`services/relay/`), the stateless entitlement verifier (`services/entitlements/`) and the website/CDN ({{SN-SITE-013}}). {{SN-COL-023}} gives the relay a health check and a runbook, {{SN-CI-018}} deploys them, and {{SN-REL-012}} watches *client* crash-free sessions — but nothing watches whether the services are actually up, defines what \"up\" means, or tells the maintainer when they are not. The product degrades gracefully by design (notes and cloud-drive sync work with every service down; entitlements fail open to Free, {{SN-BILL-005}}), which is exactly why an outage can go unnoticed for days while classrooms silently fail to connect.\n\n## Scope\n**In:** `docs/ops/slos.md` defining a small number of honest objectives — relay availability and successful room-join rate, relay p95 join latency, entitlement verify availability and p95, website availability and Core Web Vitals floor — each with a measurement method, a window and an explicit \"what the user sees when it is missed\" statement; readiness/liveness endpoints on both services (no identifiers, no room ids in the response); an external uptime probe per service plus a synthetic canary that performs a real room join and a real entitlement verify with a test identity; alert routing to the maintainer with a severity split (page-worthy vs digest) and stated best-effort response expectations for a solo maintainer; a privacy-safe metrics set and dashboard honouring the relay log allow-list ({{SN-COL-023}}).\n**Out:** security-finding alerting ({{SN-GSEC-006}}); client crash/release health ({{SN-REL-012}}, {{SN-TEL-012}}); the public status page and user comms ({{SN-GOPS-010}}); cost alerts ({{SN-GOPS-008}}).\n\n## Acceptance criteria\n- [ ] Every service exposes `/healthz` (liveness) and `/readyz` (readiness) returning no user, room or device identifiers and no build secrets.\n- [ ] `slos.md` states an objective, a measurement window and a user-visible consequence per service; objectives are achievable by a single maintainer and say so.\n- [ ] External probes run from outside the hosting provider and alert on sustained failure, not on a single blip.\n- [ ] A synthetic canary joins a disposable room and verifies a sandbox entitlement on a schedule; its failure alerts separately from a plain probe failure.\n- [ ] Dashboards and alerts contain only allow-listed fields — no room ids, user ids, IP addresses beyond aggregate counts, or note-derived data.\n- [ ] An SLO miss produces a recorded entry that feeds the incident path ({{SN-SEC-035}}) when it is security-relevant and the status page ({{SN-GOPS-010}}) when it is user-visible.\n\n## Technical notes\nKeep metrics cardinality tiny: counters and histograms, no per-room labels. Probes should verify the TLS certificate expiry as part of the check (a silent cert expiry is the most likely outage for a small service). The canary needs a dedicated sandbox identity and a room id namespace that the trust-and-safety block list ({{SN-GOPS-007}}) ignores. Alerts go to the same maintainer channel used for security alerting so there is one place to look.\n\n## Security & privacy\nOperations telemetry is the classic place where a zero-knowledge product leaks metadata (LINDDUN linkability): request logs with room ids and IPs re-identify classrooms. Controls: the {{SN-COL-023}} log allow-list, aggregate-only metrics, short retention, and MASVS-PRIVACY-1 minimisation. Health endpoints must not become an information-disclosure surface (CWE-200): no version strings that reveal unpatched builds to scanners beyond what is already public, no dependency dumps. Monitoring also *is* a security control (OWASP-A09): without it, an attack on the relay looks like silence.\n\n## UX notes\nNo in-app UI in this issue; the user-visible half is the status page and the \"collaboration unavailable, your notes are fine\" messaging in {{SN-GOPS-010}}. The maintainer's surface is a single dashboard page and an alert message that names the service, the objective missed and the runbook link.\n\n## Test plan\nIntegration: kill the relay in staging and assert the probe alerts within the stated window and that the client shows the documented degraded state; expire a staging certificate and assert the cert check fires. Unit: health endpoints return the documented shape and contain none of the forbidden fields (a field allow-list test). Canary: run against staging on every deploy; a deliberate misconfiguration must fail it.\n\n## Dependencies\n{{SN-CI-018}} (services deploy pipeline), {{SN-COL-023}} (relay operation and log allow-list), {{SN-BILL-004}} (entitlement service).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] SLO misses recorded for the first month and reviewed against the objectives\n"
+  },
+  {
+    "key": "SN-GOPS-010",
+    "title": "Publish a status page and define user-facing incident communications",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "website",
+      "collaboration",
+      "docs"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "release",
+    "security": [
+      "OWASP-A09",
+      "MASVS-PRIVACY-1",
+      "CWE-200"
+    ],
+    "parent": "SN-SITE-001",
+    "depends_on": [
+      "SN-SITE-013",
+      "SN-SEC-035",
+      "SN-GOPS-009"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nWhen the relay, the entitlement service or the website degrades, users need one truthful place to look — and the app needs to say the right thing in the moment (\"live collaboration is unavailable; your notes and sync are unaffected\"). {{SN-SEC-035}} covers the *internal* incident runbook and the regulatory breach clock; {{SN-REL-014}} covers hotfix and rollback; {{SN-GOPS-009}} detects the outage. Nothing communicates it. Absent a status page, support volume spikes ({{SN-GOPS-006}}) and users reasonably assume their notes are at risk — the worst possible misunderstanding for a local-first product whose whole promise is that they are not.\n\n## Scope\n**In:** a static status page served from the website origin (no third-party script, consistent with the analytics-free posture {{SN-SITE-014}}) listing the three services with current state and an incident history; a machine-readable `service-status.json` on the same CDN that the app fetches **only** when a cloud action has just failed (no beacons, no identifiers, no polling at rest) to render an accurate in-app banner; incident templates (investigating / identified / monitoring / resolved) with honest, non-technical wording and an explicit \"your local notes are unaffected\" line where true; the comms ladder — who writes, when the first update goes out, update cadence, and the handoff to {{SN-SEC-035}} when personal data may be at risk (GDPR 72-hour clock); a postmortem template published for user-visible incidents lasting beyond a stated threshold.\n**Out:** detection and alerting ({{SN-GOPS-009}}); internal incident response and the breach clock ({{SN-SEC-035}}); rollback mechanics ({{SN-REL-014}}); support replies ({{SN-GOPS-006}}).\n\n## Acceptance criteria\n- [ ] The status page is reachable on a documented URL, renders without JavaScript, and is hosted so that it survives an outage of the services it reports on.\n- [ ] `service-status.json` has a versioned schema, is cached with a short TTL and contains no user-specific data; the app fetches it only after a failed cloud action.\n- [ ] The in-app banner distinguishes \"service degraded\" from \"you are offline\" and never implies note data is at risk when it is not.\n- [ ] Incident templates exist for all four states with a first-update target measured from detection, and a worked example.\n- [ ] An incident that may involve personal data triggers the {{SN-SEC-035}} path, and the status page never publishes vulnerability detail before a fix ships (coordinated disclosure, `ssdlc-process.md` §3).\n- [ ] User-visible incidents beyond the stated duration get a published postmortem with cause, fix and prevention.\n\n## Technical notes\nKeep the page static Markdown -> HTML in the existing zero-JS website build ({{SN-SITE-002}}) with incidents as dated files, so publishing an update is a commit and a deploy ({{SN-REL-008}} atomic deploys). Host the status JSON on the CDN edge, not on the relay, so it stays available when the relay is down. The client uses the existing offline/degraded state pattern ({{SN-GUX-009}}) rather than inventing a new one, and treats a missing/invalid JSON as \"unknown\", never as \"everything is fine\".\n\n## Security & privacy\nThe status fetch must not become a tracking channel: no query parameters, no client identifiers, cacheable and identical for everyone (LINDDUN linkability; MASVS-PRIVACY-1). Incident text is an information-disclosure surface (CWE-200): no internal hostnames, stack traces, staging URLs or embargoed vulnerability detail. The page is also part of the OWASP-A09 story — a public record of detection-to-resolution times keeps the monitoring honest.\n\n## UX notes\nStatus page: the website's typography and tokens, a single legible state per service, newest incident first, no dashboards or graphs. In-app: the standard offline/error banner with a \"learn more\" that opens the status URL in the browser (never an embedded WebView, per {{SN-SEC-015}}), reduce-motion friendly, screen-reader announced politely rather than assertively.\n\n## Test plan\nIntegration: force a staging relay outage and assert (1) the status JSON flips, (2) the app shows the degraded banner only after a failed action, (3) the banner clears when service returns. Widget/golden: banner across looks, dark mode and 200% text scaling. Manual: publish a rehearsal incident through all four templates and confirm the page builds and deploys atomically; verify the status host stays up when the services are stopped.\n\n## Dependencies\n{{SN-SITE-013}} (website hosting), {{SN-GOPS-009}} (detection), {{SN-SEC-035}} (incident response and breach clock).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] A rehearsal incident has been published and rolled back on the real hosting\n"
+  },
+  {
+    "key": "SN-GOPS-011",
+    "title": "Define the Flutter, Dart and native toolchain upgrade cadence and playbook",
+    "type": "chore",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "devx",
+      "ci-cd",
+      "compat"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "M",
+    "sdlc": "maintenance",
+    "security": [
+      "SSDF-PW.6",
+      "OWASP-A06",
+      "CWE-1104",
+      "MASVS-CODE-2"
+    ],
+    "parent": "SN-FND-001",
+    "depends_on": [
+      "SN-FND-010",
+      "SN-PERF-003",
+      "SN-QA-005"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: supply-chain"
+    ],
+    "body": "## Context\n{{SN-FND-010}} pins Flutter and Dart with fvm/mise, and {{SN-FND-020}}/{{SN-CI-011}} govern *package* dependencies — but nothing says how the project moves to a new Flutter stable, an AGP/Gradle/Kotlin bump, or a new Xcode/Swift toolchain. That is the riskiest upgrade class in this codebase: the renderer (Impeller), the low-latency ink surfaces, the golden images across 17 looks, the web renderer selection ({{SN-WEB-002}}) and every performance budget (`docs/platform/performance-budgets.md`) can all move under a single `flutter upgrade`. Staying still is not an option either — store toolchain minimums, security patches and plugin compatibility force forward motion ({{SN-GPRF-018}} covers the *platform* SDK readiness testing; this issue covers *our* toolchain).\n\n## Scope\n**In:** `docs/dev/toolchain-upgrade.md` — the channel policy (stable only), the supported-version window, the cadence (a scheduled attempt per stable release with a hard freeze during a release train), and the per-upgrade checklist: regenerate code, run analyze with `--fatal-infos`, run the full test matrix, re-run goldens with a written re-baseline rule (never a blanket `--update-goldens`; each changed golden is reviewed and justified), re-run the perf harness on the physical device runner and diff against the stored baselines ({{SN-PERF-003}}, {{SN-PERF-018}}), verify Impeller is still active ({{SN-PERF-022}}), smoke the native ink surfaces on iPadOS and Android, and check web bundle size ({{SN-WEB-003}}); a scheduled CI job that opens a draft upgrade PR with the pin bumped and the report attached; the rollback rule (revert the pin if any budget regresses beyond tolerance) and where the outcome is recorded.\n**Out:** OS/browser/target-SDK readiness on pre-release platform builds ({{SN-GPRF-018}}); package dependency policy ({{SN-FND-020}}, {{SN-CI-011}}); native vendored component advisories ({{SN-GOPS-013}}).\n\n## Acceptance criteria\n- [ ] The playbook states the channel, the version window, the cadence and the freeze rule, and is linked from CLAUDE.md and `docs/README.md`.\n- [ ] A scheduled job opens a draft PR bumping the fvm/mise pin, running the full matrix and attaching the perf and golden diff report.\n- [ ] The golden re-baseline rule is enforced in review: a PR that updates goldens without a per-image justification is blocked.\n- [ ] An upgrade that regresses any decision-7 budget beyond tolerance is reverted and the finding recorded, not merged with a waiver.\n- [ ] The playbook names the same checks for AGP/Gradle/Kotlin and Xcode/Swift bumps, including the 16 KB page-alignment gate ({{SN-AND-021}}).\n- [ ] Each completed upgrade is recorded (version, date, notable changes, budget deltas) in the changelog or an ADR when behaviour changed.\n\n## Technical notes\nRun the upgrade job on a schedule, not on every stable release announcement, and let it fail loudly: a red draft PR is the signal. Keep the pin in one place ({{SN-FND-010}}) so the bot edits a single file. Perf comparison must use the physical device runner ({{SN-GPRF-013}}) with the statistical protocol ({{SN-GPRF-012}}) — a CI emulator number cannot decide a latency regression. Expect plugin breakage first: the federated plugins ({{SN-FND-007}}) and pdfrx/drift/riverpod are the usual suspects.\n\n## Security & privacy\nToolchain currency is a supply-chain control (SSDF PW.6 secure build configuration, OWASP-A06 vulnerable and outdated components, CWE-1104): unpatched Dart/Flutter or an old Gradle/AGP ships known vulnerabilities and can block a store submission. The upgrade PR must keep the SHA-pinned actions and pinned toolchain model intact ({{SN-CI-005}}), and any new transitive dependency it drags in is subject to the dependency gates ({{SN-CI-010}}) and the licence gate ({{SN-GOPS-004}}).\n\n## UX notes\nDeveloper-facing. The draft PR body is the surface: a fixed template with the version delta, the budget table (before/after/tolerance), the golden diff count and the smoke-test matrix, so the reviewer decides in one screen.\n\n## Test plan\nDry run on the current stable: open the upgrade PR manually, confirm the report renders, confirm a deliberately injected golden change is flagged, and confirm a simulated 20% latency regression trips the revert rule. Verify the freeze rule by attempting the job during a release-train tag and confirming it defers.\n\n## Dependencies\n{{SN-FND-010}} (toolchain pin), {{SN-PERF-003}} (perf gates and baselines), {{SN-QA-005}} (golden harness).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] First scheduled upgrade cycle executed end to end and recorded\n"
+  },
+  {
+    "key": "SN-GOPS-012",
+    "title": "Track store policy changes and annual platform compliance deadlines",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "ios-phone",
+      "android-phone"
+    ],
+    "areas": [
+      "release",
+      "privacy",
+      "compat"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "S",
+    "sdlc": "maintenance",
+    "security": [
+      "SSDF-RV.1",
+      "OWASP-A09",
+      "MASVS-CODE-2"
+    ],
+    "parent": "SN-REL-001",
+    "depends_on": [
+      "SN-REL-011",
+      "SN-PRV-015",
+      "SN-AND-022"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nShipping on two stores means recurring, dated obligations that have nothing to do with our own roadmap: Google Play's **annual target API level** deadline (existing apps must target the API level of the previous year by 31 August or lose new-install availability), Apple's periodic **minimum SDK/Xcode** requirement for new submissions, privacy-manifest and Data Safety re-declaration whenever data handling changes ({{SN-PRV-014}}, {{SN-PRV-015}}), the EU DSA trader declaration and its re-verification ({{SN-GIPAD-015}}), age-rating questionnaire refreshes, subscription and billing policy changes ({{SN-BILL-006}}, {{SN-BILL-007}}), and account/tax form renewals. {{SN-GPRF-018}} runs the *technical* readiness cycle against pre-release OS builds; nothing tracks the *calendar* or watches for policy changes, and the failure mode is silent delisting from new installs.\n\n## Scope\n**In:** `docs/release/compliance-calendar.md` — every recurring obligation with its authority, its typical date, the lead time we need, the issue or workflow that does the work, and the evidence that closes it; a scheduled GitHub Action that opens a tracking issue N weeks before each dated obligation, pre-filled with the checklist and the owning issue links; a written watch routine for policy changes (developer news subscriptions, store console notices, and where the maintainer records a change that affects us); a triage rule mapping \"policy changed\" to either an existing issue, a new issue, or an explicit no-op with a reason.\n**Out:** the technical upgrade work itself ({{SN-AND-022}} target SDK, {{SN-IPAD-027}} availability gating, {{SN-GPRF-018}} readiness runs); store listings and metadata ({{SN-REL-010}}); the pre-submission compliance gate per release ({{SN-REL-011}}); org account renewals ({{SN-GOPS-014}}).\n\n## Acceptance criteria\n- [ ] The calendar lists every known recurring obligation for both stores with date, lead time, owner, the issue that performs the work, and the evidence artefact.\n- [ ] A scheduled workflow opens the tracking issue at the configured lead time and labels it for the current milestone; a closed obligation records its evidence link.\n- [ ] The watch routine names the sources monitored and where a change is recorded; a policy change produces a triage decision within a stated window.\n- [ ] The annual target-API obligation is traced end to end: calendar row -> tracking issue -> {{SN-AND-022}} bump -> {{SN-GPRF-018}} readiness run -> submitted build.\n- [ ] Missing a deadline is treated as an incident with a recorded cause, not a silent slip.\n\n## Technical notes\nKeep the calendar machine-readable (`compliance-calendar.yaml` with `id`, `authority`, `due`, `lead_weeks`, `owner_issue`, `evidence`) and generate both the Markdown table and the scheduler's input from it, so the scheduler cannot drift from the document. Dates from the stores move; store the *rule* (\"Play: 31 August each year, target = previous year's API level\") alongside the concrete next date, and have the tracking issue ask the human to confirm the date against the current policy page.\n\n## Security & privacy\nStore compliance is partly a security and privacy control: an app stuck below the annual target API level misses platform hardening defaults, and a stale privacy manifest or Data Safety form is a factual misstatement about data handling — the exact risk {{SN-PRV-016}} gates per release. Treat a policy-change notice about security requirements (for example a new attestation or permission rule) as input to the threat-model revision cycle ({{SN-GOPS-003}}). The calendar holds no credentials; store-console notices may contain account identifiers and stay out of the repo (CWE-200).\n\n## UX notes\nMaintainer-facing. The generated tracking issue is the surface: title carries the deadline date, body is a short checklist with links, and the label set routes it into the current milestone board.\n\n## Test plan\nManual: run the scheduler with a near-future fixture date and confirm the tracking issue is created once (idempotently) with the right content; close it with an evidence link and confirm the calendar reflects completion. Validate the YAML against a schema in CI. Table-top: walk the last known Play target-API deadline through the process to confirm the lead time is sufficient for a store review round trip.\n\n## Dependencies\n{{SN-REL-011}} (pre-submission compliance gate), {{SN-PRV-015}} (store privacy declarations), {{SN-AND-022}} (Android target SDK configuration).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] The next two dated obligations have tracking issues created by the workflow\n"
+  },
+  {
+    "key": "SN-GOPS-013",
+    "title": "Watch upstream advisories for vendored native and WASM components",
+    "type": "security",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "ci-cd",
+      "compat"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "M",
+    "sdlc": "maintenance",
+    "security": [
+      "SSDF-RV.1",
+      "OWASP-A06",
+      "CWE-1104",
+      "CWE-1395"
+    ],
+    "parent": "SN-CI-001",
+    "depends_on": [
+      "SN-CI-004",
+      "SN-CI-010"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: supply-chain"
+    ],
+    "body": "## Context\nDependabot and OSV-Scanner watch what our manifests declare — pub, npm, Gradle, Swift ({{SN-CI-010}}, {{SN-CI-011}}). The components most likely to produce a memory-safety CVE are not declared that way: **PDFium** (through pdfrx, {{SN-PDF-002}}), **SQLite** (through drift and sqlite-vec, {{SN-CORE-004}}, {{SN-AI-010}}), **zstd** ({{SN-CORE-017}}), **libwebrtc** ({{SN-COL-005}}), **coturn** ({{SN-COL-023}}), **whisper.cpp** ({{SN-WEB-027}}), **CanvasKit/skwasm** ({{SN-WEB-002}}), image and audio decoders, and the platform ML runtimes. They arrive as prebuilt binaries or vendored sources inside a Dart package, so a PDFium advisory never appears as a pub advisory and our SLA clock (`docs/security/ssdlc-process.md` §3) never starts. {{SN-GSEC-006}} routes the alerts we *do* get; this issue creates the ones we currently miss.\n\n## Scope\n**In:** `docs/security/native-components.md` — an inventory row per vendored/binary component: name, upstream project, the version actually shipped, how it is bundled (which package, which platform, which artefact), the advisory feed to watch, the owning issue/package and the update path; a scheduled job that reads the release CycloneDX SBOM ({{SN-CI-004}}) plus the inventory, checks each component's advisory source and pinned version, and opens an issue when an advisory affects a shipped version; a per-component update playbook (how to bump it: wait for the wrapper package, pin a newer prebuilt, or rebuild) with the test surface each bump requires (parser fuzz corpus {{SN-SEC-010}}, PDF goldens, audio round-trip); an SLA hook so a Critical advisory starts the `ssdlc-process.md` §3 clock.\n**Out:** the manifest-level scanners ({{SN-CI-010}}); alert routing and the security dashboard ({{SN-GSEC-006}}, {{SN-CI-019}}); licence obligations for the same components ({{SN-GOPS-004}}); toolchain upgrades ({{SN-GOPS-011}}).\n\n## Acceptance criteria\n- [ ] Every vendored or prebuilt native/WASM component that ships in any artefact has an inventory row with the concrete shipped version — \"whatever pdfrx bundles\" is not an acceptable answer.\n- [ ] A CI check fails when the SBOM contains a component with no inventory row (new binary dependency introduced without being tracked).\n- [ ] The scheduled watcher opens an issue within one day of an advisory affecting a shipped version, with severity mapped onto the `ssdlc-process.md` §3 SLA.\n- [ ] Each component has a written update path and the named regression tests a bump must pass.\n- [ ] A component whose upstream is unmaintained is flagged (CWE-1395) with a documented mitigation or replacement plan.\n- [ ] The inventory is reviewed as part of the periodic re-verification cadence ({{SN-GOPS-017}}).\n\n## Technical notes\nResolve real versions at build time where possible (a build step that records the PDFium and SQLite build strings from the linked artefacts beats trusting a README), and feed them into the SBOM so inventory and SBOM agree. Advisory sources differ per component: NVD/CVE feeds, GitHub Security Advisories, project mailing lists and Chromium release notes for PDFium. Where no machine feed exists, record a manual check in the periodic cadence rather than pretending it is automated.\n\n## Security & privacy\nThis is the maintenance half of the parser-hardening story: {{SN-SEC-004}}-{{SN-SEC-010}} harden and fuzz our ingest paths, but a heap overflow in the upstream decoder is fixed only by updating it (OWASP-A06, CWE-1104, CWE-1395; MASVS-CODE-2 dependency currency). A shipped-but-untracked binary is also an SBOM accuracy failure, which undermines the SLSA provenance story ({{SN-CI-004}}). No user data is involved; advisory handling follows coordinated disclosure — do not publish exploit detail in a public tracking issue before the fix ships.\n\n## UX notes\nNo end-user UI. Maintainer surface: the inventory table (sorted by risk: parsers first) and a tracking issue whose title names the component, the CVE and the shipped version, so triage takes seconds.\n\n## Test plan\nFixtures: an SBOM containing an untracked binary component fails the CI check; a fixture advisory for a version below the pinned one opens an issue, one above does not. Manual: run the watcher against the current inventory and confirm the shipped PDFium and SQLite versions are the real ones (compare with the runtime version strings queried on device). Regression: after a bump, the named tests (PDF goldens, fuzz corpus, audio round-trip) must run and pass.\n\n## Dependencies\n{{SN-CI-004}} (SBOM), {{SN-CI-010}} (existing scanners this complements).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Inventory reconciled against the first release SBOM with zero untracked components\n"
+  },
+  {
+    "key": "SN-GOPS-014",
+    "title": "Inventory organisational accounts with custody and continuity rules",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "release",
+      "security",
+      "devx"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "S",
+    "sdlc": "release",
+    "security": [
+      "SSDF-PO.5",
+      "MASVS-AUTH-2",
+      "CWE-522",
+      "OWASP-A07"
+    ],
+    "parent": "SN-REL-001",
+    "depends_on": [
+      "SN-REL-017",
+      "SN-CI-014"
+    ],
+    "labels_extra": [
+      "needs-credentials"
+    ],
+    "body": "## Context\nLaunch requires a set of organisational accounts that no issue currently owns: Apple Developer Program (with a D-U-N-S number if enrolled as an organisation), Google Play Console, the domain registrar and DNS, website/CDN hosting, the relay host, payment gateways and the entitlement provider ({{SN-BILL-004}}, {{SN-BILL-009}}), the GitHub organisation, the support mailbox ({{SN-GOPS-006}}) and the PGP key behind `security.txt` ({{SN-SEC-036}}). {{SN-REL-017}} inventories *release secrets* and their rotation and {{SN-CI-014}} documents signing-key custody, but nothing records who owns the accounts themselves, what second factor protects them, where the recovery codes live, when they renew, or what happens if the sole maintainer is unreachable when a Critical advisory arrives (`ssdlc-process.md` §3 promises a 48-hour acknowledgement).\n\n## Scope\n**In:** `docs/ops/accounts.md` — a register row per account: purpose, owner, login identity type, second-factor method, where recovery codes are held, renewal/billing date, what breaks if it lapses, and the issue that depends on it; custody rules (two hardware security keys per critical account, recovery codes in a sealed offline store, never in the repo or a chat, never in CI secrets); a provisioning checklist for the accounts not yet created, marked `needs-credentials`; a continuity procedure — a named backup contact, the minimum access that person needs, how they would acknowledge a security report and halt a rollout, and a yearly rehearsal; renewal dates fed into the compliance calendar ({{SN-GOPS-012}}).\n**Out:** secret values of any kind; CI secret inventory and rotation ({{SN-REL-017}}); signing-key custody mechanics ({{SN-CI-014}}); OAuth client registration ({{SN-AUTH-020}}); cost of these accounts ({{SN-GOPS-008}}).\n\n## Acceptance criteria\n- [ ] Every account required to build, sign, ship, host, charge or support is listed with owner, second factor, recovery-code location and renewal date.\n- [ ] No credential, recovery code, seed or account number appears in the register or anywhere else in the repository; a secret-scan run over the file is clean.\n- [ ] Every critical account uses phishing-resistant multi-factor authentication with at least two enrolled factors, and the register records that state.\n- [ ] The continuity procedure names a backup contact, the scope of their access, and the exact steps to acknowledge a security report and halt a store rollout ({{SN-REL-006}}) without the primary maintainer.\n- [ ] Renewal dates appear in the compliance calendar and produce tracking issues before they lapse.\n- [ ] The register is reviewed annually as part of the re-verification cadence ({{SN-GOPS-017}}).\n\n## Technical notes\nPrefer organisation-owned identities over personal ones wherever a store allows it, and route account email to a role address that the backup contact can also reach — a personal address that dies with the account is the most common single point of failure. Where a provider only supports SMS as a second factor, record it as a known weakness with a mitigation. Keep the register in the repo (it contains no secrets) so it is versioned and reviewed; keep the sealed recovery material physically elsewhere.\n\n## Security & privacy\nAccount takeover of a store console is a supply-chain compromise: an attacker can publish a build under our identity even though signing keys are held by Play App Signing or Apple (MASVS-RESILIENCE-2, SSDF PO.5/PS.1). Controls: phishing-resistant MFA, least-privilege console roles, no shared logins, recovery-code custody (CWE-522 insufficiently protected credentials), and the incident path in {{SN-SEC-035}} if a takeover is suspected — including revoking provenance trust and pulling the affected release. The register itself is an information-disclosure risk only if it names personal contact details: refer to people by role.\n\n## UX notes\nNo user-facing UI. Maintainer surface: a single table plus a one-page continuity procedure that a non-expert backup contact could execute under stress — numbered steps, exact console names, no jargon.\n\n## Test plan\nManual audit: for each row, log in and verify the recorded second factor and role scope; confirm recovery codes exist and are readable from the sealed store. Drill: have the backup contact (with the primary maintainer silent) acknowledge a simulated security report and halt a staged rollout on a sandbox listing; record the elapsed time against the 48-hour SLA. CI: gitleaks/trufflehog over `docs/ops/accounts.md` must be clean.\n\n## Dependencies\n{{SN-REL-017}} (release secret inventory and rotation), {{SN-CI-014}} (signing and key custody).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Continuity drill executed once and its timing recorded against the disclosure SLA\n"
+  },
+  {
+    "key": "SN-GOPS-015",
+    "title": "Write the data-subject request intake and fulfilment runbook",
+    "type": "docs",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "privacy",
+      "docs",
+      "security"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "M",
+    "sdlc": "maintenance",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "MASVS-PRIVACY-4",
+      "CWE-359",
+      "OWASP-A01"
+    ],
+    "parent": "SN-PRV-001",
+    "depends_on": [
+      "SN-PRV-005",
+      "SN-PRV-006",
+      "SN-PRV-007"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\n{{SN-PRV-005}} builds the in-app data-subject-rights surface and {{SN-PRV-006}}/{{SN-AUTH-018}} build self-service deletion; {{SN-GSEC-001}} verifies erasure across derived stores and {{SN-GSEC-004}} maintains the Records of Processing. What is missing is the human path: a request that arrives by **email** — from a user who cannot sign in, from a parent exercising a minor's rights ({{SN-PRV-007}}, {{SN-PRV-008}}), or from a regulator — starts a statutory clock (one month under GDPR, comparable duties under India's DPDP Act) and must be answered even though the honest answer for a zero-knowledge product is unusually short: an install token, an entitlement record, an email address, support correspondence. Beta testers at M7 are real data subjects, so this must exist before the first external cohort.\n\n## Scope\n**In:** `docs/privacy/dsr-runbook.md` — the intake channels (in-app surface, privacy address, and the support inbox routing rule {{SN-GOPS-006}}); an identity-verification policy that does **not** collect more data than we hold (verify through the signed-in session or the registered address; never demand an ID document for an account that holds only an email); the statutory clocks and how they are tracked; per-right procedures (access, rectification, erasure, portability, objection/withdrawal of consent, restriction) each stating what we can actually produce and what is cryptographically impossible for us to produce; templates for acknowledgement, fulfilment, extension and refusal (with reasons); the parent/guardian path for minors; a request register with minimal fields and its own retention limit; the escalation to counsel and to the supervisory authority; the interaction with the breach path ({{SN-SEC-035}}).\n**Out:** the in-app rights surface ({{SN-PRV-005}}); deletion implementation ({{SN-PRV-006}}); erasure verification ({{SN-GSEC-001}}); the RoPA ({{SN-GSEC-004}}); the privacy policy text ({{SN-PRV-017}}).\n\n## Acceptance criteria\n- [ ] Every right has a written procedure naming the systems touched (entitlement records, telemetry queue, support mailbox, install token) and the expected turnaround inside the statutory clock.\n- [ ] The access/portability response template states plainly that note content is end-to-end encrypted and not available to us, and points the user at in-app export ({{SN-SHR-009}}) for their own content.\n- [ ] Identity verification is proportionate and documented; no procedure asks for government ID.\n- [ ] A parent/guardian request for a minor has a defined path consistent with the age gate and parental-consent mechanism.\n- [ ] A request register exists with the minimum fields (id, date received, right, channel, due date, outcome date, outcome) and a stated retention period; it contains no request content beyond what is needed.\n- [ ] Extension and refusal templates cite the lawful basis and the complaint route to the supervisory authority.\n- [ ] A rehearsal request has been processed end to end and its timing recorded.\n\n## Technical notes\nPrefer self-service: every template's first line should route the user to the in-app surface when they can sign in, because self-service deletion is faster and collects nothing. Where a right touches the opt-in telemetry queue ({{SN-TEL-007}}), the runbook must name the concrete action (purge queue, rotate install token) rather than a generic \"delete data\". Keep the register outside the repo (it contains personal data) in the same controlled store as support correspondence.\n\n## Security & privacy\nThe DSR channel is itself an attack surface: a convincing erasure request from an impostor destroys the victim's entitlement record, and an over-broad access response leaks personal data to an attacker (OWASP-A01 broken access control applied to a manual process; CWE-359 exposure of private information). Controls: proportionate verification, dual-check before any destructive action, minimal response content, minimal register retention (MASVS-PRIVACY-1/4). The runbook must also state that no vendor-side note recovery or decryption exists — a DSR cannot be used to compel access we do not have ({{SN-CRY-014}}).\n\n## UX notes\nUser-facing only through templates and the rights surface copy: plain language, no legalese where plain words work, and an explicit statement of what we hold versus what stays on the device. Tone per the voice guide ({{SN-BRD-009}}); never defensive.\n\n## Test plan\nRehearsal: submit one access, one erasure and one parental request from test identities through each intake channel; confirm routing, verification, the produced response content, the systems actually touched, and the recorded timing against the clock. Cross-check the access response against {{SN-GSEC-004}} RoPA and {{SN-PRV-002}} dashboard claims — any discrepancy is a bug in one of the three. Confirm the register retains nothing beyond its stated window.\n\n## Dependencies\n{{SN-PRV-005}} (rights surface), {{SN-PRV-006}} (deletion), {{SN-PRV-007}} (age gate and guardian path).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Rehearsal request processed and timings recorded before the first external beta cohort\n"
+  },
+  {
+    "key": "SN-GOPS-016",
+    "title": "Monitor store reviews and route feature requests into the backlog",
+    "type": "task",
+    "priority": "p2",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "ios-phone",
+      "android-phone",
+      "web"
+    ],
+    "areas": [
+      "release",
+      "qa",
+      "docs"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "S",
+    "sdlc": "maintenance",
+    "security": [
+      "MASVS-PRIVACY-1",
+      "CWE-200",
+      "OWASP-A09"
+    ],
+    "parent": "SN-REL-001",
+    "depends_on": [
+      "SN-REL-010",
+      "SN-QA-010",
+      "SN-GOPS-006"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nBeta feedback has a home ({{SN-REL-007}}, {{SN-QA-015}}) and support will have one ({{SN-GOPS-006}}), but after launch the loudest public channel is the store review sections, and the repo's `feature_request.yml` template has no stated triage cadence. Store reviews are simultaneously a bug channel (the only report some users will ever make), a public-relations surface (replies are visible to everyone and, on Play, expected), and a ranking input. Without a routine, a reproducible crash sits in a one-star review for months and a request that contradicts the locked scope (CLAUDE.md §13) gets no honest answer.\n\n## Scope\n**In:** `docs/release/review-and-request-triage.md` — a weekly sweep of App Store and Play reviews, tagging each to an area label and a severity using the {{SN-QA-010}} taxonomy; reply templates that never ask a user to send note content, route real defects to support or an issue, and stay factual in public; the criteria that turn a review or a `feature_request.yml` submission into an `SN-` issue (reproducible defect, or a request that fits the vision and an existing epic), into the Backlog milestone, or into a declined-with-reason response citing the locked decisions; a monthly digest that reports themes into the backlog alongside the support digest; a rule that ratings/reviews are never solicited in exchange for features or inside a blocking dialog.\n**Out:** the in-app rating prompt design (if any) and the store listings themselves ({{SN-REL-010}}); support correspondence ({{SN-GOPS-006}}); beta feedback ({{SN-REL-007}}); the bug severity taxonomy ({{SN-QA-010}}).\n\n## Acceptance criteria\n- [ ] A weekly sweep is documented with an owner, and each review is tagged to an area and a severity or explicitly marked \"no action\".\n- [ ] Public reply templates exist for the common cases (crash, misunderstanding, feature request, pricing complaint, privacy question) and none of them requests user content or reveals internal detail.\n- [ ] A reproducible defect surfaced by a review becomes an `SN-` issue with the reporter's platform/version, never their personal data.\n- [ ] Feature requests are answered with one of three recorded outcomes — issue created, backlogged, or declined with a reason linked to the locked decisions — and the response cadence is stated in the issue template.\n- [ ] A monthly digest records review themes, rating trend and the actions taken, and is reviewed alongside the support digest.\n- [ ] No mechanism solicits ratings in exchange for functionality, and any rating prompt (if introduced) is dismissible and never blocks a task.\n\n## Technical notes\nPull reviews with the store APIs where available so the sweep is a small script rather than manual console reading, and store only what the digest needs (platform, version, locale, rating, area tag) — not reviewer names. Reuse the label taxonomy from `issues/labels.json` so review tags and backlog areas are the same vocabulary. The digest is a generated Markdown file in `docs/backlog/` like the other reports.\n\n## Security & privacy\nReviews are public personal data written by identifiable people: do not copy names or review text into the repository (CWE-200, MASVS-PRIVACY-1); issues cite a paraphrase and the store/version only. Public replies must never confirm a vulnerability or describe a workaround for one before a fix ships (coordinated disclosure, `ssdlc-process.md` §3) — a review that describes a security problem is routed to the private advisory path and answered with a neutral acknowledgement. OWASP-A09: the digest is part of how we notice a bad release that the crash-free gate ({{SN-REL-012}}) did not catch.\n\n## UX notes\nPublic reply voice follows the tone guide ({{SN-BRD-009}}): short, specific, never defensive, never marketing. If a rating prompt is ever introduced it uses the standard dialog pattern, respects reduce-motion, and is suppressed for users who have hit an error in the last session.\n\n## Test plan\nManual first cycle: run the sweep on the first week of reviews after launch, produce the digest, and confirm every review received a tag, that at least one defect became an issue with no personal data, and that the reply templates render correctly in both consoles. Script test: the fetcher stores only the allow-listed fields (assert on a fixture response containing reviewer names).\n\n## Dependencies\n{{SN-REL-010}} (store listings), {{SN-QA-010}} (severity taxonomy), {{SN-GOPS-006}} (support operation and digest).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] First monthly review digest published and its actions filed\n"
+  },
+  {
+    "key": "SN-GOPS-017",
+    "title": "Define the post-launch security, privacy and accessibility re-verification cadence",
+    "type": "docs",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "privacy",
+      "a11y"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "maintenance",
+    "security": [
+      "SSDF-RV.1",
+      "SSDF-RV.3",
+      "MASVS-CODE-2",
+      "OWASP-A09"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-SEC-033",
+      "SN-A11Y-017",
+      "SN-SEC-029"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: masvs"
+    ],
+    "body": "## Context\nM7 runs the audits once: penetration test ({{SN-SEC-033}}, {{SN-SEC-034}}), MASVS L2 verification ({{SN-SEC-029}}-{{SN-SEC-031}}), ASVS for web and relay ({{SN-SEC-032}}), the accessibility audit ({{SN-A11Y-017}}), the i18n/RTL audit ({{SN-I18N-013}}) and the performance soak ({{SN-PERF-024}}). After launch the product keeps changing — new platform surfaces, new AI features, new OS versions — and every one of those verdicts decays. `docs/security/ssdlc-process.md` §2.6 defines a maintenance gate for *vulnerabilities* but not a re-verification rhythm, so without a schedule the M7 evidence quietly becomes a historical document that store questionnaires and users are nonetheless relying on.\n\n## Scope\n**In:** `docs/security/reverification-cadence.md` — what is re-run and how often (annual: pentest and full MASVS/ASVS L2 sweep, accessibility audit and conformance statement refresh {{SN-A11Y-018}}, threat-model whole-model review {{SN-GOPS-003}}, native-component inventory {{SN-GOPS-013}}, account register {{SN-GOPS-014}}; per-release: the existing automated gates and the store-declaration reconciliation {{SN-PRV-016}}; per-milestone: the boundary threat-model revision); a **delta rule** that scopes each cycle to what changed since the last one, with the full sweep reserved for the annual cycle; the off-cycle triggers (a new platform, a new trust boundary, a new data category, a security incident, a store policy change); a scheduled workflow that opens the recurring audit issues with their checklists; an evidence archive convention so each cycle's reports are findable next to the controls matrix.\n**Out:** the first execution of each audit (the M7 issues); the vulnerability SLA itself (`ssdlc-process.md` §3); scanner alert routing ({{SN-GSEC-006}}); OS/browser readiness ({{SN-GPRF-018}}).\n\n## Acceptance criteria\n- [ ] The cadence document names every recurring verification, its frequency, its owner, its scope rule and the artefact it must produce.\n- [ ] A scheduled workflow opens each recurring audit issue at the right lead time, pre-filled with the checklist and links to the previous cycle's evidence.\n- [ ] The delta rule is concrete: each cycle lists the changes since the last cycle (new packages, new endpoints, new permissions, new data categories) and justifies what it skipped.\n- [ ] Off-cycle triggers are enumerated and at least one is wired to an automation (for example, a new OS permission in a manifest opens a threat-model revision issue).\n- [ ] Evidence from each cycle is archived with a date and linked from `controls-matrix.md`, so a control's verification date is visible.\n- [ ] The accessibility conformance statement and the store privacy declarations are re-checked against reality on the stated cadence, not only at first submission.\n\n## Technical notes\nKeep the schedule in the same YAML the compliance calendar uses ({{SN-GOPS-012}}) so there is one scheduler, not two. Derive the delta list mechanically from git (new files under `packages/`, `plugins/`, `services/`, changes to manifests/Info.plist, new `security` control ids in `issues/*.json`) and attach it to the issue the workflow opens. Archive reports outside the repo when they contain finding detail that is not yet fixed; keep only the summary and the date in-tree.\n\n## Security & privacy\nSSDF RV.1/RV.3: identifying vulnerabilities continuously and learning from them is a lifecycle obligation, not a pre-launch event. A stale MASVS verdict or a stale privacy label is a factual misstatement to users and stores (MASVS-CODE-2 currency; OWASP-A09). Unfixed findings in an archived report are sensitive: they are stored in the controlled location used for pentest reports ({{SN-SEC-034}}), never in a public issue, and summaries avoid exploit detail before fixes ship.\n\n## UX notes\nNo end-user surface except the refreshed accessibility conformance statement and the About/legal pages that carry review dates ({{SN-GOPS-019}}). Maintainer surface: generated audit issues whose checklists mirror the original M7 issues so the work is repeatable by a different person or agent.\n\n## Test plan\nManual: run the scheduler with fixture dates and confirm the correct set of issues appears with previous-cycle links. Dry-run the delta generator on the last three months of history and confirm it names the real changes. Table-top one off-cycle trigger (a new OS permission) and confirm it produces the threat-model revision issue. Verify each archived artefact from M7 is reachable from the controls matrix.\n\n## Dependencies\n{{SN-SEC-033}} (pentest plan), {{SN-SEC-029}} (MASVS verification), {{SN-A11Y-017}} (accessibility audit).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Next cycle's audit issues created by the scheduler and dated\n"
+  },
+  {
+    "key": "SN-GOPS-018",
+    "title": "Write the user data-recovery support playbook for local-first failures",
+    "type": "docs",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "docs",
+      "storage",
+      "security"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "maintenance",
+    "security": [
+      "MASVS-STORAGE-1",
+      "MASVS-PRIVACY-1",
+      "CWE-212",
+      "OWASP-A09"
+    ],
+    "parent": "SN-DOC-001",
+    "depends_on": [
+      "SN-CRY-015",
+      "SN-CORE-026",
+      "SN-WEB-032"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nIn a local-first, end-to-end-encrypted product, support cannot restore anything for a user — there is no vendor key-recovery path by design ({{SN-CRY-014}}), and the cloud copy is ciphertext in the user's own drive. Users will nonetheless arrive with: a lost recovery code, a notebook stuck in \"Paused (no key)\" ({{SN-CRY-020}}), a corrupt local store ({{SN-CORE-026}}), a browser that evicted OPFS storage ({{SN-WEB-009}}, {{SN-WEB-032}}), a sync folder they deleted from Drive, notes written in a guest profile they cannot find after signing in ({{SN-AUTH-011}}), or a device that died before the last sync. Without a playbook, each of these gets an improvised answer — and the worst improvisation is inventing a recovery capability that does not and must not exist.\n\n## Scope\n**In:** `docs/support/data-recovery.md` — a symptom-first decision tree covering the cases above, each with: the diagnostic questions that need no note content, the in-app steps to try in order (retry sync, re-pair a device {{SN-SYNC-017}}, restore from Trash {{SN-LIB-019}}, restore a snapshot {{SN-SYNC-023}}, import a `.sanenote` backup {{SN-SHR-008}}, re-enter the recovery code {{SN-CRY-015}}), what the app can repair automatically ({{SN-CORE-026}} corruption recovery), what is genuinely unrecoverable and the exact honest wording for saying so, and the preventative follow-up (save the recovery code, enable Export everything {{SN-SHR-009}}, keep sync on); the escalation rule that turns a recurring cause into a defect issue; and a short user-facing help-centre article version ({{SN-DOC-008}}) so most users self-serve.\n**Out:** the recovery mechanisms themselves ({{SN-CRY-015}}, {{SN-CORE-026}}, {{SN-SYNC-023}}); the support operation ({{SN-GOPS-006}}); backup/restore features ({{SN-SHR-008}}).\n\n## Acceptance criteria\n- [ ] Every symptom in the tree names the mechanism that may recover it, in the order to try, with the exact in-app path.\n- [ ] Cases that are unrecoverable are marked as such with wording that is honest, kind and never suggests that support could decrypt or restore the data.\n- [ ] No step in the playbook asks the user to send note content, keys, a recovery code or a screenshot of one; the diagnostic questions are written to avoid it explicitly.\n- [ ] The playbook names the diagnostics artefact to request ({{SN-TEL-008}}) and what it does and does not contain.\n- [ ] A recurring cause produces an `SN-` issue (for example, eviction on a browser that should have been covered by {{SN-WEB-009}}) and the playbook records which causes have already done so.\n- [ ] A user-facing help article covers the three most likely cases and is reachable offline from the in-app help centre.\n\n## Technical notes\nDerive the tree from the real failure states the app can show — \"Paused (no key)\", sync error states ({{SN-SYNC-020}}), the storage-eviction warning ({{SN-WEB-009}}), corruption recovery outcomes ({{SN-CORE-026}}) — so every branch starts from a string the user can read to support. Where a state is ambiguous, fix the state, not the script: a symptom that cannot be distinguished from the UI is a defect worth filing.\n\n## Security & privacy\nSupport-driven recovery is a classic social-engineering target: an attacker claiming a lost recovery code is asking us to break the product's central guarantee. The playbook must state plainly that no such capability exists and that no identity proof can create one (MASVS-STORAGE-1, MASVS-AUTH-2 spirit; CWE-212 improper removal of sensitive information if a well-meaning agent asked for key material). Diagnostics bundles are redacted by construction ({{SN-TEL-003}}) and are user-initiated; the playbook must not ask for raw databases or `.sanenote` bundles, which contain note content (MASVS-PRIVACY-1).\n\n## UX notes\nThe user-facing article uses the help-centre pattern ({{SN-DOC-010}}): symptom headings, numbered steps with screenshots generated from goldens ({{SN-DOC-014}}), and an honest \"if none of this worked\" section. Tone per {{SN-BRD-009}} — this is the moment a user is most upset; the copy must be calm, specific and never blame them.\n\n## Test plan\nRehearse each branch on a test device: corrupt the local store and confirm the documented recovery path works; evict web storage and confirm the documented restore-from-cloud path works ({{SN-WEB-032}}); wipe a device and restore with the recovery code ({{SN-CRY-015}}); delete the sync folder and confirm the documented outcome. Confirm the article renders offline and that no step asks for prohibited content. Where a rehearsal fails, file the defect and update the tree.\n\n## Dependencies\n{{SN-CRY-015}} (recovery-code restore), {{SN-CORE-026}} (corruption recovery), {{SN-WEB-032}} (eviction recovery).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Every branch rehearsed on a real device and its outcome recorded\n"
+  },
+  {
+    "key": "SN-GOPS-019",
+    "title": "Publish and version the legal pages with in-app links and change history",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "website",
+      "privacy",
+      "docs"
+    ],
+    "milestone": "M8 Launch & Growth",
+    "size": "M",
+    "sdlc": "release",
+    "security": [
+      "MASVS-PRIVACY-3",
+      "OWASP-A09",
+      "CWE-200"
+    ],
+    "parent": "SN-SITE-001",
+    "depends_on": [
+      "SN-PRV-017",
+      "SN-SITE-007",
+      "SN-DOC-010"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: privacy-by-design"
+    ],
+    "body": "## Context\n{{SN-PRV-017}} drafts the Privacy Policy and Terms of Service and leaves them as source text pending legal review. Publishing them is a separate, unowned job with real constraints: `PRD-AUTH-005` requires the login fine-print to link **live URLs** that stay true; the rights surface ({{SN-PRV-005}}) needs a policy link and a contact route; store listings require working policy URLs at submission ({{SN-REL-010}}); a user with no network must still be able to read what they agreed to; and when the policy materially changes, users need to be told in-app (we may hold no email address for them at all — guest mode is first-class). Nothing today versions these documents, records effective dates, or keeps the in-app copy in step with the published one.\n\n## Scope\n**In:** published legal routes on the website ({{SN-SITE-007}} docs build) for Privacy Policy, Terms of Service, third-party licences ({{SN-GOPS-004}}) and any jurisdiction-specific notice ({{SN-GIPAD-015}} DSA trader info), each with an effective date, a version id and a link to previous versions; an archived-versions index; a bundled offline copy shipped with the app and surfaced in Settings -> About/Help ({{SN-SET-015}}, {{SN-DOC-010}}), with a build-time check that the bundled version id matches the published one; a **material change** notice in-app (a one-time dismissible sheet naming what changed, with the diff summary) and the rule for when a change is material; store-listing URL wiring; localisation hooks so translated versions declare which source version they track ({{SN-I18N-001}}).\n**Out:** drafting or legally reviewing the text ({{SN-PRV-017}}); the rights surface ({{SN-PRV-005}}); store privacy questionnaires ({{SN-PRV-015}}); the marketing privacy-promise page ({{SN-SITE-006}}), which links here rather than duplicating.\n\n## Acceptance criteria\n- [ ] Privacy Policy, Terms and licences are published at stable URLs, render without JavaScript, and each shows an effective date and version id.\n- [ ] Previous versions remain reachable from an archive index; a change never silently rewrites history.\n- [ ] The app ships an offline copy; a CI check fails the build when the bundled version id does not match the published one.\n- [ ] Login fine-print, onboarding, the rights surface and both store listings link to the live URLs, verified by the link checker ({{SN-DOC-003}}).\n- [ ] A material change triggers a one-time in-app notice that names the change and links the diff; the rule distinguishing material from editorial changes is written down.\n- [ ] A translated page states which source version it tracks and falls back to the source language when it is stale.\n\n## Technical notes\nTreat the legal pages as content in the zero-JS site build ({{SN-SITE-002}}): Markdown with front-matter (`version`, `effective`, `supersedes`), rendered to static HTML, deployed atomically ({{SN-REL-008}}). The bundled copy is generated from the same source at build time into the app's help assets so a version mismatch is a build error rather than a discovery in production. The in-app notice reads a small `legal-version.json` published on the CDN, fetched with the same no-identifier discipline as the status JSON ({{SN-GOPS-010}}).\n\n## Security & privacy\nA published policy is a factual claim about processing; if it drifts from `controls-matrix.md`, the DPIA ({{SN-PRV-013}}) or the store declarations ({{SN-PRV-015}}), the mismatch is a compliance finding and a trust failure (MASVS-PRIVACY-3 transparency; OWASP-A09 for the audit trail of versions). The fetch for the version marker must not become a tracking beacon: no identifiers, cacheable, identical for everyone. Legal pages must not disclose internal infrastructure detail (CWE-200) — sub-processors are named at the level the RoPA ({{SN-GSEC-004}}) supports, no hostnames.\n\n## UX notes\nReading surfaces: website pages using the site typography with a prominent effective date; in-app, a scrollable document view in Settings using the design-system reading layout, Dynamic Type and 200% scaling safe, dark-mode correct, with a \"last updated\" line. The material-change sheet is a standard bottom sheet/dialog with a plain-language summary first and the full text one tap away — never a blocking modal that prevents note-taking.\n\n## Test plan\nCI: version-mismatch check fails on a deliberately stale bundled copy; link checker passes for every referenced URL; the site builds with no JS. Widget/golden: the in-app document view and the material-change sheet across looks, dark mode and 200% text. Manual: publish a rehearsal version bump and confirm the archive index, the in-app notice fires exactly once per user, and the store listing URLs resolve from both consoles.\n\n## Dependencies\n{{SN-PRV-017}} (drafted text), {{SN-SITE-007}} (docs site build), {{SN-DOC-010}} (in-app help centre).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Policy URLs verified live from both store consoles before submission\n"
+  },
+  {
+    "key": "SN-GOPS-020",
+    "title": "Verify requirement, issue, control and test traceability in CI",
+    "type": "infra",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "security",
+      "docs",
+      "qa"
+    ],
+    "milestone": "M0 Foundations",
+    "size": "M",
+    "sdlc": "verification",
+    "security": [
+      "SSDF-PO.1",
+      "SSDF-PW.8",
+      "OWASP-A09",
+      "ASVS-V1"
+    ],
+    "parent": "SN-SEC-001",
+    "depends_on": [
+      "SN-SEC-002",
+      "SN-FND-015"
+    ],
+    "labels_extra": [
+      "agent-ready",
+      "sec: threat-model"
+    ],
+    "body": "## Context\n`docs/security/ssdlc-process.md` §0.4 states the project's traceability spine: requirement (`PRD-*`) -> issue (`SN-*`) -> control (`MASVS-*`/`ASVS-*`/`TM-*`) -> test -> CI gate, with `docs/security/controls-matrix.md` as the map. Nothing checks it. `scripts/validate-issues.mjs` validates issue shape but treats the `security` array as free text, so an issue can claim `MASVS-STORAGE-9` or a `TM-` row that does not exist; a controls-matrix row can name a verification test that was never written; and a PRD requirement can have no owning issue at all. The result is a security story that reads well and cannot be audited — precisely what M7's MASVS/ASVS verification ({{SN-SEC-029}}-{{SN-SEC-032}}) and any external assessor will ask to see.\n\n## Scope\n**In:** `scripts/validate-traceability.mjs` — parse the control ids defined in `controls-matrix.md` and the threat ids in `threat-model.md`, parse `PRD-*` ids from `docs/product/prd-0*.md`, cross-check against `issues/*.json` (`security` arrays and `{{...}}`/`PRD-` citations in bodies) and against the repository's test files named by the matrix; emit `docs/backlog/traceability.md` with four coverage tables (controls with no owning issue, issues citing unknown control ids, matrix rows whose named verification file does not exist, PRD requirements with no issue); wire it into the issues-schema CI job ({{SN-FND-015}}) as a warning-only report while the backlog is still being authored, escalating to a hard failure for unknown control ids immediately and for uncovered controls at M7.\n**Out:** authoring the missing controls or tests (each becomes its own issue); the milestone gate register ({{SN-GOPS-001}}); the controls-matrix content itself ({{SN-SEC-001}}); the PRD milestone remap (a maintainer decision, CLAUDE.md §13).\n\n## Acceptance criteria\n- [ ] Any issue whose `security` array contains an id absent from `controls-matrix.md` or `threat-model.md` fails CI, with the offending key and id named.\n- [ ] The report lists every control row with no owning issue, and every row whose named verification file does not exist in the repo.\n- [ ] The report lists `PRD-*` requirements with no owning issue, tolerating the known PRD-milestone mismatch documented in `docs/QUALITY-REPORT.md` without hiding it.\n- [ ] `docs/backlog/traceability.md` is regenerated in CI and is diff-stable (deterministic ordering).\n- [ ] The escalation schedule is written down: unknown ids fail now; uncovered controls fail from M7 ({{SN-GOPS-001}} gate row).\n- [ ] Running it today produces an accurate baseline, and that baseline is recorded in the issue as the starting point.\n\n## Technical notes\nFollow `validate-issues.mjs`: Node 22, zero dependencies, `--json` and `--stats` flags, exit 1 only on hard errors. Parse ids with tolerant regexes anchored on the matrix's table structure rather than free text, and keep a small alias file for ids that legitimately appear in two forms (`MASVS-STORAGE-1` vs a MASTG test reference). Do not re-implement issue parsing — import the same scan the existing validator uses so both see one source of truth.\n\n## Security & privacy\nThis is the control that keeps every other control honest (SSDF PO.1 requirements are defined, PW.8 they are tested, ASVS V1 architecture/verification documentation; OWASP-A09 for the audit trail). A fabricated control id is worse than a missing one: it makes the controls matrix and any store or audit answer derived from it untrue. The script reads only repository text — no user data, no network, no credentials — and must not print file contents beyond the ids it names (CWE-200).\n\n## UX notes\nDeveloper-facing. The generated report leads with the four counts so a reader sees the state in one line, then the tables sorted by control id; CI annotations name the issue key and the bad id so the fix is obvious without opening the report.\n\n## Test plan\n`tools/test/validate_traceability_test.mjs` with fixtures: (1) an issue citing an unknown control id -> exit 1; (2) a control row with a missing verification file -> reported, exit 0 in warn mode, exit 1 in strict mode; (3) a PRD id with no issue -> reported; (4) deterministic output across two runs. Manual: run against the current repository and file the baseline numbers in this issue; confirm the M7 strict mode would fail today (it should) so the escalation has teeth.\n\n## Dependencies\n{{SN-SEC-002}} (baselined threat model and controls matrix to parse), {{SN-FND-015}} (CI job to attach to).\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n- [ ] Baseline coverage numbers recorded and linked from the controls matrix\n"
+  }
+]
