@@ -1,11 +1,13 @@
-name: sane_core
-description: Immutable local note values and repository contracts.
+name: sane_sync
+description: Encrypted user-cloud synchronization.
 publish_to: none
 version: 0.1.0
 environment:
   sdk: ^3.13.0
 resolution: workspace
 dependencies:
+  sane_core:
+    path: ../sane_core
   sane_crypto:
     path: ../sane_crypto
 dev_dependencies:

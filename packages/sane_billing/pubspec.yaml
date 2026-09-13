@@ -1,12 +1,12 @@
-name: sane_core
-description: Immutable local note values and repository contracts.
+name: sane_billing
+description: Plans and entitlement domain logic.
 publish_to: none
 version: 0.1.0
 environment:
   sdk: ^3.13.0
 resolution: workspace
 dependencies:
-  sane_crypto:
-    path: ../sane_crypto
+  sane_core:
+    path: ../sane_core
 dev_dependencies:
   test: ^1.25.0

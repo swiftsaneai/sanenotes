@@ -4,7 +4,17 @@ environment:
   sdk: ^3.13.0
 workspace:
   - app
+  - packages/sane_audio
+  - packages/sane_billing
+  - packages/sane_brushes
   - packages/sane_core
+  - packages/sane_crypto
+  - packages/sane_ink
+  - packages/sane_ml
+  - packages/sane_pdf
+  - packages/sane_render
+  - packages/sane_search
+  - packages/sane_sync
   - packages/sane_ui
 dev_dependencies:
   analyzer: ^13.3.0

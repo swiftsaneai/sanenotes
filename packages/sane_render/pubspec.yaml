@@ -1,0 +1,19 @@
+name: sane_render
+description: Layered note rendering.
+publish_to: none
+version: 0.1.0
+environment:
+  sdk: ^3.13.0
+resolution: workspace
+dependencies:
+  flutter:
+    sdk: flutter
+  sane_brushes:
+    path: ../sane_brushes
+  sane_core:
+    path: ../sane_core
+  sane_ink:
+    path: ../sane_ink
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
