@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sane_ui/sane_ui.dart';
 
 void main() {
+  final reference = Platform.environment['SANE_GOLDEN_REFERENCE'] ?? 'macos26';
   setUpAll(() async {
     for (final family in ['Karla', 'Newsreader']) {
       final loader = FontLoader('packages/sane_ui/$family')
@@ -103,7 +106,7 @@ void main() {
       await tester.pumpAndSettle();
       await expectLater(
         find.byKey(const Key('gallery')),
-        matchesGoldenFile('goldens/themes_${brightness.name}.png'),
+        matchesGoldenFile('goldens/$reference/themes_${brightness.name}.png'),
       );
     });
   }

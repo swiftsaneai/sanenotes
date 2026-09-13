@@ -144,8 +144,12 @@ dart compile js -O2 app/tool/drift_worker.dart -o app/web/drift_worker.dart.js
 
 `app/web/storage-assets.json` records the SQLite WASM source and checksum. The worker is compiled
 from the locked Drift dependency. Fonts are bundled locally with their OFL licenses. Exact golden baselines use macOS
-font rasterization; the application CI uses macOS 15 rather than comparing Linux pixels
-to macOS reference images.
+font rasterization. Local tests default to the macOS 26 reference; CI selects
+`SANE_GOLDEN_REFERENCE=macos15` for its macOS 15 runner. Both retain exact pixel
+comparison. The two reviewed baselines differ only in sparse font-edge rasterization
+(163 light / 162 dark pixels out of 2,560,000). Regenerate each reference on its
+matching OS with `flutter test --update-goldens`; review the images before committing.
+Other operating systems need their own reviewed reference images.
 
 Backlog tools:
 
