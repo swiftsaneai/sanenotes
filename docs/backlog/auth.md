@@ -501,7 +501,7 @@ SN-AUTH-002, SN-CORE-002.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #767 |
 | Type | task |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -787,7 +787,7 @@ SN-AUTH-003, SN-AUTH-009; entitlement association SN-BILL-001 / [SN-AUTH-016](au
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #768 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -844,7 +844,7 @@ SN-AUTH-007, SN-CORE-004 (persistence). Composes with [SN-AUTH-014](auth.md#sn-a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #769 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -901,7 +901,7 @@ SN-AUTH-007, SN-AUTH-013, SN-CRY-002.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #770 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1245,7 +1245,7 @@ SN-AUTH-002; flavour matrix SN-FND-005; CI-secret wiring SN-CI-001.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #771 |
 | Type | test |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1302,7 +1302,7 @@ SN-AUTH-002 (guard implementation); SN-CI-001 (DevSecOps workflow).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #831 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |

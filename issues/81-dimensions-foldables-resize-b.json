@@ -1,0 +1,181 @@
+[
+  {
+    "type": "feature",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-030",
+    "title": "Reflow layout continuously during live window resize",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "web"
+    ],
+    "areas": [
+      "compat",
+      "design-system",
+      "perf"
+    ],
+    "size": "L",
+    "depends_on": [
+      "SN-DS-026",
+      "SN-IPAD-010",
+      "SN-AND-013",
+      "SN-GWEB-004"
+    ],
+    "body": "## Context\nOn iPadOS Split View / Slide Over / Stage Manager, Android split-screen and freeform/desktop windows, and browser window resize, the available width changes continuously as the user drags a divider — not in discrete jumps. If the layout only snaps at breakpoints the content visibly lurches. docs/platform/ipad.md §\"iPad multitasking\" and android.md §7 require adapting to arbitrary window sizes; SN-IPAD-010 and SN-AND-013 own the platform hooks. This issue makes the shared layout reflow smoothly across the whole continuum.\n\n## Scope\n**In:**\n- Continuous, per-frame reflow of chrome (sidebar/rail, palette dock, page rail, toolbars, Library grid columns) as the window width sweeps from ~320 dp to extra-large, not just at the 600/840/1200/1600 dp class boundaries.\n- Elements that change mode at a class boundary cross-fade or slide rather than pop.\n- The fixed page geometry re-centres continuously; the Library grid re-columns fluidly.\n\n**Out:**\n- The per-frame frame-budget guarantee during the drag (SN-DIM-046, perf-focused sibling).\n- Two app instances (SN-DIM-032).\n- Software-keyboard insets (SN-GPHN-002).\n\n## Acceptance criteria\n- [ ] Dragging an iPad Split View divider from 2/3 to 1/3 (e.g. 981→320 pt on a 12.9\" iPad) reflows the editor continuously: the palette dock stays docked and reachable at every intermediate width, and the page re-centres each frame with no lurch.\n- [ ] Crossing the 600 dp and 840 dp class boundaries during the drag transitions sidebar↔rail and shows/hides the page rail via a cross-fade/slide, not an instant pop.\n- [ ] On a resizable Chrome window, dragging from 1600 to 360 CSS px reflows with no horizontal page scroll at any width and full function at 320 CSS px (WCAG 1.4.10).\n- [ ] On Android freeform/desktop (ChromeOS) window resize the Library grid re-columns fluidly (4→3→2→1) with cards keeping their 3:4 aspect and no clipped text.\n- [ ] At every intermediate width, all controls meet the platform min target (44 pt iPad / 48 dp Android / 24 CSS px web) and no control is off-screen.\n- [ ] At 200% text scale the continuous reflow still avoids clipping and 2-D scroll across the whole width sweep.\n- [ ] Under browser pinch-zoom, the `visualViewport` offset keeps the active field and toolbar visible and the canvas does not jump.\n- [ ] A half-screen snap (~720 px) resolves to the correct size class and collapses the sidebar at the < 900 px `narrow` threshold exactly once.\n- [ ] Two consecutive automated resize sweeps produce byte-identical final layouts (deterministic), and the URL/history stays stable across resize ({{SN-GWEB-004}}).\n\n## Technical notes\nDrive layout from `MediaQuery.sizeOf(context)` via `LayoutBuilder` so every build uses the live size, and interpolate continuous properties (grid column count via `SliverGridDelegateWithMaxCrossAxisExtent`, sidebar width, dock length) as functions of width rather than switching only at class thresholds (extend SN-DS-026). For mode changes at a boundary, wrap in `AnimatedSwitcher`/`AnimatedAlign` (respect Reduce Motion). iPad: coexist with Stage Manager/Split View/Slide Over resize handles (ipad.md §windowing); do not lock size via `UIWindowScene.sizeRestrictions`. Web: `ResizeObserver` + CSS container queries (`@container`) and `window.visualViewport`; avoid layout thrash by reading sizes once per frame. Android: `onConfigurationChanged` continuous metrics via `WindowMetricsCalculator.computeCurrentWindowMetrics`.\n\n## Security & privacy\nNone beyond baseline. In multi-window the app-switcher/screenshot snapshot must not expose a locked note (handled with SN-DIM-032/SN-GCMP-001); no new surface here.\n\n## UX notes\nResizing should feel like the layout breathes with the window — calm and continuous, never a jolt (ux-principles.md §2, §8). The page stays the hero at every width.\n\n## Test plan\nIntegration `app/integration_test/resize_continuity_test.dart`: sweep the window width in small steps (e.g. 20 dp) and assert no off-screen control, no horizontal scroll, correct target sizes, and cross-fade (not pop) at boundaries. Golden `app/test/golden/layout_matrix_test.dart` at many discrete widths (320/375/600/840/1024/1200/1600 dp). Web test via a headless resize.\n\n## Dependencies\nDepends on SN-DS-026 (adaptive primitives), SN-IPAD-010 (Split View/Slide Over/Stage Manager adaptation) and SN-AND-013 (Android/ChromeOS windowing). Paired with SN-DIM-046. Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/ipad.md, android.md, web.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p2",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-032",
+    "title": "Support two app windows side by side editing different notebooks",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "web"
+    ],
+    "areas": [
+      "compat",
+      "editor",
+      "storage"
+    ],
+    "size": "L",
+    "depends_on": [
+      "SN-ED-029",
+      "SN-IPAD-009",
+      "SN-CORE-001"
+    ],
+    "body": "## Context\nPower users open two windows of the same app side by side — iPadOS multi-window (multiple `UIWindowScene`s), Android multi-instance (a second task), and on web a second browser tab — each editing a different notebook. docs/platform/ipad.md §windowing and the SN-IPAD-009 spike cover the platform feasibility; SN-ED-029 delivers split view / multi-window / document tabs. This issue guarantees two independent editor windows on different notebooks behave correctly and keep the local store coherent.\n\n## Scope\n**In:**\n- Two windows/instances, each with independent editor state (page, tool, scroll, zoom, undo stack) editing different notebooks.\n- A shared local store (drift/SQLite + blob store, SN-CORE-001) that stays coherent across both windows (writes from one visible to the other on next read; no corruption).\n- Correct scene/instance lifecycle: opening, focusing and closing the second window.\n\n**Out:**\n- Two windows on the SAME notebook (SN-DIM-033).\n- Real-time collaboration between users (separate collaboration epic).\n- The split-view/tabs UI itself (SN-ED-029).\n\n## Acceptance criteria\n- [ ] On an M-series iPad with Stage Manager, two Sane Notes windows can be open at arbitrary sizes (e.g. 720x1080 pt and 900x700 pt), each showing a different notebook, each with its own tool selection and undo stack that do not interfere.\n- [ ] On Android, launching a second instance (multi-instance / a second task) opens a different notebook in a separate task with independent state; both appear in Recents.\n- [ ] A stroke committed in window A on notebook X is persisted and does not appear in window B (notebook Y); the store shows no cross-write.\n- [ ] Closing window B does not lose window A state; closing A while B is open keeps B fully functional.\n- [ ] On web, a second tab editing a different notebook does not clobber the first tab's IndexedDB/local state (per-notebook rows), verified after edits in both.\n- [ ] Memory with two editor windows open stays within budget on the tablet slot (no doubling that breaches the 300 MB low-end ceiling on constrained devices; documented if a device caps to one window).\n\n## Technical notes\niOS: declare `UIApplicationSupportsMultipleScenes` and manage `UISceneSession`s; verify Flutter multi-view/multi-window support (SN-IPAD-009 spike; degrade to in-app tabs per ipad.md §L4 if native scenes aren't feasible, recording the outcome in ADR-0001). Android: `android:documentLaunchMode`/`FLAG_ACTIVITY_MULTIPLE_TASK` + `resizeableActivity`; each instance is its own FlutterEngine or multi-view. Store coherence: route all writes through the storage isolate (overview.md §6); use per-notebook row scoping and a single shared drift database with WAL so concurrent readers see committed writes. Web: a second tab is a second app instance; scope local state per notebook id and use a `BroadcastChannel`/storage events to invalidate stale caches.\n\n## Security & privacy\nBaseline plus: a second window must respect per-notebook biometric lock (SN-GCMP-001) independently; opening notebook Y in window B must not bypass A's lock on notebook X. The app-switcher/mission-control snapshot of each scene must obscure a locked note. No cross-window leakage of decrypted content.\n\n## UX notes\nTwo notebooks side by side is a genuine study workflow (compare lecture notes with a problem set). Each window is a full, independent editor. Follow ux-principles.md §8 (a new window per notebook where the platform supports it).\n\n## Test plan\nIntegration `app/integration_test/multi_window_test.dart` (patrol where needed) opening two scenes/instances on different notebooks, editing both, asserting independent state and store coherence. Store test in `packages/sane_core/test` for concurrent readers/writers. Manual matrix on iPad Stage Manager + Android multi-instance + two web tabs.\n\n## Dependencies\nDepends on SN-ED-029 (split view/multi-window/tabs), SN-IPAD-009 (multi-window spike) and SN-CORE-001 (document model/store). Parent SN-DIM-001. Related {{SN-IPAD-009}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/ipad.md, android.md, web.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p2",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-033",
+    "title": "Keep two windows coherent when they open the same notebook",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "web"
+    ],
+    "areas": [
+      "compat",
+      "sync",
+      "editor"
+    ],
+    "size": "M",
+    "depends_on": [
+      "SN-DIM-032",
+      "SN-CORE-001"
+    ],
+    "body": "## Context\nThe harder multi-window case: two windows/instances open the SAME notebook. Without coordination, edits in one can clobber the other. Sane Notes' document model is an add-wins CRDT with per-object HLC (CLAUDE.md §2 decision 4), which makes local same-device concurrency mergeable — this issue makes two windows on one notebook stay coherent and live-updating (or, where that is infeasible on a platform, a clear read-only-in-the-second-window guard).\n\n## Scope\n**In:**\n- Two windows on the same notebook see each other's committed edits live (or near-live) via the local store + CRDT merge, with no lost updates or corruption.\n- Undo scoping is well-defined (per-window undo of that window's own edits; document the exact rule).\n- Where live two-way editing is infeasible on a platform, the second window opens read-only with a clear, honest banner and a \"take over editing\" affordance.\n\n**Out:**\n- Cross-user/network collaboration (collaboration epic).\n- The base multi-window plumbing (SN-DIM-032).\n\n## Acceptance criteria\n- [ ] On iPad Stage Manager, a stroke committed in window A on notebook X appears in window B (same notebook) within 500 ms with no duplication and no lost prior edits.\n- [ ] Concurrent edits to the same page from both windows merge via CRDT with no corruption (add-wins; per-object HLC); a scripted interleave of 100 ops from both windows converges to one identical document.\n- [ ] Undo in window B reverts window B's last edit, not window A's (documented per-window undo rule); the undo stacks do not corrupt each other.\n- [ ] If a platform cannot support live two-way editing, the second window opens read-only with the banner \"Open in another window — editing there\" and a control to move editing here; this state is announced to AT.\n- [ ] Closing one window leaves the notebook fully editable in the other with all merged content intact.\n- [ ] No decrypted content crosses process boundaries except through the shared encrypted local store.\n\n## Technical notes\nUse the shared drift database as the coordination point: writes go through the storage isolate (overview.md §6) and both windows observe change streams (drift `watch`) to re-hydrate. Apply CRDT merge from `packages/sane_core` (add-wins object set + LWW registers + per-object HLC, CLAUDE.md decision 4) so concurrent local edits converge. Web: coordinate tabs via `BroadcastChannel` + storage events; a Web Lock (`navigator.locks`) can elect a single writer if live merge in a tab is deferred. Per-window undo stacks are independent, keyed by window id. Fall back to a read-only second window with `navigator.locks`/an editing-owner flag where live merge isn't ready; record the decision in an ADR.\n\n## Security & privacy\nBaseline plus: same-notebook coherence must not leak decrypted objects across processes except through the encrypted store; the read-only fallback must still honour biometric lock. No content in logs.\n\n## UX notes\nTwo views of one notebook should feel like one live document, not two forks. If the platform forces read-only, be honest and offer a one-tap takeover (ux-principles.md §4 error/empty voice, \"no dead ends\").\n\n## Test plan\nIntegration `app/integration_test/same_notebook_multi_window_test.dart`: edit the same notebook in two windows, assert live propagation < 500 ms and CRDT convergence. Unit test the merge + per-window undo in `packages/sane_core/test`. Web test with two contexts sharing IndexedDB + BroadcastChannel.\n\n## Dependencies\nDepends on SN-DIM-032 (multi-window plumbing) and SN-CORE-001 (CRDT/document model). Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/ipad.md, android.md, web.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p2",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-036",
+    "title": "Adapt available space when a keyboard or trackpad attaches",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "web"
+    ],
+    "areas": [
+      "compat",
+      "input-gestures",
+      "editor"
+    ],
+    "size": "M",
+    "depends_on": [
+      "SN-DS-026",
+      "SN-GPHN-002"
+    ],
+    "body": "## Context\nAttaching a hardware keyboard/trackpad (iPad Magic Keyboard, Android/ChromeOS keyboard case) changes both the available space (the software keyboard no longer appears; a pointer becomes available) and the expected input model (shortcuts, hover, right-click, precise pointer). docs/design/ux-principles.md §8 requires input to adapt, not just size. This issue adapts the layout and input affordances when a physical keyboard/trackpad is present or removed.\n\n## Scope\n**In:**\n- Detect hardware keyboard/trackpad presence and adapt: prefer the hardware keyboard (no software keyboard eating space), enable hover states, right-click context menus, and precise-pointer cursors.\n- Reclaim the space that the software keyboard would have used when a hardware keyboard is attached.\n- Re-flow when the keyboard case is attached/detached at runtime (e.g. iPad docked into a Magic Keyboard) without losing editor state.\n\n**Out:**\n- The full keyboard-shortcut map (gestures-and-shortcuts spec) — consume it, don't define it.\n- Software-keyboard insets (SN-GPHN-002).\n\n## Acceptance criteria\n- [ ] Docking an iPad into a Magic Keyboard at runtime reclaims the bottom area (no software keyboard reserved), reflows the editor within B5 (no frame > 16.7 ms), and preserves the open page/tool/scroll.\n- [ ] With a trackpad/mouse present, hover states appear on controls and cards (cards lift 3 px per component-inventory.md §9) and a precise cursor changes per tool (crosshair/text/cell); with touch-only these are absent.\n- [ ] Right-click / secondary-click opens the context menu equivalent of the long-press actions; every hover-only affordance has a pointer + touch equivalent (ux-principles.md §8).\n- [ ] Detaching the keyboard/trackpad reverts to touch-first affordances and re-enables the software keyboard path (SN-GPHN-002) without state loss.\n- [ ] On ChromeOS/web with a physical keyboard, the same adaptations apply via pointer + keyboard media queries; at 200% text scale the reclaimed layout still avoids clipping.\n- [ ] Focus order and a visible focus ring (2 px accent, offset 2, WCAG 2.4.11) work for keyboard navigation when a hardware keyboard is attached.\n\n## Technical notes\nDetect pointer kind via `MediaQuery` / `PointerDeviceKind` on incoming events and hover via `MouseRegion`; detect hardware keyboard on iOS through `GCKeyboard`/trait changes (verify via the plugin), on Android/ChromeOS via `InputDevice`/configuration `keyboard`/`navigation`. Reflow through the SN-DS-026 size-class + an \"has hardware keyboard\" flag so the software-keyboard reservation (SN-GPHN-002) is skipped. Provide right-click via `onSecondaryTapDown`/`GestureDetector` and `ContextMenuController`. Cursors via `MouseCursor`/`SystemMouseCursors`. Keep state in providers across the attach/detach rebuild (SN-PHN-017 pattern).\n\n## Security & privacy\nNone beyond baseline.\n\n## UX notes\nOn a Magic Keyboard the iPad becomes a laptop; Sane Notes should feel native to that — pointer, hover, shortcuts, right-click — while staying identical in look (ux-principles.md §10 \"consistency across surfaces\"). Reference gestures-and-shortcuts.md.\n\n## Test plan\nIntegration `app/integration_test/hardware_input_test.dart`: simulate pointer-present/absent and a runtime keyboard attach; assert space reclaimed, hover/cursor/right-click available, state preserved. Golden with hover state on/off. Keyboard-focus traversal test.\n\n## Dependencies\nDepends on SN-DS-026 and SN-GPHN-002 (keyboard-inset handling it toggles off). Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/ipad.md, android.md, web.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-037",
+    "title": "Restore editor state after process death at a different window size",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "ios-phone",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "storage",
+      "editor"
+    ],
+    "size": "L",
+    "depends_on": [
+      "SN-PHN-017",
+      "SN-DS-026",
+      "SN-CORE-001"
+    ],
+    "body": "## Context\nThe OS can kill a backgrounded app to reclaim memory, then relaunch it later — often at a different window size or orientation than when it was backgrounded (the user rotated, folded, or changed Split View while the app was dead). State restoration must rebuild the editor at the NEW size, not the old one, with no crash and no lost work. This is distinct from live continuity (SN-PHN-017/027) because the process actually died.\n\n## Scope\n**In:**\n- Persist enough editor state to restore after process death: open notebook + page, scroll, zoom, tool/colour/width, and a pointer to the last-saved document version (in-flight edits are already committed to the local store).\n- Restore correctly when the window size/orientation/fold posture at relaunch differs from when backgrounded (re-derive layout from live metrics, re-anchor scroll/zoom to the new viewport).\n- No crash, no blank editor, no wrong-size layout.\n\n**Out:**\n- Live fold/rotation continuity (SN-PHN-017/027).\n- The document persistence engine itself (SN-CORE-001) — this issue restores the view state on top of it.\n\n## Acceptance criteria\n- [ ] Backgrounding the app on an Android phone in portrait, having the OS kill it, rotating to landscape, and relaunching restores the same notebook/page with scroll/zoom re-anchored to the landscape viewport and the correct tool selected — no crash.\n- [ ] Backgrounding folded (Compact) and relaunching unfolded (Expanded) on a Pixel 9 Pro Fold restores the editor in the Expanded layout (not a stretched Compact one) with state intact.\n- [ ] The last committed strokes/edits are present after restoration (in-flight edits were committed to the local store; nothing since the last commit is expected to survive, and this boundary is documented).\n- [ ] Restoration completes to an interactive editor within the cold-start budget for the surface (< 2 s mid Android, < 1.5 s iPad) — it does not eagerly deserialize the whole notebook (open to first page interactive per B7).\n- [ ] A biometric-locked notebook restores to the locked state and requires auth again (never restores decrypted content directly).\n- [ ] If the previously open notebook was deleted while the app was dead, restoration lands on the Library with an honest toast, not a crash or a blank editor.\n\n## Technical notes\nUse Flutter `RestorationMixin` + `RestorationBucket` (restorationScopeId on `MaterialApp`) to persist the small view-state (notebook id, page index, scroll offset, zoom, tool). Android: back it with `onSaveInstanceState` via the embedding; iOS: state restoration activity (`NSUserActivity`/scene `stateRestorationActivity`). On relaunch, read live metrics (`MediaQuery.sizeOf`, displayFeatures, orientation) and build the layout for the CURRENT size (SN-DS-026), then re-anchor scroll/zoom by re-projecting the saved offset through the current viewport. Document restore does the lazy open (B7, overview.md; storage isolate). Do not restore decrypted content for locked notebooks — restore the lock state.\n\n## Security & privacy\nReal risk: restored state must not leak a locked note. Persist only ids and view-state, never decrypted content; a locked notebook restores locked (MASVS-STORAGE-2: no sensitive data in restoration state; MASVS-AUTH re-challenge). The app-switcher snapshot taken at background must obscure a locked note.\n\n## UX notes\nComing back to a killed app should feel like it never left — same page, right size. No \"reopen your notebook\" friction. Honest recovery if the notebook is gone (ux-principles.md §4, \"no dead ends\").\n\n## Test plan\nIntegration `app/integration_test/process_death_restore_test.dart` using the framework's restoration test harness: set state, simulate restoration at a changed size/orientation, assert correct layout + state. Add an Android instrumentation path that actually kills the process (patrol) and relaunches rotated. Test the locked-notebook and deleted-notebook branches.\n\n## Dependencies\nDepends on SN-PHN-017 (state across size-class changes), SN-DS-026 (size classes) and SN-CORE-001 (store). Parent SN-DIM-001. Security aligns with {{SN-GCMP-001}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/ipad.md, android.md, web.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "test",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "verification",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-038",
+    "title": "Build the foldable, orientation and resize continuity test matrix",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "ios-phone",
+      "android-phone",
+      "web"
+    ],
+    "areas": [
+      "qa",
+      "compat",
+      "perf"
+    ],
+    "size": "L",
+    "depends_on": [
+      "SN-DIM-021",
+      "SN-PHN-017",
+      "SN-DIM-027",
+      "SN-DIM-030",
+      "SN-QA-001",
+      "SN-PERF-004"
+    ],
+    "body": "## Context\nThe foldable/resize/orientation work (SN-DIM-021..037) needs one shared, enforced test matrix so \"reliable for all dimensions\" is verified continuously, not spot-checked. This issue builds the golden + integration + perf harness that exercises fold postures, rotations, live resize, multi-window and process-death across a defined device/viewport list, and wires it into CI under the quality epic (SN-QA-001) and the device lab (SN-PERF-004).\n\n## Scope\n**In:**\n- A golden layout matrix over an explicit viewport/posture list.\n- Integration tests for fold/unfold, rotation, live resize, multi-window and process death (reusing the tests authored in SN-DIM-021..037 as a suite).\n- A perf assertion for the resize/rotation workloads on Tier 1 slots.\n- CI wiring so a regression in any dimension fails the build.\n\n**Out:**\n- The features themselves (SN-DIM-021..037).\n- Google Play large-screen/foldable store-quality submission ({{SN-GAND-006}}, M7) — this feeds it but is separate.\n\n## Acceptance criteria\n- [ ] A golden matrix `app/test/golden/layout_matrix_test.dart` renders the editor and library at, at minimum: 320/375 dp phones, iPhone 18-class 402x874 & 440x956 pt, iPad Air 820x1180 pt, iPad Pro 1032x1376 pt (portrait+landscape), Pixel 9 Pro Fold 968x2376 cover & 2076x2152 inner, Z Fold6 968x2376 & 2160x1856, a tabletop half-opened posture, and Split View 320/507/981 pt widths.\n- [ ] Golden coverage includes text scale at 100%, 130%, 200% and 310% for at least the compact and expanded editor.\n- [ ] Integration suite `app/integration_test/` runs fold_posture, fold_continuity, rotation_continuity, resize_continuity, midstroke_config_change, multi_window and process_death_restore and passes on the CI emulator/simulator set (functional/golden only; latency gates excluded on emulators per performance-budgets.md §3).\n- [ ] A perf test asserts the resize and rotation workloads hold B4/B5 (no frame > 16.7 ms; >= 120 fps on 120 Hz) on the Tier 1 device slots via tools/perf_harness.\n- [ ] The matrix documents the device/viewport list in docs/platform (single source of truth) and fails CI on any missing or broken golden.\n- [ ] Hinge-occlusion assertions verify no interactive control intersects the hinge band on every foldable profile.\n\n## Technical notes\nBuild on Flutter golden tests (`flutter test --update-goldens` workflow, `matchesGoldenFile`) with a parameterised list of `Size` + `devicePixelRatio` + `displayFeatures` + `textScaler`. Inject synthetic `MediaQueryData.displayFeatures` for hinge/posture (no physical device needed for goldens). Integration tests via `integration_test` + `patrol` for real fold (`adb emu fold`) and process death. Perf via the SN-PERF harness (FrameTiming / long-animation-frame, performance-budgets.md §2) on the SN-PERF-004 device lab. Emulators run functional/golden only, never latency gates (performance-budgets.md §3). Wire all into `.github/workflows`.\n\n## Security & privacy\nNone beyond baseline. Test fixtures use synthetic notes, never real user content; no secrets in fixtures.\n\n## UX notes\nThis is the safety net behind the maintainer's promise that the app is \"reliable for all the types of dimensions.\" Golden diffs make any layout regression on any device visible in review. Reference docs/platform/compatibility-matrix.md §5.\n\n## Test plan\nThis issue IS the test infrastructure. Self-verifying: the goldens and integration/perf suites must be green on the CI device set, and an intentionally introduced layout break (e.g. a control under the hinge) must make the suite fail (a negative test proves the matrix has teeth).\n\n## Dependencies\nDepends on SN-DIM-021, SN-PHN-017, SN-DIM-027, SN-DIM-030 (the features it exercises), SN-QA-001 (quality/testing) and SN-PERF-004 (device lab). Feeds {{SN-GAND-006}} and {{SN-GA11-024}}. Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Golden + integration + perf matrix merged and green on the CI device/emulator set\n- [ ] A negative test proves the matrix catches a hinge-occlusion / off-screen-control regression\n- [ ] Device/viewport list documented in docs/platform and referenced from CLAUDE.md test guidance\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  }
+]

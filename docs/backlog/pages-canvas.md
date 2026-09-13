@@ -1,6 +1,6 @@
 # Backlog — area: pages-canvas
 
-24 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+26 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -31,6 +31,120 @@
 
 ## Issues
 
+### SN-DIM-008
+
+<a id="sn-dim-008"></a>
+
+**Render the fixed-aspect page correctly on any viewport without distorting ink**
+
+| Field | Value |
+|---|---|
+| GitHub | #1125 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | pages-canvas, editor, compat |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-PG-004](pages-canvas.md#sn-pg-004), [SN-GUX-007](theming.md#sn-gux-007) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+A note page is fixed geometry: 800×1040 units (aspect ≈ 0.769), rendered at max 820 px wide, centred, with a drop shadow and 4 px radius; a freeform canvas is 2400×2400 (`docs/design/ux-principles.md` §8, `tokens.json` `page`). The viewport is anything from 320×480 to an ultrawide window. The page must **letterbox/fit** into whatever space remains after chrome, preserving its aspect exactly, and — critically — stroke coordinates must stay in page space so ink never stretches, shifts, or re-samples when the viewport changes. [SN-GUX-007](theming.md#sn-gux-007) decides which page *pixels* are look-independent; this issue owns the *geometry* fit.
+
+#### Scope
+**In:** a page viewport layer in `sane_render`/editor that maps page-space (800×1040) to screen-space via a uniform scale (fit-width up to 820 px, letterbox vertically; centre horizontally) with the pointer transform inverting exactly so a tap at screen (x,y) resolves to the same page coordinate at any scale; letterbox margins painted with the app ground (never stretched paper); freeform uses pan/zoom (`InteractiveViewer`) with the same page-space invariant. Zoom/scale never mutate stored stroke points.
+**Out:** page-pixel colour invariance across looks ([SN-GUX-007](theming.md#sn-gux-007)); extreme-aspect chrome behaviour ([SN-DIM-009](pages-canvas.md#sn-dim-009)); min-viewport usability ([SN-DIM-011](design-system.md#sn-dim-011)); the paper renderer itself ([SN-PG-004](pages-canvas.md#sn-pg-004)).
+
+#### Acceptance criteria
+- [ ] The same seeded page renders with identical page-space stroke coordinates at 320 px, 820 px and 1440 px available widths; a golden confirms ink is scaled uniformly, never stretched (aspect held to 800:1040 within 0.1%).
+- [ ] A pointer-down at a fixed page coordinate maps to the same stored (x,y) at 50%, 100% and 200% render scale (round-trip screen→page→screen error < 0.5 px).
+- [ ] When the viewport is taller than 820×1040-scaled, the page is centred with letterbox bands painted in the app ground, not stretched paper; when narrower than 820, the page fits width and never exceeds 820 px.
+- [ ] Rotating or resizing the viewport re-fits the page without changing any stroke's stored coordinates (verified by hashing the stroke list before/after).
+- [ ] Freeform (2400×2400) pans/zooms with the same page-space invariant; a stroke committed at zoom 2.0 lands at the correct page coordinate at zoom 1.0.
+
+#### Technical notes
+Use a single `PageViewportTransform` (a `Matrix4`/scale + offset) consumed by both the painter and the `Listener` hit test, so render and input can never diverge. Prefer an explicit transform over `FittedBox` for the paged canvas so the pointer inverse is exact; `FittedBox(fit: BoxFit.contain)` is acceptable only where no pointer mapping is needed (thumbnails). Stroke storage stays in page units (`sane_ink` serialised deltas). Reference the fixed-geometry rule in `ux-principles.md` §8 and the render pipeline in `docs/architecture/overview.md` §3. Do not enable input resampling on the draw path (`CLAUDE.md` §8).
+
+#### Security & privacy
+None beyond baseline: coordinate math only, no logging of ink coordinates (`CLAUDE.md` §7.3). Deterministic fit also keeps exported/shared pages reproducible across devices (an integrity property shared with [SN-GUX-007](theming.md#sn-gux-007)).
+
+#### UX notes
+The page is the hero and must look pixel-stable: switching devices or resizing must not "reflow" a handwritten page or move a diagram relative to the paper. Letterbox bands use the ground/wallpaper, keeping the page a physical object on a desk. No animation of the ink path itself.
+
+#### Test plan
+Golden: `packages/sane_render/test/goldens/page_fit_matrix_test.dart` — one seeded page across representative widths/aspects. Unit: `packages/sane_render/test/page_viewport_transform_test.dart` — round-trip screen↔page mapping at several scales; stroke-hash invariance across resize. Integration: draw at one zoom, verify coordinate at another.
+
+#### Dependencies
+[SN-PG-004](pages-canvas.md#sn-pg-004), [SN-GUX-007](theming.md#sn-gux-007)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-009
+
+<a id="sn-dim-009"></a>
+
+**Support ultra-wide, ultra-tall and square-ish viewports without breakage**
+
+| Field | Value |
+|---|---|
+| GitHub | #1126 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | pages-canvas, design-system, compat |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-008](pages-canvas.md#sn-dim-008), [SN-DS-026](design-system.md#sn-ds-026) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Aspect ratio varies wildly across the matrix: a Z Flip unfolded is ~22:9 (ultra-tall), an ultrawide desktop window is 21:9 or 32:9, a foldable inner display or a Z Flip cover is nearly square (~1:1), and an iPad is 4:3. A layout tuned only for typical phone/tablet ratios wastes space or breaks at the extremes. This issue makes the shell and editor behave correctly at any aspect, keeping the fixed page centred and the chrome sensible.
+
+#### Scope
+**In:** aspect-aware chrome rules layered on the size classes ([SN-DS-026](design-system.md#sn-ds-026)): on ultra-wide viewports cap content/canvas column width and use the extra width for side panes (page rail, subjects, or a second pane) or symmetric ground margins rather than a stretched page; on ultra-tall viewports use the height for stacked chrome / continuous scroll without stretching the page ([SN-DIM-008](pages-canvas.md#sn-dim-008)); on square-ish viewports pick a balanced two-pane or centred single-pane; expose an aspect classification helper (portrait / landscape / square, plus an "extreme" flag beyond 2.2:1 or below 1.15:1).
+**Out:** the page fit itself ([SN-DIM-008](pages-canvas.md#sn-dim-008)); fold/hinge specifics ([SN-DIM-022](compat.md#sn-dim-022)); desktop live-resize continuity ([SN-DIM-030](compat.md#sn-dim-030)); minimum viewport ([SN-DIM-011](design-system.md#sn-dim-011)).
+
+#### Acceptance criteria
+- [ ] At 3440×1440 (≈ 2.39:1) the Editor centres the ≤ 820 px page with balanced ground margins and offers the page rail; no element is stretched across the full width and text columns stay ≤ a readable measure.
+- [ ] At a 22:9 viewport (~1080×2640 dp-scaled) the Library uses the height for more rows and the Editor stacks chrome without distorting the 800×1040 page.
+- [ ] At a ~1.05:1 square viewport (foldable inner / Z Flip cover) the layout chooses a balanced arrangement with no overflow and no empty half-screen.
+- [ ] At 32:9 (5120×1440) the app does not render a single ultra-stretched pane; content is bounded and centred or split into columns.
+- [ ] The aspect helper classifies the sweep rows from [SN-DIM-003](compat.md#sn-dim-003) (1.0, 1.33, 1.78, 2.0, 2.22, 2.44, 3.56) into the documented buckets and drives the chrome choice.
+
+#### Technical notes
+Layer aspect logic on `MediaQuery.sizeOf` ratio inside the sanctioned layout system (not raw device checks — [SN-DIM-004](design-system.md#sn-dim-004)); reuse `SaneAdaptive` and add a max-content-width constraint (`ConstrainedBox`) and `Wrap`/`Flexible` for pane distribution. The page stays fixed via [SN-DIM-008](pages-canvas.md#sn-dim-008). Reference `ux-principles.md` §8 ("fixed geometry, chrome is fluid") and `compatibility-matrix.md` §5 (Large / Extra-large classes → multi-column).
+
+#### Security & privacy
+None beyond baseline: layout only. Extra panes must not expose content the size class would otherwise gate (e.g. a preview pane still honours locked-note state) — covered by the occlusion/visibility gate [SN-DIM-013](qa.md#sn-dim-013).
+
+#### UX notes
+Extra space is calm space: an ultrawide window shows the notebook with generous margins or a helpful side pane, never a stretched page. This keeps the "no issue in the design" promise on gaming monitors, DeX, and foldables alike.
+
+#### Test plan
+Golden: `app/test/goldens/aspect/extreme_aspect_matrix_test.dart` — Library + Editor at 1.05:1, 2.39:1, 2.44:1 and 3.56:1. Unit: `packages/sane_ui/test/layout/aspect_class_test.dart` — classification of the sweep values.
+
+#### Dependencies
+[SN-DIM-008](pages-canvas.md#sn-dim-008), [SN-DS-026](design-system.md#sn-ds-026)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
 ### SN-GCMP-004
 
 <a id="sn-gcmp-004"></a>
@@ -39,7 +153,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1059 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -96,7 +210,7 @@ Unit: scene model + fractional reorder + coordinate stability under growth (test
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1022 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -160,7 +274,7 @@ Source: docs/design/screens-and-flows.md §7.7 (page rail), open question 11, ph
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1046 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1408,7 +1522,7 @@ Standard platform print sheet via `package:printing`, preceded by an in-app page
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #852 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |

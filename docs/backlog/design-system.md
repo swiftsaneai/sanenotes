@@ -1,6 +1,6 @@
 # Backlog — area: design-system
 
-33 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+39 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -46,6 +46,351 @@
 ---
 
 ## Issues
+
+### SN-DIM-004
+
+<a id="sn-dim-004"></a>
+
+**Forbid hardcoded device names and raw pixel-width branches via an arch test**
+
+| Field | Value |
+|---|---|
+| GitHub | #1122 |
+| Type | infra |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | design-system, compat, qa |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DS-026](design-system.md#sn-ds-026) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Dimensional reliability collapses the moment one widget writes `if (width < 375)` or `if (Platform.isIOS && isIPhoneX)`. `docs/design/ux-principles.md` §8 and [SN-DS-026](design-system.md#sn-ds-026)/[SN-PHN-002](compat.md#sn-phn-002) establish that layout adapts to **window size class, not device identity**. This issue makes that rule enforceable: an arch/lint test fails the build when any widget outside the sanctioned layout system branches on a device name or a raw pixel width, so adaptivity stays consistent instead of decaying into per-device special-cases.
+
+#### Scope
+**In:** a rule in the existing arch-lint (`tools/scripts/arch_check`, ADR-0002) plus a custom analyzer/lint that flags, in `app/` and `packages/*` (excluding the sanctioned modules): (a) string/enum comparisons against device model identifiers, marketing names, or OS-model checks used for layout; (b) numeric comparisons of `MediaQuery` width/height against magic pixel literals; (c) direct `Platform.isX` used to choose a layout. Allowed only inside the size-class primitives ([SN-DS-026](design-system.md#sn-ds-026)), the resolver ([SN-PHN-002](compat.md#sn-phn-002)), the safe-area primitive ([SN-DIM-005](design-system.md#sn-dim-005)) and the matrix loader ([SN-DIM-002](compat.md#sn-dim-002)); those are the one place breakpoints live. An allow-list annotation (`// dimension-approved: <reason>`) covers the rare, reviewed exception (e.g. a documented platform quirk).
+**Out:** the primitives themselves; runtime behaviour (this is a build-time gate).
+
+#### Acceptance criteria
+- [ ] A fixture widget branching on `MediaQuery.sizeOf(context).width < 900` outside the sanctioned modules fails the arch test with a message naming the file and pointing to [SN-DS-026](design-system.md#sn-ds-026).
+- [ ] A fixture using a device-model / marketing-name string or `Platform.isIOS` to pick a layout fails; the same code inside [SN-DS-026](design-system.md#sn-ds-026)/[SN-PHN-002](compat.md#sn-phn-002) passes.
+- [ ] The magic-number rule ignores non-layout constants (durations, opacities, token values) and only flags width/height comparisons derived from `MediaQuery`.
+- [ ] An `// dimension-approved:` annotation with a reason suppresses a single flagged site and is surfaced in a report so exceptions stay auditable.
+- [ ] The check runs in the standard analyze/verification CI job and is documented in `docs/architecture/overview.md` §5 (or an ADR) as a layering rule.
+
+#### Technical notes
+Implement as a `custom_lint`/analyzer plugin rule plus a source scan in `tools/scripts/arch_check` (mirror the `package:flutter` ban on pure-Dart packages). Detect `MediaQuery.sizeOf`/`.of(context).size` width/height reads compared to integer literals; whitelist the sanctioned files by path. This complements, not replaces, [SN-DS-026](design-system.md#sn-ds-026) and [SN-PHN-002](compat.md#sn-phn-002) — they own the breakpoints; this guarantees nobody else invents their own. Reference `CLAUDE.md` §6 (warnings are errors) so a violation blocks merge.
+
+#### Security & privacy
+None beyond baseline. MASVS-CODE-2 flavour: no unsafe/silent layout fallbacks — an unhandled size must resolve through the exhaustive size-class switch, never a stray device check. The analyzer logs nothing about content.
+
+#### UX notes
+No user surface, but it is what keeps the product's look consistent across five surfaces (`ux-principles.md` §10: consistency beats platform-native flourishes) and prevents the "works on my phone, broken on yours" regressions the maintainer wants eliminated.
+
+#### Test plan
+`tools/scripts/test/arch_check_dimensions_test.dart` and `app/test/lint/no_device_branch_test.dart` — positive fixtures (device name, magic width, Platform.isX) fail; negative fixtures (size-class use, annotated exception, sanctioned module) pass. Runs in CI analyze.
+
+#### Dependencies
+[SN-DS-026](design-system.md#sn-ds-026)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-005
+
+<a id="sn-dim-005"></a>
+
+**Build the cross-platform safe-area and inset resolver primitive**
+
+| Field | Value |
+|---|---|
+| GitHub | #1124 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | design-system, compat, a11y |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DS-026](design-system.md#sn-ds-026) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Notches, the Dynamic Island, the home indicator, rounded display corners, punch-hole/camera cutouts, Android display cutouts, and — on the installed web PWA — `env(safe-area-inset-*)` all steal edge space differently per device and orientation. Sane Notes needs one inset contract so every screen and the floating palette respect them identically, rather than each screen re-reading raw insets. This primitive is the single place safe-area maths lives; [SN-DIM-006](editor.md#sn-dim-006) (editor/palette) and platform issues ([SN-AND-015](compat.md#sn-and-015) edge-to-edge, [SN-GPHN-002](editor.md#sn-gphn-002) keyboard) consume it.
+
+#### Scope
+**In:** `packages/sane_ui/lib/src/layout/sane_insets.dart` — a `SaneInsets` model (safe-area, cutout, hinge, keyboard) resolved from `MediaQuery.viewPaddingOf`, `MediaQuery.viewInsetsOf` and `MediaQuery.of(context).displayFeatures`; a `SaneSafeArea` widget (a smarter `SafeArea` that can inset per-edge, honour the look's tokens, and optionally keep an edge bleeding for full-bleed canvas); and a `saneInsetsOf(context)` accessor. Web reads `env(safe-area-inset-*)` (requires `viewport-fit=cover`) surfaced through `MediaQuery` padding. Rounded-corner and cutout regions are exposed as a "keep-out" rect list.
+**Out:** the editor/palette occlusion rules ([SN-DIM-006](editor.md#sn-dim-006)); fold/hinge reflow ([SN-DIM-022](compat.md#sn-dim-022)); on-screen-keyboard field-visibility ([SN-GPHN-002](editor.md#sn-gphn-002)); Android edge-to-edge enforcement config ([SN-AND-015](compat.md#sn-and-015), a consumer).
+
+#### Acceptance criteria
+- [ ] `saneInsetsOf` returns correct top/right/bottom/left safe-area insets for: iPhone 15 portrait (top 59 pt Dynamic Island, bottom 34 pt), iPhone 15 landscape (left/right 59/34 pt swapped, bottom 21 pt), iPad Pro 11" (uniform ~24 pt rounded-corner allowance), and an Android device with a top punch-hole (status-bar + cutout inset).
+- [ ] On the installed web PWA in `display-mode: standalone` with `viewport-fit=cover`, `env(safe-area-inset-*)` values propagate into `SaneSafeArea` (verified with a 44 pt simulated inset).
+- [ ] `SaneSafeArea` insets chrome away from all keep-out regions while allowing an explicitly opted-in edge (the canvas) to bleed under a rounded corner without placing any interactive control there.
+- [ ] Insets update within one frame on rotation and on entering/leaving split-screen; no control lands under a cutout or the home indicator in any tested orientation.
+- [ ] Values compose with RTL (`EdgeInsetsDirectional`) and left-handed mode without double-insetting.
+- [ ] Overlays (Templates, Import, Share, Upgrade, Onboarding) inset their content and action rows through `SaneSafeArea` so no button falls under a cutout, hinge, or the home indicator on any edge; the resolver also exposes the hinge keep-out region consumed by fold-aware layout ([SN-DIM-022](compat.md#sn-dim-022)).
+
+#### Technical notes
+Pure `sane_ui` leaf (no shell/model imports, `overview.md` §5). Use `MediaQuery.viewPaddingOf` (unaffected by the keyboard) for structural insets and `viewInsetsOf` for the keyboard; `displayFeatures` for cutout/hinge bounds. Do not hardcode device insets — read them (enforced by [SN-DIM-004](design-system.md#sn-dim-004)). On web, the engine surfaces `env()` via padding only when the page sets `viewport-fit=cover` and the CSS variables are wired in `web/index.html`. Keep-out rects also cover `DisplayFeatureType` cutouts. Reference `docs/platform/android.md` §7 (edge-to-edge), `docs/platform/ipad.md` §7, `docs/platform/web.md` §5.
+
+#### Security & privacy
+None beyond baseline (geometry only). One relevant note: correct insets keep the "data leaves device" indicator and consent chrome fully visible and tappable rather than tucked under a cutout — a privacy-affordance correctness concern that [SN-DIM-013](qa.md#sn-dim-013) later gates.
+
+#### UX notes
+The page is the hero (`ux-principles.md` §2): the canvas may bleed to the physical edge for immersion, but no tool, toast, or control ever hides under the notch/island/home-indicator/corner. Toasts sit above the palette and inside the bottom safe area. Respects reduce-motion on the inset transition.
+
+#### Test plan
+`packages/sane_ui/test/layout/sane_insets_test.dart` — table-driven insets for the devices above via `MediaQueryData` overrides; `sane_safe_area_test.dart` — chrome stays inside keep-out rects while the canvas bleeds; a web-config test asserting `viewport-fit=cover` + `env()` wiring exists in `web/index.html`.
+
+#### Dependencies
+[SN-DS-026](design-system.md#sn-ds-026)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-011
+
+<a id="sn-dim-011"></a>
+
+**Keep the editor usable at the minimum supported viewport of 320x480**
+
+| Field | Value |
+|---|---|
+| GitHub | #1117 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | design-system, editor, a11y |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-005](design-system.md#sn-dim-005), [SN-DS-026](design-system.md#sn-ds-026) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+The floor of the matrix is a 4-inch budget phone (~320×533 dp), a small split-view window, and the WCAG 1.4.10 reflow requirement at 320 CSS px. `docs/design/ux-principles.md` §8 makes 320 px a hard target: every layout must reflow with no 2-D scroll and no loss of function. At this size the editor must still let a user open a note, pick a tool, write, and navigate pages — with touch targets at the platform floor. This is the smallest-dimension correctness case.
+
+#### Scope
+**In:** guarantee the Library, Editor, Search, Settings and every overlay are fully operable at 320×480 CSS px: single-pane, palette collapsed to essentials (pen, highlighter, eraser, colour, undo) with an overflow bottom-sheet for the rest per `docs/platform/phones.md` §3, page rail hidden, sidebar as drawer/bottom-nav; touch targets ≥ 44 pt / 48 dp / 24 CSS px; the fixed page fits width ([SN-DIM-008](pages-canvas.md#sn-dim-008)); dialogs stack. Verify at 320×480 in both portrait and a 480×320 landscape sliver.
+**Out:** the phone compact shell build ([SN-PHN-001](compat.md#sn-phn-001) owns the full phone UX); the size-class primitive ([SN-DS-026](design-system.md#sn-ds-026)); text-scale at 320 px ([SN-DIM-041](compat.md#sn-dim-041)); occlusion ([SN-DIM-006](editor.md#sn-dim-006)).
+
+#### Acceptance criteria
+- [ ] At exactly 320×480 CSS px every screen shows no horizontal scrollbar and no clipped control (WCAG 1.4.10); a user can open a note, select pen, draw, switch page and reach undo without opening a hidden menu beyond the collapsed palette + overflow sheet.
+- [ ] All interactive targets meet ≥ 44 pt (iOS) / 48 dp (Android) / 24 CSS px (web) with adequate spacing at this width.
+- [ ] At a 480×320 landscape sliver the chrome shortens (uses the height class from [SN-PHN-002](compat.md#sn-phn-002)) instead of clipping; the toolbar and palette remain reachable.
+- [ ] Every overlay (Templates, Import, Share, Upgrade, Onboarding) fits and scrolls within 320×480 with its primary action reachable without horizontal scroll.
+- [ ] The 320×480 and 480×320 rows pass the overflow/clip/occlusion gate ([SN-DIM-013](qa.md#sn-dim-013)).
+
+#### Technical notes
+Reuse `SaneAdaptive`/size classes ([SN-DS-026](design-system.md#sn-ds-026)) and `saneInsetsOf` ([SN-DIM-005](design-system.md#sn-dim-005)); collapse the palette per `phones.md` §3; overlays become scrollable bottom sheets. No fixed heights that clip scaled text (compose with [SN-DIM-041](compat.md#sn-dim-041)). Enforce targets via the component sizes in `tokens.json` `componentSizes`. Reference `accessibility.md` §2 (1.4.10, 2.5.8) and `phones.md` §7 (thumb zone).
+
+#### Security & privacy
+None beyond baseline. At the smallest size, gated/PRO and consent chrome must still be visible and not pushed off-screen (the "every limit has a door" rule, `ux-principles.md` §10) — asserted by [SN-DIM-013](qa.md#sn-dim-013).
+
+#### UX notes
+Even on the smallest phone the app is calm and complete: essentials in the thumb zone, depth one tap away. No dead ends, no clipped buttons. This is the concrete proof of "no issue in the design" at the floor of the range.
+
+#### Test plan
+Golden: `app/test/goldens/min_viewport/min_320x480_test.dart` — all screens/overlays at 320×480 and 480×320. Widget: `app/test/layout/min_viewport_targets_test.dart` — target sizes and no-overflow assertions. Manual: operate the full open→draw→navigate flow at 320×480.
+
+#### Dependencies
+[SN-DIM-005](design-system.md#sn-dim-005), [SN-DS-026](design-system.md#sn-ds-026)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-016
+
+<a id="sn-dim-016"></a>
+
+**Ensure crisp rendering and hairline borders across device pixel ratios 1 to 4**
+
+| Field | Value |
+|---|---|
+| GitHub | #1198 |
+| Type | test |
+| Priority | p2 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | design-system, perf, compat |
+| Size | M |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-012](qa.md#sn-dim-012), [SN-DS-002](design-system.md#sn-ds-002) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Density is part of "all the types of dimensions." The matrix spans DPR 1.0 (some Chromebooks / low-DPI Android) through 2.0 (older iPad), 2.625 (many Android), 3.0 (iPhone Pro) to 4.0 (high-density Android). Hairline borders (`--bw` 1 px), 4 px page radius, focus rings, and 1-device-pixel dividers must stay crisp and not vanish or blur across DPRs, and raster assets must be provided at sufficient resolution. This issue proves density correctness across the matrix.
+
+#### Scope
+**In:** verify across DPR 1.0–4.0 that: hairline borders/dividers render at ≥ 1 physical pixel and do not disappear at DPR 1.0 or blur at DPR 3–4; the page 4 px radius and drop shadow render crisply; focus rings (2 px, offset 2) stay ≥ 3:1 and visible; raster assets (mascot placeholder, any bitmap) are supplied/scaled for high DPR without softness; text AA is acceptable. Add a DPR axis to the golden harness ([SN-DIM-012](qa.md#sn-dim-012)) and a crispness check for 1-physical-pixel lines.
+**Out:** colour/contrast per look ([SN-QA-005](qa.md#sn-qa-005), `accessibility.md` §4); wide-colour-gamut ink matching (Android is a separate concern); the harness ([SN-DIM-012](qa.md#sn-dim-012)).
+
+#### Acceptance criteria
+- [ ] A 1 px hairline divider is present and ≥ 1 physical pixel at DPR 1.0 and not blurred beyond one device pixel at DPR 4.0 (verified by sampling rendered pixels).
+- [ ] The page 4 px radius and drop shadow render without stair-stepping at DPR 1.0, 2.0, 3.0 and 4.0 (golden per DPR).
+- [ ] Focus rings remain visible and ≥ 3:1 at every DPR; a 2 px ring does not collapse at DPR 1.0.
+- [ ] Any raster asset used in chrome is provided at (or generated to) the physical resolution needed at DPR 3–4 with no visible softness in the golden.
+- [ ] The DPR axis is added to [SN-DIM-012](qa.md#sn-dim-012) so future screens inherit density coverage; two runs are deterministic.
+
+#### Technical notes
+Apply `MediaQueryData.devicePixelRatio` per matrix row; for 1-physical-pixel lines use `BorderSide(width: 1 / devicePixelRatio)` or a device-pixel-aware divider in `sane_ui` rather than a fixed logical px that vanishes at DPR 1.0. Prefer vector (icons via [SN-DS-002](design-system.md#sn-ds-002) token/glyph system) over raster. Reference `tokens.json` (`bw`, page radius) and `design-system.md`. Keep raster sizes within the app-size budget.
+
+#### Security & privacy
+None beyond baseline: rendering only; no PII. Golden fixtures synthetic.
+
+#### UX notes
+Crispness is part of "no issue in the design": a divider that disappears on a low-DPI Chromebook or a blurry mascot on a high-DPI phone both read as broken. The page must look like a clean physical sheet at every density.
+
+#### Test plan
+Golden: `app/test/goldens/density/dpr_matrix_test.dart` — chrome + a page across DPR 1.0/2.0/3.0/4.0. Unit: `packages/sane_ui/test/layout/hairline_test.dart` — device-pixel line width computation; a pixel-sampling assertion for line presence at DPR 1.0.
+
+#### Dependencies
+[SN-DIM-012](qa.md#sn-dim-012), [SN-DS-002](design-system.md#sn-ds-002)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-042
+
+<a id="sn-dim-042"></a>
+
+**Make sane_ui chrome reflow under text growth without truncating labels**
+
+| Field | Value |
+|---|---|
+| GitHub | #1123 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | design-system, a11y, compat |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DS-026](design-system.md#sn-ds-026), [SN-A11Y-005](a11y.md#sn-a11y-005), [SN-DS-003](design-system.md#sn-ds-003) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+`docs/design/component-inventory.md` fixes component *heights* (chrome 42, tool 44, chip 34, toggle 46×28) but leaves *width* behaviour under large text unspecified. When OS text scale grows, a fixed-height row of buttons with fixed-width labels either clips or overflows. This issue defines the width-axis reflow contract for `sane_ui` so components grow, wrap, or collapse to an overflow affordance instead of truncating — the implementation half that [SN-DIM-041](compat.md#sn-dim-041) verifies. It extends [SN-DS-026](design-system.md#sn-ds-026) (window size classes) from the viewport axis to the text-growth axis.
+
+#### Scope
+**In:** width-axis reflow rules for `SaneChipBar`, `SaneSegmented`, `SaneTabNav`, `SaneToolPalette`, `SaneEditorToolbar`, `SaneButton` rows; a shared `SaneReflowRow`/`SaneOverflowBar` primitive in `packages/sane_ui`; the rule that essential labels never ellipsise.
+**Out:** the scale-matrix gate ([SN-DIM-041](compat.md#sn-dim-041)), OS scale wiring ([SN-A11Y-005](a11y.md#sn-a11y-005)), the low-end effect degradation ([SN-DIM-050](design-system.md#sn-dim-050)).
+
+#### Acceptance criteria
+- [ ] Every listed component wraps to additional lines (`Wrap`) or collapses trailing items into a `⋯` overflow sheet when the sum of intrinsic child widths at the current `textScaler` exceeds the available width from `LayoutBuilder`.
+- [ ] Fixed heights are preserved; only the width axis and line count change.
+- [ ] Essential labels use `softWrap`/wrap, never `TextOverflow.ellipsis`; only decorative/numeric text may use `FittedBox` (floor 12 logical px).
+- [ ] At `fontScale 2.0` on a 360 dp width, `SaneSegmented` with three segments stacks vertically rather than clipping the third label.
+- [ ] Overflowed items remain keyboard- and screen-reader-reachable via the overflow sheet (name/role/state preserved).
+- [ ] The primitive is used by all listed components (no per-component ad-hoc overflow logic).
+
+#### Technical notes
+Implement `SaneOverflowBar` in `packages/sane_ui/lib/src/layout/` using `LayoutBuilder` + a measuring pass (`Flow`/`CustomMultiChildLayout` or a two-phase `Wrap` with an overflow button); read scale via `MediaQuery.textScalerOf`. Do not branch on look id — reflow is layout, not theme. Compose feature widgets in `app/`, not `sane_ui` (per `docs/architecture/overview.md` §5). Respect `EdgeInsetsDirectional` so reflow composes with RTL and left-handed mode ([SN-A11Y-012](a11y.md#sn-a11y-012)).
+
+#### Security & privacy
+None beyond baseline (pure UI layout).
+
+#### UX notes
+Collapse order is least-to-most essential (page nav collapses before pen/colour). The overflow sheet reuses `SaneOverlay` bottom-sheet styling; the dock's `⋯` sits at the trailing edge. Follows `docs/design/ux-principles.md` §3 (progressive disclosure) and §9 (invariants across 17 looks).
+
+#### Test plan
+Widget tests `packages/sane_ui/test/layout/overflow_bar_test.dart` (wrap vs collapse thresholds); golden `app/test/golden/chrome_reflow_test.dart` across three looks × scale 1.0/1.5/2.0; semantics test that overflowed items stay reachable.
+
+#### Dependencies
+[SN-DS-026](design-system.md#sn-ds-026), [SN-A11Y-005](a11y.md#sn-a11y-005), [SN-DS-003](design-system.md#sn-ds-003).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, widget, golden, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-050
+
+<a id="sn-dim-050"></a>
+
+**Define the reduced-effects look-degradation profile for the low-end layout tier**
+
+| Field | Value |
+|---|---|
+| GitHub | #1150 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | all |
+| Areas | design-system, perf, compat |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-PERF-023](perf.md#sn-perf-023), [SN-DS-002](design-system.md#sn-ds-002), [SN-DS-011](theming.md#sn-ds-011) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+`docs/platform/performance-budgets.md` §5 and `docs/platform/android.md` (P4/L5) require that on low-end hardware the app **reduces blur/shadow/glass effects before it drops frames**. The 17 looks carry expensive feel tokens — Glassmorphism `blur(18px) saturate(1.3)`, Cyberpunk neon glows, Neumorphism dual shadows, Y2K `blur(12px)`, gradient/pattern grounds. This issue defines a documented, testable **effect-degradation profile**: a deterministic mapping from each look's costly tokens to cheaper equivalents that preserves the look's identity, driven by the [SN-PERF-023](perf.md#sn-perf-023) adaptive quality ladder. It is the design-system half of the ladder; [SN-PERF-023](perf.md#sn-perf-023) owns the tier-detection/ladder mechanism.
+
+#### Scope
+**In:** a per-look degradation map (which of `glass`, `btnSh`, `cardSh`, `sh`, `bgi`, `inset`, `hst` degrade to what) at each ladder tier; a `SaneLookScope` degradation flag consumed by `SaneSurface`/components; the rule that layout, sizes and semantics never change — only effects.
+**Out:** ladder/tier detection and thermal/low-power triggers ([SN-PERF-023](perf.md#sn-perf-023), [SN-PERF-015](perf.md#sn-perf-015), [SN-GPRF-019](perf.md#sn-gprf-019)), the golden verification of degraded looks ([SN-DIM-051](qa.md#sn-dim-051)).
+
+#### Acceptance criteria
+- [ ] Each of the 17 looks defines an explicit reduced-effects variant: backdrop blur is dropped or reduced (e.g. Glass 18 px → 0, opaque `sf`), multi-layer/dual shadows collapse to a single 1 px hairline or none, neon glows become a solid accent border, gradient/pattern grounds fall back to the flat `bg`.
+- [ ] Component *heights, radii, spacing, and semantics are unchanged* between full and reduced profiles — only paint effects differ.
+- [ ] The reduced profile is selectable via a `SaneLookScope` flag set by the [SN-PERF-023](perf.md#sn-perf-023) ladder, not by look id or platform check.
+- [ ] Each look's reduced variant still passes WCAG AA contrast in light and dark (per `docs/design/accessibility.md`).
+- [ ] `BackdropFilter` and `ImageFilter` usage is fully removed (not merely hidden) in the reduced profile so no GPU cost is paid.
+- [ ] Wallpaper mode's 22 px frosted blur degrades to a solid veil at the lowest tier while keeping text legible.
+
+#### Technical notes
+Extend the `SaneLook` ThemeExtension from [SN-DS-002](design-system.md#sn-ds-002) with a `reduced` boolean and pre-computed degraded token set; `SaneSurface` reads it and omits `BackdropFilter`/`ColorFilter.matrix` when set. Ladder wiring comes from [SN-PERF-023](perf.md#sn-perf-023). Keep it token-driven in `packages/sane_ui` (no per-component look branching, per `docs/design/ux-principles.md` §9). Document the map in `docs/design/design-system.md` and `docs/platform/performance-budgets.md` §5.
+
+#### Security & privacy
+None beyond baseline (visual effects only).
+
+#### UX notes
+A Paper look must still read as Paper on a 4 GB phone — degraded, not broken. Effects are the first thing to go, frames are never the thing to go (`docs/design/ux-principles.md` §1). The transition between full and reduced should cross-fade, respecting Reduce Motion.
+
+#### Test plan
+Golden `packages/sane_ui/test/golden/reduced_effects_profile_test.dart` (all 17 looks × light/dark, full vs reduced) — full verification matrix is [SN-DIM-051](qa.md#sn-dim-051); contrast unit tests reused from accessibility; an assertion that no `BackdropFilter` is built when `reduced` is set.
+
+#### Dependencies
+[SN-PERF-023](perf.md#sn-perf-023), [SN-DS-002](design-system.md#sn-ds-002), [SN-DS-011](theming.md#sn-ds-011).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
 
 ### SN-DS-001
 
@@ -291,7 +636,7 @@ Widget: `packages/sane_ui/test/controls/sane_button_test.dart` (variants, states
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #599 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -359,7 +704,7 @@ Unit: `packages/sane_ui/test/theme/shadow_parser_test.dart` — table-driven ove
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #600 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -425,7 +770,7 @@ None.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #601 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -492,7 +837,7 @@ Unit: `packages/sane_ui/test/theme/contrast_test.dart` recomputes every pair pos
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #602 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -558,7 +903,7 @@ Unit/e2e of the checkers: `packages/sane_ui/test/tooling/drift_check_test.dart` 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #604 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -760,7 +1105,7 @@ Widget: `packages/sane_ui/test/text/sane_text_test.dart` (role → size/weight/f
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #609 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -828,7 +1173,7 @@ Golden: `packages/sane_ui/test/goldens/sane_surface_looks_test.dart` (flat/sh/ca
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #607 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -895,7 +1240,7 @@ Widget: `packages/sane_ui/test/controls/selection_controls_test.dart` (chip togg
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #608 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -962,7 +1307,7 @@ Widget: `packages/sane_ui/test/inputs/sane_text_field_test.dart` (variant behavi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #610 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1029,7 +1374,7 @@ Widget: `packages/sane_ui/test/overlays/sane_toast_test.dart` (2.4 s dismiss, li
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #611 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1096,7 +1441,7 @@ Widget: `packages/sane_ui/test/shell/sane_sidebar_test.dart` (three states, 900 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #614 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1163,7 +1508,7 @@ Widget: `packages/sane_ui/test/primitives/sane_avatar_test.dart` (name exposed, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #612 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1498,7 +1843,7 @@ Widget: `packages/sane_ui/test/layout/sane_adaptive_test.dart` — class boundar
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #613 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1632,7 +1977,7 @@ Smoke: `apps/gallery/test/gallery_boots_test.dart` (the app builds and lists use
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1019 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1697,7 +2042,7 @@ Source: docs/design/screens-and-flows.md §8-§13 (Templates, Import, Share, Upg
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1039 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -1766,7 +2111,7 @@ Design references: `docs/design/design-system.md` §5 (Chips, Toast), `docs/desi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1040 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -1835,7 +2180,7 @@ Not user-facing, but it protects the user-facing invariant that motivates the wh
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1042 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1904,7 +2249,7 @@ The rule exists so a new component can be authored once in the Paper look and tr
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1043 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1973,7 +2318,7 @@ New: `packages/sane_ui/test/looks/invariants_size_test.dart`, `packages/sane_ui/
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1044 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2042,7 +2387,7 @@ The user-visible value is consistency: a component that exists in the inventory 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1047 |
 | Type | design |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -2110,7 +2455,7 @@ Documentation-led, but verifiable: a `scripts/check-states-matrix.mjs` (or an ex
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1052 |
 | Type | design |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -2179,7 +2524,7 @@ Process, verified by artifacts: a sample review of one already-built screen (Lib
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1005 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2250,7 +2595,7 @@ Text must never flash a different family at a different size: the fallback stack
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #847 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |

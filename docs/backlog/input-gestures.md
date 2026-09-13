@@ -347,7 +347,7 @@ SN-FND-002 (app scaffold), SN-TXT-001 (text tool / fields).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #496 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -409,7 +409,7 @@ Right-click menus reuse the Menu component from docs/design/component-inventory.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #991 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -467,7 +467,7 @@ Unit tests over the normaliser with fixtures per quirk (out-of-range pressure, i
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1020 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -530,7 +530,7 @@ Source: docs/platform/phones.md §7 (the device is in the hand) and ux-principle
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1025 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -593,7 +593,7 @@ Source: docs/platform/phones.md §2 (predictive back and interactive-pop MUST wo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1084 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -652,7 +652,7 @@ Manual lab pass per pen with the recorded-stream capture. Automated regression: 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1007 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1262,7 +1262,7 @@ Widget: `app/test/input/pointer_support_test.dart` (draw/scroll/zoom/pan, right-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #850 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1329,7 +1329,7 @@ The surface is the Editor canvas and palette dock (docs/design/screens-and-flows
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #860 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1396,7 +1396,7 @@ Surface: Settings → Handwriting & stylus (docs/design/screens-and-flows.md §1
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #819 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |

@@ -1,6 +1,6 @@
 # Backlog — area: qa
 
-24 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+32 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -36,7 +36,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #497 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -84,6 +84,134 @@ No user-visible surface — but the fixture set **is** the UX contract, so it mu
 - [ ] docs/platform/android.md §10 L5 updated: the mitigation is implemented, with any accepted per-fixture differences listed
 - [ ] docs/platform/compatibility-matrix.md §7 release-gate summary references the parity suite
 - [ ] Reviewed against docs/security/secure-coding-checklist.md (fixtures carry no real user data)
+
+---
+
+### SN-BTY-044
+
+<a id="sn-bty-044"></a>
+
+**Assemble the labelled messy-handwriting corpus with synthetic tremor**
+
+| Field | Value |
+|---|---|
+| GitHub | #1188 |
+| Type | test |
+| Priority | p1 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | core |
+| Areas | qa, ocr-hwr, a11y |
+| Size | L |
+| SDLC | verification |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-HWR-020](ocr-hwr.md#sn-hwr-020), [SN-QA-011](qa.md#sn-qa-011) |
+| Security controls | `MASVS-PRIVACY-1`, `GDPR-Art6` |
+| Extra labels | agent-ready |
+
+#### Context
+Every claim beautification makes — "more legible", "still looks like you", "never changes meaning" — is unfalsifiable without a corpus. [SN-HWR-020](ocr-hwr.md#sn-hwr-020) already builds recognition-accuracy datasets for the recogniser; this issue extends that harness with the data beautification specifically needs: **messy** handwriting across bands of legibility, across scripts and input devices, plus synthetically degraded samples where the clean ground truth is known exactly so improvement can be measured rather than eyeballed.
+
+Synthetic degradation is the key trick. Recording genuinely tremulous or dysgraphic handwriting at scale is slow and ethically heavy; taking clean samples and applying a parameterised, seeded degradation (band-limited tremor, size jitter, baseline drift, slant jitter, gap jitter) gives thousands of items whose *correct* output is literally the pre-degradation sample.
+
+#### Scope
+**In:** the corpus contents, manifest and licensing/consent record; the seeded degradation generator; the shared loader; human legibility ratings and their reliability check; CI fetch/verify plumbing.
+**Out:** the metrics computed over it ([SN-BTY-045](qa.md#sn-bty-045)); the CI gate ([SN-BTY-046](ci-cd.md#sn-bty-046)); the do-not-correct adversarial set ([SN-BTY-038](ocr-hwr.md#sn-bty-038)), which uses this loader but has its own labels.
+
+#### Acceptance criteria
+- [ ] ≥ 2,000 labelled lines from ≥ 40 writers, stratified into **5 legibility bands**, covering ≥ 4 scripts (Latin, Devanagari, Arabic/RTL, CJK), stylus **and** finger input, phone **and** tablet capture, and left- and right-handed writers.
+- [ ] A seeded degradation generator produces tremor (band-limited 3–12 Hz with amplitude and coherence parameters), size jitter, baseline drift, slant jitter and gap jitter; identical seed ⇒ byte-identical output; every generated item links to its clean source.
+- [ ] Every item carries: raw `InkSample` stream with `tMicros`, ground-truth text, writer id, script, device/pointer kind, handedness, condition tags, and a **human legibility rating** (5-point).
+- [ ] Human ratings use ≥ 3 raters per item with inter-rater reliability **Krippendorff α ≥ 0.7**; items below threshold are re-rated or dropped, and α is recorded in the manifest.
+- [ ] Provenance: every item is synthetic **or** carries a recorded consent and licence entry; zero real user notes without one; a fixture-integrity test fails the build on a missing field.
+- [ ] Corpus is content-addressed and versioned; CI verifies hashes before use; it is **excluded from the app bundle** and from any release artifact (asserted by a bundle-size/content test).
+- [ ] A fast PR subset (≤ 200 items, ≤ 90 s) and a full nightly set are both defined and selectable by the runner.
+- [ ] Documented in docs/product/ and referenced from the beautification section so a new agent can regenerate the synthetic half from scratch.
+
+#### Technical notes
+Layout: `tools/eval/beautify_corpus/{clean,degraded,phone,scripts}/` with a top-level `manifest.json` (schema versioned) and per-item JSON in the `InkSample` shape of docs/architecture/ink-engine.md §1.2. Generator in `tools/eval/bin/degrade_ink.dart` (pure Dart, seeded `Random`), sharing the tremor synthesis model with [SN-BTY-040](a11y.md#sn-bty-040)'s tests so the generator and the fixer cannot silently diverge. Loader in `packages/sane_ml/test/support/beautify_corpus.dart` built on the deterministic fixture factories from [SN-QA-011](qa.md#sn-qa-011). Large binaries are fetched by a CI step with hash verification, never committed raw if they exceed the repo policy.
+
+#### Security & privacy
+Handwriting samples are personal data and are handwriting-biometric-adjacent. Store consent records with the fixtures; support withdrawal (an item can be removed and the baseline re-cut); never ship the corpus in a build; never send it anywhere. The runner logs item ids and aggregate counts only — no recognised text, no sample coordinates (CWE-117). Real-writer items are pseudonymised by writer id with the mapping kept out of the repo. GDPR/DPDP lawful-basis note recorded with the DPIA template ([SN-PRV-013](privacy.md#sn-prv-013)).
+
+#### UX notes
+None beyond baseline — internal evaluation asset. One indirect user-facing requirement: the corpus must include the writing of people with tremor and dysgraphia (synthetic at minimum, consented real samples where available from the accessibility sessions of [SN-GA11-025](a11y.md#sn-ga11-025)), or the accessibility claims of [SN-BTY-040](a11y.md#sn-bty-040)/[SN-BTY-041](a11y.md#sn-bty-041) cannot be substantiated.
+
+#### Test plan
+`tools/eval/test/degrade_ink_test.dart` (determinism, parameter ranges, clean↔degraded linkage), `packages/sane_ml/test/support/beautify_corpus_test.dart` (loader, stratification counts, manifest schema), a fixture-integrity test asserting consent/licence/ground-truth completeness, and a release test asserting the corpus is absent from built artifacts.
+
+#### Dependencies
+SN-HWR-020 (recognition eval harness this extends), SN-QA-011 (deterministic fixture factories). Consumed by [SN-BTY-038](ocr-hwr.md#sn-bty-038), [SN-BTY-045](qa.md#sn-bty-045), [SN-BTY-046](ci-cd.md#sn-bty-046), [SN-BTY-047](ocr-hwr.md#sn-bty-047).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner, dependency-review)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/product/prd-02-library-documents-audio-search.md §11, docs/security/threat-model.md)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, recognised text, style features or ink coordinates in logs
+
+---
+
+### SN-BTY-045
+
+<a id="sn-bty-045"></a>
+
+**Define the beautification quality bar: legibility, consistency and accuracy metrics**
+
+| Field | Value |
+|---|---|
+| GitHub | #1189 |
+| Type | test |
+| Priority | p1 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | core |
+| Areas | qa, ocr-hwr, perf |
+| Size | M |
+| SDLC | verification |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-044](qa.md#sn-bty-044), [SN-HWR-020](ocr-hwr.md#sn-hwr-020) |
+| Security controls | — |
+| Extra labels | agent-ready, innovation |
+
+#### Context
+"Neater" is a feeling. To gate a feature in CI we need numbers, and they must be numbers that correlate with what a human means by legible — otherwise we optimise a metric and ship worse handwriting. This issue defines the beautification quality bar: a small set of automatic metrics, each validated against the human ratings collected in [SN-BTY-044](qa.md#sn-bty-044), emitted as one machine-readable report that [SN-BTY-046](ci-cd.md#sn-bty-046) turns into a gate.
+
+The headline metric is deliberately indirect: **recognition accuracy before vs after**. If tidying really made the writing more legible, an independent on-device recogniser should read it better. It is cheap, objective, hard to game by cosmetic means, and it doubles as a safety check — a beautification that *lowers* recognition accuracy is almost certainly destroying information.
+
+#### Scope
+**In:** the metric definitions and implementations; their validation against human ratings; the composite legibility score and its weights; the report schema and renderer.
+**Out:** the corpus ([SN-BTY-044](qa.md#sn-bty-044)); the CI gate and baselines ([SN-BTY-046](ci-cd.md#sn-bty-046)); the style-similarity metric, which is owned by [SN-BTY-047](ocr-hwr.md#sn-bty-047) and consumed here.
+
+#### Acceptance criteria
+- [ ] **M1 Recognition-accuracy proxy:** CER and WER of the on-device recogniser before vs after beautification. Beautification MUST NOT reduce accuracy on any band; target **≥ 8 points WER improvement** on the two messiest bands.
+- [ ] **M2 Baseline straightness:** RMS deviation of word centroids from the per-line least-squares baseline, normalised by x-height.
+- [ ] **M3 Slant consistency:** circular standard deviation of per-letter principal-axis angle.
+- [ ] **M4 Size consistency:** coefficient of variation of x-height across a line.
+- [ ] **M5 Spacing regularity:** CV of inter-word gaps plus a bimodality score separating intra- from inter-word gaps.
+- [ ] **M6 Ink preservation:** fraction of original sample points lying within ε (default 1.5 × stroke half-width) of the beautified centreline — proves we tidied rather than redrew; a re-rendered word scores low and must be flagged, not silently accepted.
+- [ ] **M7 Style similarity:** imported from [SN-BTY-047](ocr-hwr.md#sn-bty-047) and reported alongside the rest.
+- [ ] **M8 Cost:** wall-clock per word and per page, and peak memory delta, per reference device tier.
+- [ ] Each metric is a pure function with unit tests on synthetic inputs whose correct value is known analytically (e.g. a perfectly straight line scores 0 on M2).
+- [ ] **Validation gate:** each retained metric correlates with human legibility ratings at Spearman ρ ≥ 0.6 on the corpus; a metric that fails is either fixed or removed and the rejection recorded in the report and the docs — we do not keep decorative metrics.
+- [ ] The composite legibility score is a documented, version-stamped weighting of M2–M5; changing the weights changes the version and forces a baseline re-cut.
+- [ ] One `beautify_quality_report.json` artifact per run plus a Markdown summary table suitable for a CI job summary, including the 10 worst before/after cases by composite delta.
+
+#### Technical notes
+Implement in `packages/sane_ml/lib/src/beautify/metrics/` as pure Dart (no `package:flutter`) so they run headless in CI: `baseline.dart`, `slant.dart`, `size.dart`, `spacing.dart`, `ink_preservation.dart`, `composite.dart`. Geometry helpers (least-squares fitting, principal axis, point-to-polyline distance) already exist in `packages/sane_ink` §7/§9 — reuse them, do not fork. M1 runs the registered on-device `InkRecognizer` ([SN-HWR-002](ocr-hwr.md#sn-hwr-002)); in the PR-scope job use the deterministic mock plus a recorded reference transcription so the job is hermetic, and use the real ML Kit adapter ([SN-HWR-003](ocr-hwr.md#sn-hwr-003)) in the nightly device-lab run. Report schema versioned and validated in-test.
+
+#### Security & privacy
+None beyond baseline. Enforce one rule strictly: the report contains **ids, scores and rendered before/after images of corpus items only** — never user content, never recognised text from a real note. Metric code must not log sample coordinates (CWE-117). Rendered artifacts are corpus-derived and inherit its consent record ([SN-BTY-044](qa.md#sn-bty-044)).
+
+#### UX notes
+None beyond baseline (internal). The composite score does surface indirectly in two places and must be stable enough for both: the first-run "this would help you" heuristic ([SN-BTY-051](onboarding.md#sn-bty-051)) and the accessibility profile recommendations ([SN-BTY-042](a11y.md#sn-bty-042)).
+
+#### Test plan
+`packages/sane_ml/test/beautify/metrics/*_test.dart` — one file per metric with analytic fixtures; `packages/sane_ml/test/beautify/metric_validation_test.dart` asserting the ρ ≥ 0.6 correlation against human ratings; `packages/sane_ml/test/beautify/report_schema_test.dart`; a determinism test (same input ⇒ identical report).
+
+#### Dependencies
+SN-BTY-044 (corpus and human ratings), SN-HWR-020 (recogniser eval plumbing). Feeds [SN-BTY-046](ci-cd.md#sn-bty-046); consumes [SN-BTY-047](ocr-hwr.md#sn-bty-047).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner, dependency-review)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/product/prd-02-library-documents-audio-search.md §15, docs/adr/0016-on-device-ml-and-ai.md)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, recognised text, style features or ink coordinates in logs
 
 ---
 
@@ -144,6 +272,362 @@ This issue *is* the test plan; deliverables are the harness files above plus a C
 
 ---
 
+### SN-DIM-012
+
+<a id="sn-dim-012"></a>
+
+**Build the layout golden harness that renders screens across the whole matrix**
+
+| Field | Value |
+|---|---|
+| GitHub | #1127 |
+| Type | test |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | qa, compat |
+| Size | L |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-QA-005](qa.md#sn-qa-005), [SN-DIM-002](compat.md#sn-dim-002) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+[SN-QA-005](qa.md#sn-qa-005) builds the golden harness across the 17 looks × light/dark at a canonical size; [SN-GUX-015](qa.md#sn-gux-015) covers composed screens at two frames × five looks. Neither iterates the **device/viewport matrix**. To prove "reliable for all the types of dimensions," the golden harness must render key screens across every row of [SN-DIM-002](compat.md#sn-dim-002) (size, DPR, insets, fold state, orientation) crossed with light/dark, so a dimensional regression is caught by pixel diff on every PR.
+
+#### Scope
+**In:** a `layoutMatrix(builder, {name})` helper that wraps [SN-QA-005](qa.md#sn-qa-005)'s `goldenMatrix` and loops the [SN-DIM-002](compat.md#sn-dim-002) rows (and the synthetic sweep from [SN-DIM-003](compat.md#sn-dim-003) on the nightly job), applying each row's `MediaQueryData` (size, devicePixelRatio, viewPadding/padding, displayFeatures, orientation) via a test wrapper; render the key surfaces — Library, Editor (dock at each edge, audio bar states), Search, Settings, and each overlay — at a representative look-per-family × light/dark; write goldens under `app/test/goldens/dimensions/<screen>/<device>-<orientation>-<mode>.png`; a PR gate on a curated core subset and a nightly job over the full matrix with a diff artifact.
+**Out:** the pass/fail overflow/clip/occlusion *assertions* ([SN-DIM-013](qa.md#sn-dim-013)); overflow-assertion promotion ([SN-DIM-014](qa.md#sn-dim-014)); the look-only matrix ([SN-QA-005](qa.md#sn-qa-005)); text-scale ([SN-DIM-041](compat.md#sn-dim-041)) and DPR-crispness ([SN-DIM-016](design-system.md#sn-dim-016)) which extend this harness.
+
+#### Acceptance criteria
+- [ ] `layoutMatrix` renders any registered screen across all shipped rows of [SN-DIM-002](compat.md#sn-dim-002) in both orientations × light/dark, deterministically (fonts preloaded, animations off, clock/DPR pinned) — two runs are byte-identical.
+- [ ] The core PR subset (Editor, Library at ~6 representative rows incl. iPhone 15, iPad Pro 11", a 320×480 sliver, a Z Fold unfolded, an ultrawide, a low-DPI Android) runs within the PR time budget; the full matrix runs nightly and publishes diffs on failure.
+- [ ] Adding a device row in [SN-DIM-002](compat.md#sn-dim-002) (or a projected row in [SN-DIM-003](compat.md#sn-dim-003)) produces new goldens with no harness code change.
+- [ ] The Z Fold unfolded row applies a 24 pt hinge display feature to the `MediaQueryData`, and the iPhone 15 row applies the 59/34 pt insets, so goldens exercise real insets/features.
+- [ ] Fixtures are synthetic (pinned seed, no real PII) per [SN-GUX-015](qa.md#sn-gux-015)'s fixture rule.
+- [ ] The matrix treats size class × orientation × inset/cutout/hinge profile × text scale as independent axes drawn from [SN-DIM-002](compat.md#sn-dim-002), and the same data-driven set feeds the per-release device-farm run ([SN-DIM-053](qa.md#sn-dim-053)).
+
+#### Technical notes
+Build on [SN-QA-005](qa.md#sn-qa-005) (`goldenMatrix`, `FontLoader`, pinned CI image) and [SN-QA-004](qa.md#sn-qa-004) `pumpApp`; drive screens through their real routes with Riverpod overrides. Construct `MediaQueryData(size, devicePixelRatio, padding, viewPadding, displayFeatures, textScaler)` per row; `displayFeatures` carries the hinge/cutout. Keep run time bounded via the one-look-per-family heuristic (`ux-principles.md` §9.3) on the PR subset. Run on the pinned Linux CI image to avoid AA drift.
+
+#### Security & privacy
+Goldens are committed UI images: fixtures must be synthetic only — no real names/emails/phones/notebook content/share links/tokens (use the `sane.app/n/…` placeholder); a DoD check rejects a dev-bypass watermark in a golden (LINDDUN disclosure, MASVS-PRIVACY-1), mirroring [SN-GUX-015](qa.md#sn-gux-015).
+
+#### UX notes
+This harness is the visual contract for "no issue in the design on every dimension." Diff artifacts are side-by-side and easy to read. It pairs with the look matrix ([SN-QA-005](qa.md#sn-qa-005)) so both theme and dimension regressions are caught.
+
+#### Test plan
+`app/test/support/layout_matrix.dart` + `layout_matrix_test.dart` (determinism, row application, hinge/inset injection); exemplar suites for Editor and Library; a `goldens-dimensions-nightly` CI job over the full matrix. Consumed by [SN-DIM-013](qa.md#sn-dim-013), [SN-DIM-041](compat.md#sn-dim-041), [SN-DIM-016](design-system.md#sn-dim-016).
+
+#### Dependencies
+[SN-QA-005](qa.md#sn-qa-005), [SN-DIM-002](compat.md#sn-dim-002)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-013
+
+<a id="sn-dim-013"></a>
+
+**Fail CI on overflow, clipping or occlusion across the layout matrix**
+
+| Field | Value |
+|---|---|
+| GitHub | #1128 |
+| Type | test |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | qa, compat, ci-cd |
+| Size | M |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-012](qa.md#sn-dim-012), [SN-DIM-006](editor.md#sn-dim-006) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Rendering the matrix ([SN-DIM-012](qa.md#sn-dim-012)) is not enough; CI must **fail** when a dimension causes a control to overflow its bounds, be clipped off-screen, or be occluded by a cutout, hinge, or another surface. A golden pixel-diff catches visual change but not semantic "this button is now half off-screen." This issue adds automated structural assertions over every matrix cell so a real dimensional break blocks merge — the enforcement half of the epic.
+
+#### Scope
+**In:** per matrix cell ([SN-DIM-012](qa.md#sn-dim-012)), assert: no `RenderFlex`/render overflow; every interactive element's rect lies fully inside the viewport minus the keep-out rects from [SN-DIM-005](design-system.md#sn-dim-005) (no control under a cutout/island/home-indicator/hinge/rounded corner); no element is clipped by an ancestor to zero size; and a defined set of **must-be-visible** elements (primary action, the "data leaves device" indicator, PRO/consent chrome, a locked-note veil, the focus-exit pill) are present, hit-testable, and unoccluded. A CI job runs this over the PR subset and nightly over the full matrix, emitting a readable per-cell report.
+**Out:** the rendering harness ([SN-DIM-012](qa.md#sn-dim-012)); runtime overflow-assertion promotion for all tests ([SN-DIM-014](qa.md#sn-dim-014)); text-scale-specific overflow ([SN-DIM-041](compat.md#sn-dim-041)).
+
+#### Acceptance criteria
+- [ ] A seeded regression (a toolbar button placed under the Dynamic Island, or a dock overlapping the home indicator) fails the gate with a message naming the screen, device row, and the occluded element.
+- [ ] Any `RenderFlex` overflow in any matrix cell fails the gate (not just a golden diff).
+- [ ] Every interactive element's global rect is asserted inside viewport-minus-keepout for all shipped rows; a control landing under a cutout/hinge fails.
+- [ ] The must-be-visible set (primary action, data-leaves-device indicator, consent/PRO gate chrome, lock veil, focus-exit pill) is asserted present and unoccluded on every relevant screen/row; hiding one fails the gate.
+- [ ] The gate runs in the verification workflow on the PR subset and nightly on the full matrix, with a per-cell pass/fail artifact.
+- [ ] With the on-screen keyboard up (`viewInsets` bottom > 0), the active field and its action controls remain fully visible and unoccluded; a failure names the control key, the viewport, and the region (inset/cutout/hinge) that occluded it.
+
+#### Technical notes
+Use `tester` element/rect introspection (`tester.getRect`, `RenderBox` bounds, `hitTest`) over the widgets rendered by [SN-DIM-012](qa.md#sn-dim-012); capture Flutter overflow via the mechanism from [SN-DIM-014](qa.md#sn-dim-014). Keep-out rects come from [SN-DIM-005](design-system.md#sn-dim-005); must-be-visible tags are semantic keys on the widgets (privacy chrome tagged for this assertion). No device checks (enforced by [SN-DIM-004](design-system.md#sn-dim-004)). Reference `docs/security/secure-coding-checklist.md` for the privacy-chrome list.
+
+#### Security & privacy
+Directly privacy-relevant: this gate is what guarantees the "data leaves device" indicator, consent/opt-in prompts, and a locked-note veil can never be pushed off-screen or hidden behind a cutout/hinge/other surface by any dimension or posture — a LINDDUN disclosure / consent-integrity control (privacy-by-design). Fixtures synthetic only.
+
+#### UX notes
+This is the objective definition of "no issue in the design": if any control on any dimension is off-screen, clipped, or hidden, the build is red. It turns the maintainer's requirement into an enforceable gate rather than a hope.
+
+#### Test plan
+`app/test/goldens/dimensions/occlusion_gate_test.dart` — rect-in-keepout and must-be-visible assertions per cell; negative fixtures (occluded button, RenderFlex overflow, hidden indicator) fail; a `dimensions-gate` CI job (PR subset + nightly full). Builds on [SN-DIM-012](qa.md#sn-dim-012).
+
+#### Dependencies
+[SN-DIM-012](qa.md#sn-dim-012), [SN-DIM-006](editor.md#sn-dim-006)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-014
+
+<a id="sn-dim-014"></a>
+
+**Promote Flutter overflow and layout assertions to hard test failures**
+
+| Field | Value |
+|---|---|
+| GitHub | #1197 |
+| Type | test |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | qa, ci-cd |
+| Size | S |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-QA-004](qa.md#sn-qa-004) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Flutter reports layout overflow (the yellow-and-black stripe / "A RenderFlex overflowed by N pixels") as a `FlutterError` that, in tests, is often swallowed or only printed. For a product that must be correct on every dimension, any overflow anywhere — not just in the layout matrix — should fail the test that produced it. This issue wires overflow and other layout assertions to hard failures across the whole widget/golden suite, so dimensional bugs cannot slip through a test that "passed."
+
+#### Scope
+**In:** a shared test harness hook (extending [SN-QA-004](qa.md#sn-qa-004) `pumpApp`) that installs a `FlutterError.onError`/`FlutterExceptionHandler` which converts `RenderFlex` overflow, `RenderConstrainedOverflowBox`, and "cannot be negative"/unbounded-constraint layout errors into test failures; an opt-out annotation for the rare intentional overflow (documented, reviewed); a lint/CI note so new widget tests inherit the hook by default. Applies to `app/` and `packages/*` widget + golden tests.
+**Out:** the matrix rect/occlusion assertions ([SN-DIM-013](qa.md#sn-dim-013)); the golden harness ([SN-DIM-012](qa.md#sn-dim-012)); runtime (non-debug) overflow behaviour.
+
+#### Acceptance criteria
+- [ ] A widget test that produces a `RenderFlex` overflow fails, with the failure message including the overflow amount and widget, when run through the shared harness.
+- [ ] Unbounded-constraint and negative-size layout errors also fail the test rather than only printing.
+- [ ] The hook is on by default for `pumpApp`-based tests; a documented `allowOverflow(reason:)` escape hatch suppresses a single expected case and is reported.
+- [ ] Existing suites are migrated to the hook; the verification CI job treats a captured layout error as a failure.
+- [ ] A negative fixture proves the hook catches a deliberate 10 px overflow.
+
+#### Technical notes
+In the test binding, set `FlutterError.onError` to record and rethrow overflow/layout errors; `RenderFlex` overflow surfaces via `FlutterError` with a specific message prefix — match on the error's `RenderObject`/diagnostics rather than string-only where possible. Integrate into `app/test/support/pump_app.dart` ([SN-QA-004](qa.md#sn-qa-004)). Document in `docs/qa/test-strategy.md`. This complements [SN-DIM-013](qa.md#sn-dim-013): 014 catches overflow in *every* test; 013 adds occlusion/visibility across the *matrix*.
+
+#### Security & privacy
+None beyond baseline: test-infrastructure only; no content or PII involved.
+
+#### UX notes
+No user surface. It is a guardrail ensuring the "no issue in the design" bar is enforced everywhere a widget is tested, not only in the dedicated dimension suite.
+
+#### Test plan
+`app/test/support/overflow_guard_test.dart` — a deliberate overflow fails; an `allowOverflow` case passes and is reported; a clean layout passes. Wired into `pumpApp` and the CI verification job.
+
+#### Dependencies
+[SN-QA-004](qa.md#sn-qa-004)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-038
+
+<a id="sn-dim-038"></a>
+
+**Build the foldable, orientation and resize continuity test matrix**
+
+| Field | Value |
+|---|---|
+| GitHub | #1141 |
+| Type | test |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, ios-phone, android-phone, web |
+| Areas | qa, compat, perf |
+| Size | L |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-021](compat.md#sn-dim-021), [SN-PHN-017](compat.md#sn-phn-017), [SN-DIM-027](compat.md#sn-dim-027), [SN-DIM-030](compat.md#sn-dim-030), [SN-QA-001](qa.md#sn-qa-001), [SN-PERF-004](perf.md#sn-perf-004) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+The foldable/resize/orientation work (SN-DIM-021..037) needs one shared, enforced test matrix so "reliable for all dimensions" is verified continuously, not spot-checked. This issue builds the golden + integration + perf harness that exercises fold postures, rotations, live resize, multi-window and process-death across a defined device/viewport list, and wires it into CI under the quality epic (SN-QA-001) and the device lab (SN-PERF-004).
+
+#### Scope
+**In:**
+- A golden layout matrix over an explicit viewport/posture list.
+- Integration tests for fold/unfold, rotation, live resize, multi-window and process death (reusing the tests authored in SN-DIM-021..037 as a suite).
+- A perf assertion for the resize/rotation workloads on Tier 1 slots.
+- CI wiring so a regression in any dimension fails the build.
+
+**Out:**
+- The features themselves (SN-DIM-021..037).
+- Google Play large-screen/foldable store-quality submission ([SN-GAND-006](release.md#sn-gand-006), M7) — this feeds it but is separate.
+
+#### Acceptance criteria
+- [ ] A golden matrix `app/test/golden/layout_matrix_test.dart` renders the editor and library at, at minimum: 320/375 dp phones, iPhone 18-class 402x874 & 440x956 pt, iPad Air 820x1180 pt, iPad Pro 1032x1376 pt (portrait+landscape), Pixel 9 Pro Fold 968x2376 cover & 2076x2152 inner, Z Fold6 968x2376 & 2160x1856, a tabletop half-opened posture, and Split View 320/507/981 pt widths.
+- [ ] Golden coverage includes text scale at 100%, 130%, 200% and 310% for at least the compact and expanded editor.
+- [ ] Integration suite `app/integration_test/` runs fold_posture, fold_continuity, rotation_continuity, resize_continuity, midstroke_config_change, multi_window and process_death_restore and passes on the CI emulator/simulator set (functional/golden only; latency gates excluded on emulators per performance-budgets.md §3).
+- [ ] A perf test asserts the resize and rotation workloads hold B4/B5 (no frame > 16.7 ms; >= 120 fps on 120 Hz) on the Tier 1 device slots via tools/perf_harness.
+- [ ] The matrix documents the device/viewport list in docs/platform (single source of truth) and fails CI on any missing or broken golden.
+- [ ] Hinge-occlusion assertions verify no interactive control intersects the hinge band on every foldable profile.
+
+#### Technical notes
+Build on Flutter golden tests (`flutter test --update-goldens` workflow, `matchesGoldenFile`) with a parameterised list of `Size` + `devicePixelRatio` + `displayFeatures` + `textScaler`. Inject synthetic `MediaQueryData.displayFeatures` for hinge/posture (no physical device needed for goldens). Integration tests via `integration_test` + `patrol` for real fold (`adb emu fold`) and process death. Perf via the SN-PERF harness (FrameTiming / long-animation-frame, performance-budgets.md §2) on the SN-PERF-004 device lab. Emulators run functional/golden only, never latency gates (performance-budgets.md §3). Wire all into `.github/workflows`.
+
+#### Security & privacy
+None beyond baseline. Test fixtures use synthetic notes, never real user content; no secrets in fixtures.
+
+#### UX notes
+This is the safety net behind the maintainer's promise that the app is "reliable for all the types of dimensions." Golden diffs make any layout regression on any device visible in review. Reference docs/platform/compatibility-matrix.md §5.
+
+#### Test plan
+This issue IS the test infrastructure. Self-verifying: the goldens and integration/perf suites must be green on the CI device set, and an intentionally introduced layout break (e.g. a control under the hinge) must make the suite fail (a negative test proves the matrix has teeth).
+
+#### Dependencies
+Depends on SN-DIM-021, SN-PHN-017, SN-DIM-027, SN-DIM-030 (the features it exercises), SN-QA-001 (quality/testing) and SN-PERF-004 (device lab). Feeds [SN-GAND-006](release.md#sn-gand-006) and [SN-GA11-024](a11y.md#sn-ga11-024). Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Golden + integration + perf matrix merged and green on the CI device/emulator set
+- [ ] A negative test proves the matrix catches a hinge-occlusion / off-screen-control regression
+- [ ] Device/viewport list documented in docs/platform and referenced from CLAUDE.md test guidance
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-051
+
+<a id="sn-dim-051"></a>
+
+**Golden-test the degraded looks on the low-end tier across 17 looks and dark mode**
+
+| Field | Value |
+|---|---|
+| GitHub | #1151 |
+| Type | test |
+| Priority | p2 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | android-tablet, android-phone, web |
+| Areas | qa, design-system, perf |
+| Size | S |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-050](design-system.md#sn-dim-050), [SN-QA-005](qa.md#sn-qa-005), [SN-AND-027](perf.md#sn-and-027) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+The reduced-effects degradation profile ([SN-DIM-050](design-system.md#sn-dim-050)) is only trustworthy if it is pixel-verified and proven to hit the frame budget on the actual low-end reference. This issue adds the golden coverage for every look's reduced variant and ties it to a frame-budget check on the 4 GB Snapdragon 680-class device ([SN-AND-027](perf.md#sn-and-027)), so a change that reintroduces an expensive effect on the low tier fails CI. It extends the [SN-QA-005](qa.md#sn-qa-005) 17-looks golden harness with the reduced profile as an additional axis.
+
+#### Scope
+**In:** golden diffs for all 17 looks × light/dark in the reduced profile; a low-end frame-budget assertion that the reduced profile sustains 60 fps where the full profile would not; regression coverage.
+**Out:** the profile definition ([SN-DIM-050](design-system.md#sn-dim-050)), the ladder mechanism ([SN-PERF-023](perf.md#sn-perf-023)), the general looks harness ([SN-QA-005](qa.md#sn-qa-005)).
+
+#### Acceptance criteria
+- [ ] A golden exists for each of the 17 looks × {light, dark} in the reduced profile; diffs are stable and reviewed.
+- [ ] On Android-lowend, a scripted scroll/write workload in the reduced profile sustains **≥ 60 fps** with zero frames > 16.7 ms, where the same workload in the full profile is allowed to miss.
+- [ ] The test asserts no `BackdropFilter`/glow effect is present in the reduced golden (visual + widget-tree check).
+- [ ] Contrast is re-verified AA on each reduced golden.
+- [ ] A regression that raises effect cost on the low tier (e.g. re-adds a blur) fails the golden or the fps assertion.
+- [ ] Reduced-profile goldens are wired into the nightly device-lab run.
+
+#### Technical notes
+Reuse the [SN-QA-005](qa.md#sn-qa-005) golden harness and pump with `reduced: true` on `SaneLookScope`. Frame-budget check via `flutter drive --profile` + `FrameTiming` on Android-lowend from [SN-AND-027](perf.md#sn-and-027); emulators run the golden diffs only, not the fps gate (`docs/platform/performance-budgets.md` §3). Store goldens under `app/test/golden/reduced_looks/`.
+
+#### Security & privacy
+None beyond baseline; goldens use synthetic content.
+
+#### UX notes
+Confirms each look stays recognisable and legible when degraded — no look becomes an unstyled grey box on a cheap phone.
+
+#### Test plan
+`app/test/golden/reduced_looks_matrix_test.dart` (17 × 2); `tools/perf_harness` low-end fps job in the reduced profile; nightly integration into the [SN-PERF-019](perf.md#sn-perf-019) dashboard.
+
+#### Dependencies
+[SN-DIM-050](design-system.md#sn-dim-050), [SN-QA-005](qa.md#sn-qa-005), [SN-AND-027](perf.md#sn-and-027).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, golden, perf gate, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-053
+
+<a id="sn-dim-053"></a>
+
+**Add a per-release device-farm job that runs the layout matrix on real and virtual devices**
+
+| Field | Value |
+|---|---|
+| GitHub | #1152 |
+| Type | infra |
+| Priority | p1 |
+| Milestone | M7 Beta Hardening & Security Audit |
+| Platforms | ipad, android-tablet, web, ios-phone, android-phone |
+| Areas | qa, compat, ci-cd |
+| Size | L |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-QA-009](qa.md#sn-qa-009), [SN-PERF-004](perf.md#sn-perf-004), [SN-DIM-012](qa.md#sn-dim-012) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Golden tests catch layout defects in a headless renderer, but real devices expose real safe-area insets, real fold postures, real font renderers, and real browser reflow that a simulated `MediaQuery` cannot. This issue adds a per-release job on the [SN-QA-009](qa.md#sn-qa-009) device farm plus emulators/simulators that runs the [SN-DIM-012](qa.md#sn-dim-012) layout matrix on actual and virtual hardware, so a new OS or a real cutout that breaks a screen is caught before release. It reuses the [SN-PERF-004](perf.md#sn-perf-004) device-lab definitions.
+
+#### Scope
+**In:** a scheduled per-release-candidate device-farm run of the layout matrix across the Tier 1/2 device set (real) and a virtual-device set (emulators/simulators for coverage); screenshot capture and diff/triage; a release gate hook.
+**Out:** the farm setup itself ([SN-QA-009](qa.md#sn-qa-009)), the matrix definition ([SN-DIM-012](qa.md#sn-dim-012)), latency/fps gates (owned by perf issues), the viewport registry ([SN-DIM-002](compat.md#sn-dim-002)).
+
+#### Acceptance criteria
+- [ ] The job runs the layout matrix on real Tier 1 devices (iPad-Pro-ProMotion, iPad-Air, Android-tablet-stylus, Android-lowend, iPhone-ref, a foldable, Web-Chrome-desktop) and a virtual-device set each release candidate.
+- [ ] Real-device runs use each device's *actual* safe-area/cutout/hinge insets, not simulated ones, and flag any control that lands under a real inset.
+- [ ] Screenshots are captured per device × screen and diffed against approved references with a triage workflow.
+- [ ] Emulators/simulators are used for breadth (extra viewports/OS versions) but are explicitly excluded from any latency/fps assertion (`docs/platform/performance-budgets.md` §3).
+- [ ] A layout regression on any Tier 1 real device is a **release blocker** wired into the go/no-go gate ([SN-QA-016](qa.md#sn-qa-016)).
+- [ ] The device/viewport set consumed by the job is the [SN-DIM-002](compat.md#sn-dim-002) registry, so it extends by data.
+
+#### Technical notes
+Extend the [SN-QA-009](qa.md#sn-qa-009) cloud/self-hosted farm and [SN-PERF-004](perf.md#sn-perf-004) device-lab configs; drive via `integration_test`/`patrol` screenshot capture on device and `flutter test` goldens on emulators; foldable postures via the emulator/real-device hinge sensor. Store references and diffs as CI artifacts feeding the [SN-PERF-019](perf.md#sn-perf-019) dashboard pattern. Web runs across the [SN-WEB-023](qa.md#sn-web-023) cross-browser matrix.
+
+#### Security & privacy
+Device-farm artifacts (screenshots) use synthetic fixtures only — never real user notes; scrub any device identifiers from logs.
+
+#### UX notes
+The last line of defence before release: a human sees every screen on every reference device and a diff flags anything off, so the shipped build has no dimension surprises.
+
+#### Test plan
+The job itself is the test asset (`tools/device_lab/jobs/layout_matrix_farm.yaml` + `app/integration_test/layout_matrix_capture_test.dart`); a dry-run on one real device and one emulator validates the pipeline; gate integration verified against [SN-QA-016](qa.md#sn-qa-016).
+
+#### Dependencies
+[SN-QA-009](qa.md#sn-qa-009), [SN-PERF-004](perf.md#sn-perf-004), [SN-DIM-012](qa.md#sn-dim-012).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, integration, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
 ### SN-GIPAD-012
 
 <a id="sn-gipad-012"></a>
@@ -152,7 +636,7 @@ This issue *is* the test plan; deliverables are the harness files above plus a C
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #986 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -210,7 +694,7 @@ The deliverable is itself test infrastructure: `integration_test/ipad_conformanc
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1097 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -269,7 +753,7 @@ Developer-facing only. The rendered `docs/backlog/milestone-gates.md` table uses
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1054 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -338,7 +822,7 @@ New golden suites under `app/test/goldens/screens/` and `app/test/goldens/overla
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #864 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -405,7 +889,7 @@ The suite is the enforcement mechanism for the design rules rather than a design
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #865 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -475,7 +959,7 @@ The tests encode the user-visible contract, so their assertions should read like
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #474 |
 | Type | epic |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -548,7 +1032,7 @@ Foundational: [SN-FND-002](devx.md#sn-fnd-002) (monorepo scaffold), [SN-FND-003]
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #905 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -605,7 +1089,7 @@ No automated test (it is documentation). Verification: a reviewer confirms every
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #906 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -662,7 +1146,7 @@ The deliverable *is* tests plus helpers: add `packages/sane_core/test/hlc_test.d
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #907 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -719,7 +1203,7 @@ Add `app/test/support/pump_app.dart` + `pump_app_test.dart` (look/brightness swi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #908 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -776,7 +1260,7 @@ Add `app/test/support/golden_matrix.dart` + `golden_matrix_test.dart`; `packages
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #909 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -833,7 +1317,7 @@ Add `app/integration_test/guest_note_flow_test.dart` and `app/integration_test/s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #910 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -890,7 +1374,7 @@ Unit-test `scripts/coverage-gate.mjs` with sample `lcov` fixtures (overall pass/
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #911 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -947,7 +1431,7 @@ Unit-test `scripts/flaky-report.mjs` with fixtures (fail-then-pass detection, ta
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #912 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1008,7 +1492,7 @@ Add `.github/workflows/device-farm.yml` and `tools/device_lab/farm_shards.yaml`;
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #913 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1067,7 +1551,7 @@ No runtime code. Verification: (1) `node scripts/validate-issues.mjs` passes aft
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #914 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1126,7 +1610,7 @@ Add `packages/sane_test_support/lib/factories.dart` with `packages/sane_test_sup
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #915 |
 | Type | test |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1187,7 +1671,7 @@ Add `packages/sane_sync/test/convergence/multi_replica_harness.dart` plus `conve
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #916 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -1246,7 +1730,7 @@ Add `tools/fuzz/corpus/` with seeds for the four targets; `tools/scripts/fuzz-tr
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #917 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1306,7 +1790,7 @@ Documentation, so verification is by execution: (1) a reviewer confirms every ro
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #918 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -1368,7 +1852,7 @@ No product code beyond the feedback entry point, so verification is largely proc
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #919 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -1427,7 +1911,7 @@ Add `tools/scripts/release-gate.mjs` with unit tests in `tools/scripts/test/rele
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #836 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |

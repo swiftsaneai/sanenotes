@@ -42,7 +42,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #809 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -182,7 +182,7 @@ SN-CORE-002 (document model entities), SN-CORE-003 (CRDT primitives), SN-ED-002 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #646 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -239,7 +239,7 @@ packages/sane_core/test/text/rich_text_adapter_test.dart (content-field insert/d
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #647 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -296,7 +296,7 @@ packages/sane_core/test/text/marks_test.dart (growth before/after, compatible co
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #648 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -353,7 +353,7 @@ SN-CORE-002 (Object base + TextBlock fields), [SN-TXT-002](text.md#sn-txt-002) (
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #649 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -410,7 +410,7 @@ app/test/widget/editor/text/text_tool_test.dart (create/discard-if-blank/snap-to
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #650 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -467,7 +467,7 @@ app/integration_test/text_ime_test.dart (composition commit, dictation, backspac
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #651 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -524,7 +524,7 @@ app/test/widget/editor/text/grapheme_caret_test.dart (cluster delete/caret for D
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #652 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -581,7 +581,7 @@ app/test/widget/editor/text/selection_test.dart (word/paragraph/extend, remote-e
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #653 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -638,7 +638,7 @@ app/test/security/paste_sanitiser_test.dart (script/handler/js-link stripping, f
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #654 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -695,7 +695,7 @@ app/test/widget/editor/text/format_bar_test.dart (apply/active/mixed-state, typi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #655 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -752,7 +752,7 @@ app/test/widget/editor/text/font_picker_test.dart (per-run family, size floor, d
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #656 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -809,7 +809,7 @@ app/test/widget/editor/text/list_block_test.dart (toggle, indent bounds, Enter/B
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #657 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -866,7 +866,7 @@ app/test/widget/editor/text/checklist_block_test.dart (toggle persist, keyboard 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #658 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -923,7 +923,7 @@ app/test/widget/editor/text/markdown_shortcuts_test.dart (each prefix, single-Un
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #659 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -980,7 +980,7 @@ app/test/widget/editor/text/quote_callout_test.dart (apply/reverse, nested forma
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #660 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1037,7 +1037,7 @@ app/test/widget/editor/text/code_block_test.dart (whitespace preserve, language 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #661 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M3 Audio & Recognition |
@@ -1094,7 +1094,7 @@ app/test/widget/editor/text/toggle_block_test.dart (collapse/expand, content pre
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #662 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -1151,7 +1151,7 @@ app/test/security/link_sanitiser_test.dart (scheme allow-list, js/data rejection
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #663 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1208,7 +1208,7 @@ packages/sane_core/test/text/table_crdt_test.dart (row/col ops merge, per-cell c
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #664 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1265,7 +1265,7 @@ app/test/widget/editor/text/coexistence_zorder_test.dart (overlap, z-order persi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #665 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1322,7 +1322,7 @@ app/test/a11y/text_semantics_audit_test.dart (name/role/state/value on all contr
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #666 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1379,7 +1379,7 @@ This issue IS the test plan; deliverables: packages/sane_core/test/text/text_con
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #667 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1436,7 +1436,7 @@ app/test/widget/editor/text/spellcheck_test.dart (underline, suggestion replace/
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #668 |
 | Type | task |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -1493,7 +1493,7 @@ app/test/widget/editor/text/insert_datetime_test.dart (locale formats en/hi/RTL,
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #669 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M3 Audio & Recognition |
@@ -1550,7 +1550,7 @@ app/test/security/font_import_hardening_test.dart (type-by-content, table bounds
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #843 |
 | Type | spike |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |

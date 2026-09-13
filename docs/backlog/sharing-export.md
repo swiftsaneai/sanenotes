@@ -52,7 +52,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #992 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -110,7 +110,7 @@ Fixture corpus: real Samsung Notes exports (PDF, DOCX, TXT, image) plus syntheti
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #996 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -168,7 +168,7 @@ Instrumented tests driving the provider through `ContentResolver` in each state:
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1064 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | Backlog |
@@ -225,7 +225,7 @@ Unit: sanitisation + readability extraction (test/sharing/web_clipper_test.dart)
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1066 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | Backlog |
@@ -282,7 +282,7 @@ Spike write-up + ADR. Unit: address mapping, TTL purge. Security: format/AV gate
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1067 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M8 Launch & Growth |
@@ -339,7 +339,7 @@ Spike + ADR. Unit: metadata stripping, lock exclusion. Security: header/CSP chec
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1072 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | Backlog |
@@ -396,7 +396,7 @@ Unit: OOXML structure validity (test/sharing/office_export_test.dart). Integrati
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1012 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -525,7 +525,7 @@ Unit/abuse: `packages/sane_core/test/sanenote_import_fuzz_test.dart` (malformed/
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #813 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -670,7 +670,7 @@ Cross-epic: [SN-CORE-001](storage.md#sn-core-001) (document model), [SN-CRY-001]
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #782 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -728,7 +728,7 @@ Drives the Export row toasts in the Share overlay (docs/design/screens-and-flows
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #783 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -786,7 +786,7 @@ Triggered from the Share overlay Export row (design §10, toast "Exporting PDF w
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #784 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -843,7 +843,7 @@ Share overlay Export "Image" and the library `⋯` menu; a small scale segmented
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #785 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -900,7 +900,7 @@ Offered under an "Export as… > SVG (vector)" affordance in the library `⋯` /
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #786 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -957,7 +957,7 @@ Markdown + assets are note content written to the confined destination (CWE-22);
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #787 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1014,7 +1014,7 @@ JSON is a full plaintext dump of note content — write only to the confined des
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #788 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1071,7 +1071,7 @@ Share overlay Export ".sane (with audio)" (design §10, toast "Exporting .sane �
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #789 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1128,7 +1128,7 @@ Settings -> Privacy & export -> "Export everything" (design §12). Progress dial
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #790 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1184,7 +1184,7 @@ Invoked at the end of any export (Share overlay Export row, library `⋯`, "Expo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #791 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1241,7 +1241,7 @@ A "Print…" action in the library `⋯` and the Share overlay Export overflow, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #792 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1297,7 +1297,7 @@ No new surface; it improves the accessibility of what the export writers already
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #793 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1355,7 +1355,7 @@ The link string is surfaced by the Share overlay ([SN-SHR-014](sharing-export.md
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #794 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1413,7 +1413,7 @@ Exact strings/roles/seed from design §10. Loading (resolving membership) shows 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #795 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1470,7 +1470,7 @@ Role labels + capabilities exactly per design §10 (Owner / Can edit / Can comme
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #796 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1527,7 +1527,7 @@ Invite input + Invite button and the People list per design §10, including the 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #797 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1585,7 +1585,7 @@ On remove/stop-sharing, a confirm dialog states "New activity will be hidden fro
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #798 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1642,7 +1642,7 @@ An "Link expires" picker in the Share overlay (Never default unless the posture 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #799 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1699,7 +1699,7 @@ An "Activity" section under the People list (Owner-only): "Kabir — opened 2h a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #800 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1756,7 +1756,7 @@ A one-line note on the first share ("New shares start private — turn on the li
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #801 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1814,7 +1814,7 @@ Library "Import" entry + a receive flow from the share sheet; a progress sheet d
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #802 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1872,7 +1872,7 @@ Reachable from the Import entry ([SN-SHR-021](sharing-export.md#sn-shr-021)); th
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #803 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1930,7 +1930,7 @@ Reachable from Import ([SN-SHR-021](sharing-export.md#sn-shr-021)) and "Scan wit
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #804 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1987,7 +1987,7 @@ Reachable from Import ([SN-SHR-021](sharing-export.md#sn-shr-021)); the import r
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #805 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -2045,7 +2045,7 @@ Reachable from Import ([SN-SHR-021](sharing-export.md#sn-shr-021)); a clear "Bes
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #806 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -2102,7 +2102,7 @@ Reachable from Import ([SN-SHR-021](sharing-export.md#sn-shr-021)); a report emp
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #807 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -2160,7 +2160,7 @@ Failures surface as a single user-safe message ("This file couldn't be imported 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #808 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -2217,7 +2217,7 @@ This issue *is* the test plan: `app/integration_test/export_import_fidelity_test
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #825 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2280,7 +2280,7 @@ The import confirmation reuses the "Import a PDF" overlay pattern (`design/Sane 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #826 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -2343,7 +2343,7 @@ Entry points: Library `⋯` menu and Import affordance (`docs/design/screens-and
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #842 |
 | Type | task |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |

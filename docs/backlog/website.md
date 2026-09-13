@@ -34,7 +34,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1106 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -94,7 +94,7 @@ Integration: force a staging relay outage and assert (1) the status JSON flips, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1115 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -154,7 +154,7 @@ CI: version-mismatch check fails on a deliberately stale bundled copy; link chec
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #476 |
 | Type | epic |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -230,7 +230,7 @@ Per-child test plans; at epic level a `website/test/e2e/` suite covering: no thi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #961 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -294,7 +294,7 @@ The shell is the frame every page inherits: header with the wordmark per `docs/d
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #962 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -361,7 +361,7 @@ Reference surfaces: the `design/Sane Notes.dc.html` **Library** and **Editor** s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #963 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -428,7 +428,7 @@ Model the preview on the `design/Sane Notes.dc.html` **Editor** and **Library** 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #964 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -495,7 +495,7 @@ Mirror the in-app Upgrade overlay (`docs/design/screens-and-flows.md` §13/§14)
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #965 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -561,7 +561,7 @@ Structure it as question-led sections (“Where do my notes live?”, “What ha
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #966 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -629,7 +629,7 @@ Style from the Paper palette with the same header/footer shell as marketing so t
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #967 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -694,7 +694,7 @@ Follow the design's onboarding tone (`docs/design/screens-and-flows.md` §5 and 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #968 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -761,7 +761,7 @@ Use the shared shell and Paper palette ([SN-SITE-002](website.md#sn-site-002)) w
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #969 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -827,7 +827,7 @@ Researcher-facing, so density over decoration: a short intro, then the report pa
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #970 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -894,7 +894,7 @@ Link previews are a brand surface: the OG template uses the Paper palette tokens
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #971 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -960,7 +960,7 @@ The budgets exist to protect a felt experience, so tie them to what a user notic
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #972 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1028,7 +1028,7 @@ Infrastructure with two visible consequences: first-paint speed (the budgets in 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #973 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M8 Launch & Growth |
@@ -1094,7 +1094,7 @@ The visible result is an absence: no cookie banner, no consent modal, no “we v
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #974 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |

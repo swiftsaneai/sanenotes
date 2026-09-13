@@ -32,7 +32,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #568 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -960,7 +960,7 @@ Surface: a video/link embed card on the canvas (docs/design/screens-and-flows.md
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #855 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |

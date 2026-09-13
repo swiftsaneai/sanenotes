@@ -329,7 +329,7 @@ Backs both the object eraser and the pixel eraser tools ([`docs/design/screens-a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #569 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -388,7 +388,7 @@ Unit tests for the constraint mapping from preferences. Instrumented tests with 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #980 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -446,7 +446,7 @@ Unit: `app/test/handoff_activity_test.dart` (payload shape, redaction assertions
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1049 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -572,7 +572,7 @@ SN-CORE-001 (document model, op-log, .sanenote format) and SN-CRY-001 (E2EE, key
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #739 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -629,7 +629,7 @@ SN-CORE-005 (.sanenote writer/reader, framing), SN-CRY-001 (AEAD/hash). Adapter 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #740 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -686,7 +686,7 @@ plugins/sane_cloud_drive/ios unit tests for coordination wrappers; a Dart integr
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #741 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -743,7 +743,7 @@ plugins/sane_cloud_drive/test/gdrive_adapter_test.dart against a mocked Drive RE
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #742 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -800,7 +800,7 @@ SN-FND-002 (monorepo scaffold so packages/sane_sync exists).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #743 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -857,7 +857,7 @@ packages/sane_sync/test/engine/loop_test.dart (state transitions), reorder_conve
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #744 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -914,7 +914,7 @@ packages/sane_sync/test/engine/backoff_test.dart (Retry-After, jitter bounds, re
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #745 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -971,7 +971,7 @@ plugins/sane_cloud_drive/test/gdrive_changes_test.dart against a mocked Changes 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #746 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1027,7 +1027,7 @@ services/notifier tests (channel register/renew/expire, content-free assertion) 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #747 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1084,7 +1084,7 @@ plugins/sane_cloud_drive/android test for grant persistence + tree read/write; a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #748 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1141,7 +1141,7 @@ packages/sane_sync/test/blob/lazy_fetch_test.dart (no audio on open), lru_cache_
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #749 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1198,7 +1198,7 @@ packages/sane_sync/test/blob/resumable_test.dart (interrupt+resume, restart-pers
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #750 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1255,7 +1255,7 @@ packages/sane_sync/test/integrity/verify_test.dart (bit-flip, truncation, moved-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #751 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1312,7 +1312,7 @@ packages/sane_sync/test/conflict/silent_merge_test.dart (concurrent compaction, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #752 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1369,7 +1369,7 @@ packages/sane_sync/test/compaction/lease_test.dart (priority, TTL expiry, idle g
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #753 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1426,7 +1426,7 @@ packages/sane_sync/test/engine/catchup_test.dart (watermark diff exactness, tail
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #754 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1483,7 +1483,7 @@ SN-CRY-002 (key hierarchy/keychain), SN-CRY-003 (recovery code), SN-AUTH-002 (id
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #755 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1540,7 +1540,7 @@ app/test/settings/devices_screen_test.dart (list/rename/revoke widget), integrat
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #756 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1597,7 +1597,7 @@ app/test/settings/sync_prefs_test.dart (off=no-egress, wifiOnly hold, provider g
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #757 |
 | Type | design |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1654,7 +1654,7 @@ app/test/sync/status_widget_test.dart (all nine states, Sync-now non-blocking), 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #758 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1711,7 +1711,7 @@ packages/sane_sync/test/quota/quota_test.dart (driveFull surfacing, local-contin
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #759 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1768,7 +1768,7 @@ packages/sane_sync/test/auth/reauth_test.dart (expiry to authNeeded, resume-afte
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #760 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1825,7 +1825,7 @@ packages/sane_sync/test/history/history_test.dart (reconstruct exactness, restor
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #761 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1882,7 +1882,7 @@ packages/sane_sync/test/privacy/metadata_min_test.dart (no plaintext in paths/ma
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #762 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -1939,7 +1939,7 @@ packages/sane_sync/test/soak/convergence_soak_test.dart, chaos_fault_injection_t
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #763 |
 | Type | test |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1996,7 +1996,7 @@ app/integration_test/offline_first_test.dart (per-state local liveness), app/int
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #832 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |

@@ -524,7 +524,7 @@ The default pen is the Fountain Pen (`tool: pen` in the mockup; screens §7). Pe
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #631 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -581,7 +581,7 @@ This is the default tool; it must feel great out of the box across all 17 looks 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #632 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -638,7 +638,7 @@ A plain, predictable pen; renders across all 17 looks + dark with INK colours. A
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #633 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -695,7 +695,7 @@ The precise pens for diagrams/tables; high smoothing pairs with dwell-to-perfect
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #634 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -752,7 +752,7 @@ Must read as pencil across all 17 looks + dark; the grain is subtle and never ob
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #635 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -809,7 +809,7 @@ Bold annotation pen; renders across all 17 looks + dark with INK colours. A11y: 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #636 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -866,7 +866,7 @@ Sketch/personal pens; render across all 17 looks + dark. A11y: all usable withou
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #637 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -923,7 +923,7 @@ Expressive headings/lettering; renders across all 17 looks + dark. The nib-angle
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #638 |
 | Type | task |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |

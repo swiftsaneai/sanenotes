@@ -41,7 +41,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #468 |
 | Type | epic |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -123,7 +123,7 @@ Cross-epic: [SN-CORE-003](sync.md#sn-core-003) (CRDT semantics), [SN-CRY-001](se
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #498 |
 | Type | spike |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -182,7 +182,7 @@ None. Blocks [SN-COL-003](collaboration.md#sn-col-003), [SN-COL-005](collaborati
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #499 |
 | Type | design |
 | Priority | p0 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -241,7 +241,7 @@ Docs-only, but the spec must ship **test vectors** committed as `packages/sane_s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #500 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -301,7 +301,7 @@ No UI, but the session's state machine is the source of truth for the strings sh
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #501 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -361,7 +361,7 @@ The transport feeds three presence-rail states designed in [SN-COL-010](collabor
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #502 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -420,7 +420,7 @@ Three user-visible outcomes, all rendered with `sane_ui` components in all 17 lo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #503 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -481,7 +481,7 @@ No user-facing UI, but two product-visible behaviours: the client can show "Live
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #504 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -540,7 +540,7 @@ None beyond baseline (no user-facing surface). Baseline still applies: nothing i
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #505 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -601,7 +601,7 @@ The join sheet is a new overlay in the family of the **Share** overlay (docs/des
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #506 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -661,7 +661,7 @@ The presence rail is a new editor surface; the design canvas (docs/design/screen
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #507 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -721,7 +721,7 @@ Cursor glyph follows the pen-nib silhouette used in the palette dock (docs/desig
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #508 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -781,7 +781,7 @@ The "Following <name>" pill sits under the Live banner from [SN-COL-009](collabo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #509 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -841,7 +841,7 @@ The Share overlay (docs/design/screens-and-flows.md §10) already renders roles;
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #510 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -901,7 +901,7 @@ Minimal anchor marker in this issue: a small numbered dot in the participant col
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #511 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -961,7 +961,7 @@ The panel is a new editor surface in the family of the **page rail** and **Share
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #512 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1021,7 +1021,7 @@ The inbox is reachable from the sidebar (docs/design/screens-and-flows.md sideba
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #513 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1082,7 +1082,7 @@ Classroom mode is a new surface built from existing design vocabulary (docs/desi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #514 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1143,7 +1143,7 @@ The host control panel extends the participants sheet from [SN-COL-010](collabor
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #515 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1203,7 +1203,7 @@ Guest observe-only state shows a calm inline chip: "Watching — ask the host to
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #516 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1263,7 +1263,7 @@ Status wording must never suggest loss. Use the sync status vocabulary already d
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #517 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1323,7 +1323,7 @@ The harness is test infrastructure, but it carries its own tests: `tools/collab_
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #518 |
 | Type | test |
 | Priority | p0 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1387,7 +1387,7 @@ Files: `packages/sane_sync/test/collab/adversary/hostile_peer_test.dart`, `adver
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #519 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1448,7 +1448,7 @@ Infrastructure tests: `services/relay/test/deploy/container_hardening_test.dart`
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1103 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |

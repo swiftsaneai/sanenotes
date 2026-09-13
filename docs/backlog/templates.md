@@ -104,7 +104,7 @@ Unit tests for the model (`packages/sane_core/test/template/`), golden tests per
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #689 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -161,7 +161,7 @@ No direct chrome; this is the data substrate for the Templates overlay (docs/des
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #690 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -218,7 +218,7 @@ Surface: Editor canvas paper fill (docs/design/screens-and-flows.md §7.2) and t
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #691 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -275,7 +275,7 @@ Surfaces: Editor canvas (docs/design/screens-and-flows.md §7.2), Template overl
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #692 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -332,7 +332,7 @@ Surfaces: Template overlay TINTS + size segmented control (docs/design/screens-a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #693 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -389,7 +389,7 @@ Exact surface: docs/design/screens-and-flows.md §8 (Templates overlay) with cop
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #694 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -446,7 +446,7 @@ Surface: Editor "Paper & templates" (docs/design/screens-and-flows.md §7.1 tool
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #695 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -503,7 +503,7 @@ Surface: Templates overlay Pro badges + Upgrade overlay (docs/design/screens-and
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #696 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -560,7 +560,7 @@ Surfaces: Library card cover (docs/design/screens-and-flows.md §6), notebook `�
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #697 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -617,7 +617,7 @@ Surfaces: Templates overlay My Templates section (docs/design/screens-and-flows.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #698 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -674,7 +674,7 @@ Surface: store tab within the Templates overlay + Free vs Pro (docs/design/scree
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #699 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -731,7 +731,7 @@ Surface: Editor canvas over a planner template (docs/design/screens-and-flows.md
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #700 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -788,7 +788,7 @@ Surfaces: import error toasts across the Templates overlay and Change-cover shee
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #701 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -845,7 +845,7 @@ The deliverable is the golden suite itself: `packages/sane_render/test/paper/pap
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #702 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |

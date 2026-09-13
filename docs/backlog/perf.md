@@ -1,6 +1,6 @@
 # Backlog — area: perf
 
-50 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+57 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -108,6 +108,67 @@ SN-AND-005 (tier selection), SN-AND-002 (ink surface), SN-FND-003 (CI). Uses the
 
 ---
 
+### SN-BTY-014
+
+<a id="sn-bty-014"></a>
+
+**Run beautification incrementally off the draw path within hard budgets**
+
+| Field | Value |
+|---|---|
+| GitHub | #1167 |
+| Type | feature |
+| Priority | p0 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | all |
+| Areas | perf, ocr-hwr, ink |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-PERF-002](perf.md#sn-perf-002), [SN-PERF-003](perf.md#sn-perf-003), [SN-BTY-003](ocr-hwr.md#sn-bty-003) |
+| Security controls | `MASVS-PRIVACY-1`, `CWE-400`, `CWE-532` |
+| Extra labels | agent-ready |
+
+#### Context
+Beautification is the heaviest thing we have ever considered running while someone is writing, and locked decision 7 does not bend: pen-down to pixel <= 16 ms on ProMotion iPad, <= 25 ms on mid Android, <= 30 ms on web, no frame over 16.7 ms while writing, < 300 MB on a 4 GB Android. CLAUDE.md §8 is equally blunt — the UI isolate does input and paint only, and nothing hops isolates on the hot draw path. This issue owns the execution model that makes the rest of [SN-BTY-001](ocr-hwr.md#sn-bty-001) safe: a long-lived worker, transferable payloads, incremental chunked work, a priority queue, explicit memory caps, and CI perf gates that fail the build on regression.
+
+#### Scope
+**In:** a long-lived beautify worker (isolate on mobile/desktop, web worker on web) with a typed message protocol; transferable `Float32List` payloads to avoid copying point data; a priority queue (visible page > neighbour pages > background catch-up); cooperative chunking with a <= 4 ms slice budget and prompt cancellation; caching of per-page segmentation and the writer profile keyed by page revision; memory caps and eviction; the documented budget table; and two new perf-harness scenarios wired into the CI gates.
+**Out:** the algorithms themselves; the real-time trigger ([SN-BTY-009](ink.md#sn-bty-009)); the command UI ([SN-BTY-010](editor.md#sn-bty-010)).
+
+#### Acceptance criteria
+- [ ] The worker is spawned once per editor session and reused; no `Isolate.run` per word or per line (asserted by a test counting spawns across a 200-word session).
+- [ ] Point payloads cross the boundary as transferable typed data; a benchmark shows <= 0.15 ms per 1,000-point transfer on the Tier-2 reference device and zero per-message list copying in the steady state.
+- [ ] Work is chunked so any slice runs <= 4 ms and a cancel is acknowledged within 16 ms.
+- [ ] Continuous-writing scenario (2 minutes, real-time beautify on, Tier-2 Android tablet): zero frames > 16.7 ms attributable to beautify, <= 3% additional UI-isolate CPU, and <= 1.5% additional battery over a 30-minute session versus the beautify-off baseline.
+- [ ] Retroactive page job: <= 2.5 s p95 per 1,000 strokes on Tier-2 Android, <= 1.2 s p95 on the iPad reference, <= 4 s p95 on Chrome desktop web.
+- [ ] Steady-state beautify working set <= 24 MB RSS delta, with the segmentation cache bounded to the visible page plus one neighbour and evicted LRU; a leak test shows no growth over 500 beautify jobs.
+- [ ] Segmentation is cached by page revision and reused by every planner in a job; recomputation happens only when the page revision changes (asserted by a cache-hit test).
+- [ ] `beautify_realtime` and `beautify_page` scenarios exist in `tools/perf_harness`, have recorded baselines for all three reference devices, and are wired into the CI perf gates ([SN-PERF-003](perf.md#sn-perf-003)) so a regression beyond 10% fails the build.
+- [ ] The budget table lives in `docs/architecture/rendering-and-performance.md` and is referenced from `docs/architecture/ink-engine.md`; the PR attaches a `flutter run --profile` timeline (CLAUDE.md §5).
+
+#### Technical notes
+`app/lib/features/editor/beautify/beautify_worker.dart` (spawn, lifecycle, message protocol) and `packages/sane_ml/lib/src/beautify/worker/` (pure-Dart job entry points so the same code runs headless in tests). Follow the isolate model in `docs/architecture/overview.md` §6: the beautify worker is a peer of the storage/search isolates, not a new pattern; consider hosting beautify jobs inside the existing ML isolate to avoid a fourth long-lived isolate on memory-constrained devices, with a capability flag choosing at runtime. Messages are small immutable command records plus `Float32List`/`Uint8List` payloads sent with `TransferableTypedData` so no copy occurs. The queue is a small priority heap keyed by (visibility, recency); it drops rather than grows under pressure ([SN-BTY-009](ink.md#sn-bty-009) hands dropped words to [SN-BTY-010](editor.md#sn-bty-010)). On web the worker is the existing web isolate shim; where `SharedArrayBuffer` is unavailable (no COOP/COEP) payloads fall back to structured-clone copies and the scenario budget relaxes accordingly, documented in `docs/platform/web.md`. Caches: `PageSegmentation` by (pageId, revision) and `WriterProfile` by profileId, both LRU-bounded.
+
+#### Security & privacy
+Note content crosses an isolate boundary in plaintext within the process, which is the same trust boundary the storage and search isolates already use — no new boundary and no new threat row, but the payloads must never be persisted to a temp file or logged (MASVS-PRIVACY-1, MASVS-STORAGE-1, CWE-532, TM-I-05). Bounded queues, slice budgets and memory caps are the availability control against a crafted document turning beautification into a self-inflicted denial of service while writing (CWE-400, TM-D-01, TM-D-04). No network on any beautify path (MASVS-NETWORK-1).
+
+#### UX notes
+The user-visible contract is that writing never stutters and the app never feels busy because of beautification. When the device is thermally throttled or on low battery, the worker reduces to retroactive-only mode and real-time refinement pauses silently, resuming when conditions allow — never a warning dialog, never a spinner on the canvas. Progress for long jobs is owned by [SN-BTY-010](editor.md#sn-bty-010). No new chrome ships in this issue.
+
+#### Test plan
+`app/test/features/editor/beautify/worker_lifecycle_test.dart` (single spawn, reuse, disposal on editor close), `packages/sane_ml/test/beautify/job_chunking_test.dart` (slice budget, cancel latency, queue bound and drop policy), `packages/sane_ml/test/beautify/cache_test.dart` (revision keying, LRU eviction, no leak over 500 jobs), `app/test/perf/beautify_budgets_test.dart`, and the two new `tools/perf_harness` scenarios with recorded baselines plus the CI gate wiring in [SN-PERF-003](perf.md#sn-perf-003).
+
+#### Dependencies
+SN-PERF-002 (latency measurement harness), SN-PERF-003 (CI perf gates), SN-BTY-003 (segmentation, the main cached artefact). Consumed by [SN-BTY-009](ink.md#sn-bty-009) and [SN-BTY-010](editor.md#sn-bty-010).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md PRD-ED-187)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text or note content in logs (TM-I-05)
+
+---
+
 ### SN-CORE-027
 
 <a id="sn-core-027"></a>
@@ -165,6 +226,355 @@ The benchmark files above are the deliverable, run in a dedicated CI job (not th
 
 ---
 
+### SN-DIM-043
+
+<a id="sn-dim-043"></a>
+
+**Author ink and hairline geometry in logical units, rasterise at devicePixelRatio**
+
+| Field | Value |
+|---|---|
+| GitHub | #1143 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | perf, ink, compat |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-INK-004](ink.md#sn-ink-004), [SN-INK-005](ink.md#sn-ink-005), [SN-DS-002](design-system.md#sn-ds-002) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+A note must look identically crisp on a 1x web canvas, a 2x iPad, a 3x phone, and a fractional Windows/ChromeOS scale (1.25/1.5/1.75). If widths, hairlines, paper grain and PDF tiles are authored in device pixels, a 1 px hairline blurs or disappears at fractional DPR and paper grain moires. This issue makes `sane_render`/`sane_ink` author everything in **logical units** and rasterise at the live `devicePixelRatio`, so geometry is resolution-independent and hairlines stay crisp everywhere. It is the rendering-crispness half; cross-device *physical-size* fidelity of a stored stroke is [SN-DIM-044](ink.md#sn-dim-044).
+
+#### Scope
+**In:** logical-unit authoring for stroke widths, page hairlines (paper lines/grid/dots), tint washes, selection rects, and PDF tile raster requests; DPR-aware raster sizing and re-raster on DPR change; snapping hairlines to the device-pixel grid.
+**Out:** stroke document-model portability ([SN-DIM-044](ink.md#sn-dim-044)), incremental cache invalidation on resize ([SN-DIM-048](perf.md#sn-dim-048)), effect degradation on low-end ([SN-DIM-050](design-system.md#sn-dim-050)).
+
+#### Acceptance criteria
+- [ ] A nominal 1 logical px hairline renders as a crisp, non-blurred line at DPR **1.0, 1.25, 1.5, 1.75, 2.0, 2.6 and 3.0** (device-pixel-grid snapped), verified by golden pixel diff.
+- [ ] Paper grain (7 px Paper dot pattern) and grid/dotted templates show no moire at fractional DPR.
+- [ ] PDF tiles are requested at `logicalTileSize × devicePixelRatio` and never upscaled beyond 1.0 blur.
+- [ ] On a runtime DPR change (external display, browser zoom, OS display-scale change) the active page re-rasterises at the new DPR within one frame budget and stays crisp.
+- [ ] Stroke width is stored and computed in logical units; the painter multiplies by DPR only at raster time.
+- [ ] No raster is allocated larger than `ceil(logicalSize × dpr)`; memory does not scale with an accidental double-DPR bug.
+
+#### Technical notes
+Read DPR with `MediaQuery.devicePixelRatioOf(context)` / `ui.FlutterView.devicePixelRatio`; drive `ui.PictureRecorder`/`Canvas` and `ui.Image` raster sizes from it in `packages/sane_render`. Snap hairlines with `(logical * dpr).round() / dpr`. Feed the ThemeExtension pixel constants from [SN-DS-002](design-system.md#sn-ds-002) in logical units. PDF tiles: pass the DPR-scaled size to `pdfrx`/pdfium in `packages/sane_pdf`. Listen for DPR change via `WidgetsBindingObserver.didChangeMetrics`. Keep this off the hot draw path — re-raster of finished layers only.
+
+#### Security & privacy
+None beyond baseline; no content leaves the device, rasters are in-memory only.
+
+#### UX notes
+Ink must read as the same physical stroke regardless of screen density (`docs/design/ux-principles.md` §2: the page renders pixel-identically across looks; density must not change it). Hairlines never vanish on high-DPR phones nor bloat on low-DPR web.
+
+#### Test plan
+Golden `packages/sane_render/test/golden/hairline_dpr_test.dart` (hairline at 7 DPRs); golden `paper_grain_dpr_test.dart`; widget test for re-raster on `didChangeMetrics`; a memory assertion that raster bytes == `ceil(w*dpr)*ceil(h*dpr)*4`.
+
+#### Dependencies
+[SN-INK-004](ink.md#sn-ink-004), [SN-INK-005](ink.md#sn-ink-005), [SN-DS-002](design-system.md#sn-ds-002).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-045
+
+<a id="sn-dim-045"></a>
+
+**Make chrome animation and layout refresh-rate independent across 60/90/120Hz**
+
+| Field | Value |
+|---|---|
+| GitHub | #1145 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | perf, design-system, compat |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DS-025](design-system.md#sn-ds-025), [SN-A11Y-006](a11y.md#sn-a11y-006) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Sane Notes runs on 60 Hz, 90 Hz, 120 Hz ProMotion, and adaptive/LTPO panels that vary refresh at runtime. Any animation whose progress is driven by frame count (e.g. `value += 0.05` per frame) runs at double speed on 120 Hz and stutters on adaptive refresh. This issue enforces **time-based** animation and layout across all non-ink chrome so motion looks identical at every refresh rate. It complements [SN-INK-023](ink.md#sn-ink-023) (adaptive refresh on the *draw* path) and [SN-PERF-014](perf.md#sn-perf-014) (the frame-pacing *gate*); this one covers chrome transitions, the toast, the palette dock snap, and layout transitions.
+
+#### Scope
+**In:** convert all chrome/overlay/toast/dock animations to `AnimationController(vsync:)` with wall-clock `Duration`s from the [SN-DS-025](design-system.md#sn-ds-025) motion tokens; ban frame-count-based progression; verify correctness at 60/90/120/adaptive.
+**Out:** the ink draw path ([SN-INK-023](ink.md#sn-ink-023)), the frame-pacing measurement gate ([SN-PERF-014](perf.md#sn-perf-014)), reduce-motion behaviour (owned by [SN-A11Y-006](a11y.md#sn-a11y-006), only consumed here).
+
+#### Acceptance criteria
+- [ ] Every chrome animation uses `AnimationController` with an explicit `Duration` (toast 2.4 s, toggle 18 px in 200 ms, overlay 200–300 ms per `docs/design/ux-principles.md` §6); none advances by a per-frame constant.
+- [ ] A CI/lint check flags any `Ticker`/`Timer` callback that mutates animation state by a fixed increment rather than by `elapsed`.
+- [ ] The same transition measured on 60 Hz and 120 Hz completes within ±1 frame of the same wall-clock duration.
+- [ ] On an adaptive-refresh panel that shifts 120→60 Hz mid-transition, the animation neither jumps nor changes perceived speed.
+- [ ] The toggle knob travels exactly 18 logical px in 200 ms regardless of refresh rate.
+- [ ] Reduce Motion ([SN-A11Y-006](a11y.md#sn-a11y-006)) still cross-fades correctly under this time-based model.
+
+#### Technical notes
+Use `AnimationController(vsync: this, duration: token)` + `CurvedAnimation`; never derive progress from `SchedulerBinding` frame count. Where a custom ticker is needed, integrate against `Duration elapsed` (`Ticker` callback arg), not tick count. Read the display's reported refresh where available (`ui.FlutterView`/`display.refreshRate`) only for diagnostics, never to scale durations. Motion tokens live in [SN-DS-025](design-system.md#sn-ds-025); consume them in `sane_ui`. Do not force 120 Hz when idle (`docs/platform/performance-budgets.md` §5.6 battery).
+
+#### Security & privacy
+None beyond baseline (UI motion only).
+
+#### UX notes
+Motion must feel identical on a 60 Hz base iPad and a 120 Hz iPad Pro; nothing speeds up or janks by device. Follow `docs/design/ux-principles.md` §6 (calm, interruptible, reduce-motion-respecting).
+
+#### Test plan
+Widget tests `packages/sane_ui/test/motion/time_based_animation_test.dart` pumping at simulated 60/90/120 Hz frame intervals and asserting equal wall-clock completion; a custom-lint/analyzer rule test for frame-count progression; manual check on a ProMotion iPad and a 90 Hz Android.
+
+#### Dependencies
+[SN-DS-025](design-system.md#sn-ds-025), [SN-A11Y-006](a11y.md#sn-a11y-006).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, widget, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-046
+
+<a id="sn-dim-046"></a>
+
+**Gate the reflow transition frame budget for rotate, resize, fold and keyboard**
+
+| Field | Value |
+|---|---|
+| GitHub | #1146 |
+| Type | test |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, web, ios-phone, android-phone |
+| Areas | perf, compat, qa |
+| Size | M |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-PERF-003](perf.md#sn-perf-003), [SN-PERF-007](perf.md#sn-perf-007), [SN-AND-013](compat.md#sn-and-013), [SN-IPAD-010](compat.md#sn-ipad-010), [SN-PHN-017](compat.md#sn-phn-017) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Existing issues preserve editor *state* across window-size-class changes ([SN-AND-013](compat.md#sn-and-013), [SN-IPAD-010](compat.md#sn-ipad-010), [SN-PHN-017](compat.md#sn-phn-017)) but nothing measures the *cost* of the reflow itself. `docs/platform/performance-budgets.md` B5 says no frame may exceed 16.7 ms while writing; the maintainer extends the no-lag promise to the moment of rotation, window resize, fold/unfold and keyboard show/hide. This issue adds an automated transition-frame-budget gate wired into the [SN-PERF-003](perf.md#sn-perf-003) CI perf gates, reusing the [SN-PERF-007](perf.md#sn-perf-007) frame-timing harness.
+
+#### Scope
+**In:** scripted transitions (portrait↔landscape, Split View/Stage Manager resize, fold↔unfold, IME show/hide) with `FrameTiming` capture and a per-transition jank gate; wiring into the three perf cadences.
+**Out:** correctness/state preservation of the transitions (their own issues), the layout-cost algorithm ([SN-DIM-047](perf.md#sn-dim-047)), incremental cache invalidation ([SN-DIM-048](perf.md#sn-dim-048)).
+
+#### Acceptance criteria
+- [ ] During a scripted portrait↔landscape rotation on iPad-Pro-ProMotion, **no frame exceeds 16.7 ms** (and ≤ 8.3 ms target at 120 Hz) measured by `FrameTiming` build+raster.
+- [ ] During a Split View / Stage Manager resize drag on iPad, p95 frame time ≤ the display frame budget with zero frames > 16.7 ms after the first settling frame.
+- [ ] During a fold↔unfold on a Galaxy Z Fold / Pixel Fold (compact ↔ ~674×841 logical), the relayout produces no frame > 16.7 ms and no dropped-to-blank editor.
+- [ ] During IME show/hide on a phone, the editor and active field reflow with no frame > 16.7 ms (uses `MediaQuery.viewInsetsOf`).
+- [ ] The gate is registered in the [SN-PERF-003](perf.md#sn-perf-003) per-commit and nightly cadences with per-device baselines and a regression threshold.
+- [ ] A regression that pushes any transition over budget fails the PR check.
+
+#### Technical notes
+Drive transitions in `integration_test` via `tester.view.physicalSize`/`devicePixelRatio` overrides and `tester.view.viewInsets` for the IME; on real devices use `flutter drive --profile` and `adb shell` rotation / a foldable emulator posture. Capture with `SchedulerBinding.addTimingsCallback` (`buildDuration` + `rasterDuration`). Emulators may run functional checks only — the latency/fps numbers come from Tier 1 devices per `docs/platform/performance-budgets.md` §3. Harness lives in `tools/perf_harness`; reuse [SN-PERF-007](perf.md#sn-perf-007).
+
+#### Security & privacy
+None beyond baseline; perf traces carry timing only, no note content.
+
+#### UX notes
+Rotating, resizing, folding or raising the keyboard must feel instant — no visible reflow stutter, no flash of blank canvas (`docs/design/ux-principles.md` §1: latency is the UX). State is preserved by the referenced issues; this guarantees it happens smoothly.
+
+#### Test plan
+`app/integration_test/resize_continuity_test.dart` (rotation, resize, fold, IME) with `FrameTiming` assertions; `tools/perf_harness` device-lab job; baselines stored per device in the [SN-PERF-018](perf.md#sn-perf-018) budget registry.
+
+#### Dependencies
+[SN-PERF-003](perf.md#sn-perf-003), [SN-PERF-007](perf.md#sn-perf-007), [SN-AND-013](compat.md#sn-and-013), [SN-IPAD-010](compat.md#sn-ipad-010), [SN-PHN-017](compat.md#sn-phn-017).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, integration, perf gate, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-047
+
+<a id="sn-dim-047"></a>
+
+**Bound relayout cost so resize never does an O(n) pass over all pages or strokes**
+
+| Field | Value |
+|---|---|
+| GitHub | #1147 |
+| Type | task |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | perf, pages-canvas, editor |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-PERF-021](perf.md#sn-perf-021), [SN-ED-030](editor.md#sn-ed-030), [SN-PG-003](pages-canvas.md#sn-pg-003) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+A window resize or rotation must reflow chrome and the visible page only — it must not walk every page of a 1,000-page notebook or every stroke of a dense page. If relayout is O(pages) or O(strokes), a resize on a large notebook janks badly, breaking the no-lag promise. This issue makes relayout cost O(visible), independent of document size, so the [SN-DIM-046](perf.md#sn-dim-046) transition budget is achievable structurally rather than by luck. It builds on the repaint-scope discipline in [SN-PERF-021](perf.md#sn-perf-021) and the adaptive editor layout in [SN-ED-030](editor.md#sn-ed-030).
+
+#### Scope
+**In:** ensure resize/rotation/fold relayout touches only visible-viewport widgets and the current page; lazy page geometry; memoised size-class resolution; no per-stroke work on resize.
+**Out:** the transition frame-budget gate ([SN-DIM-046](perf.md#sn-dim-046)), cache invalidation of rasters/thumbnails ([SN-DIM-048](perf.md#sn-dim-048)), the draw-loop per-sample allocation rules ([SN-PERF-021](perf.md#sn-perf-021), consumed here).
+
+#### Acceptance criteria
+- [ ] Relayout after a size change performs work proportional to on-screen widgets + the current page, **not** to total page count or total stroke count (asserted by a counter/instrumentation test).
+- [ ] Opening a generated 1,000-page notebook and rotating produces the same per-frame cost as rotating a 3-page notebook (within 10%).
+- [ ] The page rail / library grid use lazy builders (`ListView.builder`/`SliverGrid`) so off-screen pages/cards are not laid out on resize.
+- [ ] Window-size-class resolution is memoised and recomputed only when the class boundary is crossed, not every layout pass.
+- [ ] No stroke geometry is re-tessellated purely because the window resized (only DPR change triggers re-raster, per [SN-DIM-043](perf.md#sn-dim-043)).
+- [ ] A dense 5,000-stroke page reflows on resize with no per-stroke iteration in the layout phase.
+
+#### Technical notes
+Drive size class from a memoised provider keyed on `MediaQuery.sizeOf` bucket boundaries (`docs/design/ux-principles.md` §8 breakpoints). Use `LayoutBuilder` only where needed; avoid rebuilding subtrees that do not depend on size. Keep finished strokes as cached `Picture`/tiles ([SN-INK-022](ink.md#sn-ink-022)) untouched by resize. Instrument with a debug layout-count probe. Coordinate with [SN-ED-030](editor.md#sn-ed-030) (adaptive editor layout) and [SN-PG-003](pages-canvas.md#sn-pg-003) (page geometry). Enforce as part of the [SN-PERF-021](perf.md#sn-perf-021) lag-proof checklist.
+
+#### Security & privacy
+None beyond baseline.
+
+#### UX notes
+Resizing must feel free — the same whether the notebook has 3 or 1,000 pages. Users with huge notebooks are exactly the power users the app targets; they must not be punished for it.
+
+#### Test plan
+`app/test/perf/relayout_cost_test.dart` (layout-count invariance across 3 vs 1,000 pages); widget test that off-screen rail items are not built; integration cross-check with [SN-DIM-046](perf.md#sn-dim-046); a stress golden at 5,000 strokes.
+
+#### Dependencies
+[SN-PERF-021](perf.md#sn-perf-021), [SN-ED-030](editor.md#sn-ed-030), [SN-PG-003](pages-canvas.md#sn-pg-003).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, widget, perf, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-048
+
+<a id="sn-dim-048"></a>
+
+**Invalidate thumbnails, tiles and page rasters incrementally on resize and DPR change**
+
+| Field | Value |
+|---|---|
+| GitHub | #1148 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M2 Library & Documents |
+| Platforms | all |
+| Areas | perf, pages-canvas, pdf |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-INK-022](ink.md#sn-ink-022), [SN-PDF-004](pdf.md#sn-pdf-004), [SN-PG-010](pages-canvas.md#sn-pg-010), [SN-DIM-043](perf.md#sn-dim-043) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+When the window resizes or the effective DPR changes (external display, browser zoom, OS scale), the naive response is to drop and rebuild every cached raster — thumbnails, page tiles, PDF tiles — which spikes CPU and memory and janks. The caches from [SN-INK-022](ink.md#sn-ink-022) (page raster tiles), [SN-PDF-004](pdf.md#sn-pdf-004) (PDF tiles) and [SN-PG-010](pages-canvas.md#sn-pg-010) (page thumbnails) must be invalidated **incrementally**: keep entries whose logical content is unchanged, re-raster only what the new DPR/zoom actually needs, and re-raster off the UI isolate. This makes resize cheap and keeps the [SN-DIM-049](perf.md#sn-dim-049) memory budget intact.
+
+#### Scope
+**In:** DPR/size-keyed cache entries; incremental invalidation that preserves DPR-valid entries; off-isolate re-raster of only the visible region on change; debounced re-raster during a continuous resize drag.
+**Out:** the caches themselves ([SN-INK-022](ink.md#sn-ink-022), [SN-PDF-004](pdf.md#sn-pdf-004), [SN-PG-010](pages-canvas.md#sn-pg-010)), logical-unit authoring ([SN-DIM-043](perf.md#sn-dim-043)), the memory-ceiling gate ([SN-DIM-049](perf.md#sn-dim-049)).
+
+#### Acceptance criteria
+- [ ] Cache keys include the DPR/zoom bucket; a resize that does **not** change the DPR bucket reuses existing tiles/thumbnails with zero re-raster.
+- [ ] A DPR/zoom change re-rasterises only the currently visible tiles/thumbnails; off-screen entries are re-rasterised lazily on demand.
+- [ ] Re-raster runs on a one-shot/background isolate (`Isolate.run`/compute), never on the UI isolate, so it adds no frame over 16.7 ms.
+- [ ] During a continuous resize drag, re-raster is debounced (single trailing raster at the settled size), not one-per-frame.
+- [ ] Thumbnails on the page rail and library grid do not flicker to blank on resize when the DPR bucket is unchanged.
+- [ ] Total raster memory does not transiently double during invalidation (old entry evicted only after the new one is ready, under the LRU cap).
+- [ ] Heavy recomputes (thumbnail regeneration, PDF re-raster, and search re-indexing) never run on the UI isolate during a resize or divider drag; they are debounced to run after the drag settles (≥ 150 ms).
+
+#### Technical notes
+Extend the LRU caches in `packages/sane_render` and `packages/sane_pdf` with a `(logicalKey, dprBucket)` composite key; on `didChangeMetrics` compute the new bucket and diff. Re-raster requests go to the one-shot compute isolate (`docs/architecture/overview.md` §6). Debounce with a short timer keyed to resize-end. Respect the tile LRU memory cap so incremental refill stays under budget. Coordinate with [SN-PG-010](pages-canvas.md#sn-pg-010) (disk-cached thumbnails — reuse disk entries across sessions where DPR matches).
+
+#### Security & privacy
+Cached rasters are derived note content held in memory/disk cache only; the disk thumbnail cache must live in app-private storage and never sync as plaintext (`docs/architecture/overview.md` §7 crypto boundary). No content in logs.
+
+#### UX notes
+Moving a window between a laptop screen and a 4K display, or zooming the browser, must not blank the notebook or stutter — pages stay visible and sharpen in place.
+
+#### Test plan
+`packages/sane_render/test/cache/incremental_invalidation_test.dart` (same-bucket reuse, cross-bucket partial re-raster); isolate-offload assertion; debounce test; memory test that peak stays under the LRU cap during invalidation.
+
+#### Dependencies
+[SN-INK-022](ink.md#sn-ink-022), [SN-PDF-004](pdf.md#sn-pdf-004), [SN-PG-010](pages-canvas.md#sn-pg-010), [SN-DIM-043](perf.md#sn-dim-043).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-049
+
+<a id="sn-dim-049"></a>
+
+**Hold the memory budget at the largest viewport and highest DPR with a 600-page PDF**
+
+| Field | Value |
+|---|---|
+| GitHub | #1149 |
+| Type | test |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, android-phone |
+| Areas | perf, pdf, compat |
+| Size | M |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-PERF-009](perf.md#sn-perf-009), [SN-PERF-011](perf.md#sn-perf-011), [SN-GPRF-010](perf.md#sn-gprf-010), [SN-DIM-048](perf.md#sn-dim-048) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+`docs/platform/performance-budgets.md` B9 caps memory at < 300 MB on the 4 GB Android reference. The worst case for a layout/raster system is the **largest logical viewport at the highest raster scale with a huge document open** — the maintainer's 13-inch tablet at 3x with a 600-page PDF. Tile/raster caches sized by pixel count blow the budget as viewport×DPR grows. This issue proves memory stays bounded in that corner by making cache budgets a function of *logical* visible area (capped), not raster pixel count, so a bigger/denser screen does not multiply memory. It extends the [SN-PERF-009](perf.md#sn-perf-009) sampler and [SN-PERF-011](perf.md#sn-perf-011) PDF-scroll fixture into the max-viewport×DPR case and consumes [SN-DIM-048](perf.md#sn-dim-048) incremental invalidation.
+
+#### Scope
+**In:** a memory gate at the largest supported logical viewport × highest effective raster scale with the 600-page PDF fixture open and scrolled; a cache-budget policy sized by logical visible area with a hard cap; eviction proof.
+**Out:** the sampler/fixture themselves ([SN-PERF-009](perf.md#sn-perf-009), [SN-PERF-011](perf.md#sn-perf-011)), OS memory-pressure response ([SN-GPRF-010](perf.md#sn-gprf-010)), incremental invalidation ([SN-DIM-048](perf.md#sn-dim-048)).
+
+#### Acceptance criteria
+- [ ] With a 13-inch-class tablet logical viewport (e.g. 1032×1376 pt) at up to **3x effective raster scale** (native 2x plus a 1.5x display-zoom, or a hypothetical 3x panel) and the 600-page PDF open, peak PSS stays **< 300 MB** on the 4 GB Android reference during a scripted scroll.
+- [ ] Tile/raster cache memory is bounded by a cap proportional to *logical* visible area, not by `pixels = logical × dpr²`; doubling DPR does not double steady-state cache memory.
+- [ ] Off-screen PDF tiles and page rasters are evicted (LRU) so open-page count does not accumulate unbounded memory.
+- [ ] No OOM or low-memory kill occurs during the scripted session (an automatic fail per B9).
+- [ ] The same session on iPad-Air (2x) and a mid Android tablet stays within its per-device baseline.
+- [ ] The gate runs nightly on the device lab and opens a release-blocking issue on regression.
+
+#### Technical notes
+Size the `sane_render`/`sane_pdf` LRU caps by logical visible area with a DPR-independent byte ceiling; render tiles at DPR but bound the number of resident tiles by viewport coverage, not resolution. Sample PSS via `adb shell dumpsys meminfo` and Dart heap via `dart:developer`, per `docs/platform/performance-budgets.md` §2 B9. Reuse the 600-page fixture from [SN-PERF-011](perf.md#sn-perf-011) and the sampler from [SN-PERF-009](perf.md#sn-perf-009). Emulators are not a memory gate; use the low-end reference device.
+
+#### Security & privacy
+Decoded PDF pages are note-adjacent content held only in memory/private cache; nothing is logged and nothing leaves the device. Cap decode resources before parse (decompression-bomb defence, `docs/architecture/overview.md` §7.8).
+
+#### UX notes
+The app must not slow, thrash, or crash when a student opens a 600-page textbook on a big screen — the exact heavy-use scenario the product courts (`research/user-pain-points-and-market-gaps.md`).
+
+#### Test plan
+`tools/perf_harness` memory job `pdf_large_viewport_memory` on Android-lowend + iPad; `app/integration_test/large_pdf_memory_test.dart` asserting cache-cap invariance across DPR; nightly device-lab run feeding the [SN-PERF-019](perf.md#sn-perf-019) trend dashboard.
+
+#### Dependencies
+[SN-PERF-009](perf.md#sn-perf-009), [SN-PERF-011](perf.md#sn-perf-011), [SN-GPRF-010](perf.md#sn-gprf-010), [SN-DIM-048](perf.md#sn-dim-048).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, integration, perf gate, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
 ### SN-GAND-016
 
 <a id="sn-gand-016"></a>
@@ -173,7 +583,7 @@ The benchmark files above are the deliverable, run in a dedicated CI job (not th
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #993 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -231,7 +641,7 @@ CI: profile generation job + staleness check; existing cold-start budget test ([
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #994 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -289,7 +699,7 @@ Unit tests for the ceiling calculator across memory-class fixtures. `integration
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #981 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -347,7 +757,7 @@ Unit: `packages/sane_render/test/cache_registry_shed_test.dart` (ordering, class
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #982 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -405,7 +815,7 @@ Unit: `tools/size_gate/test/report_parse_test.dart` (breakdown parsing, threshol
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1077 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -464,7 +874,7 @@ Manual, lab-run: the camera protocol from [SN-PERF-006](perf.md#sn-perf-006) (>=
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1079 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -522,7 +932,7 @@ Unit: a frame-budget resolver test mapping reported refresh rates to budgets, in
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1085 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -580,7 +990,7 @@ Integration per surface in `tools/perf_harness/scenarios/resume_*`, run on the T
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1087 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -639,7 +1049,7 @@ Unit: the level-to-step mapping, including unknown levels. Integration: `am send
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1086 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -698,7 +1108,7 @@ Unit: deferred-load failure handling per feature. Integration: a cold-start trac
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1089 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -757,7 +1167,7 @@ Unit: statistics implementation (percentiles, trimming, confidence interval) aga
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1088 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -816,7 +1226,7 @@ Infrastructure verification rather than unit tests: a smoke workflow that claims
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1090 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -875,7 +1285,7 @@ Widget: HUD rendering in light/dark with golden snapshots; a test asserting it p
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1091 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -934,7 +1344,7 @@ Lab-run scenarios executed on the iPad and Android Tier 1 slots at the nightly/R
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1092 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -993,7 +1403,7 @@ Integration: cold-cache and contention variants of the existing startup and 1,00
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1093 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1052,7 +1462,7 @@ Automated where the browser can be driven in CI (Firefox, Chromium-family via th
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1095 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1111,7 +1521,7 @@ Unit: state mapping and hysteresis with a fake clock; the max-of-constraints res
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1096 |
 | Type | infra |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -1170,7 +1580,7 @@ Unit: the decision wrapper mapping harness results to bisect exit codes, includi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #999 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1242,7 +1652,7 @@ Invisible when it works. The only visible surfaces are the progress and cancel a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1004 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1313,7 +1723,7 @@ Progress is honest and bounded: a skeleton or inline progress with the payload s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1010 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1442,7 +1852,7 @@ Perf: `tools/perf_harness` scenarios `ipad_latency`, `ipad_fps_jank`, `ipad_cold
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #472 |
 | Type | epic |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1521,7 +1931,7 @@ SN-FND-002 (monorepo scaffold + tools/perf_harness + tools/device_lab). Coordina
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #867 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M0 Foundations |
@@ -1579,7 +1989,7 @@ SN-FND-002 (monorepo scaffold + tools/perf_harness). Coordinates with [SN-PERF-0
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #868 |
 | Type | infra |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1637,7 +2047,7 @@ tools/perf_harness/test/gate_test.dart (threshold logic, p95/p99, peak, regressi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #869 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -1694,7 +2104,7 @@ SN-FND-002 (scaffold). Coordinates with [SN-PERF-002](perf.md#sn-perf-002), [SN-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #870 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -1751,7 +2161,7 @@ SN-FND-002 (scaffold). Coordinates with [SN-INK-002](ink.md#sn-ink-002) (InkSamp
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #871 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -1808,7 +2218,7 @@ tools/perf_harness/test/camera_parser_test.dart (frame-count to latency math, me
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #872 |
 | Type | test |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1865,7 +2275,7 @@ app/integration_test/editor_latency_test.dart; tools/perf_harness/test/timeline_
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #873 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1922,7 +2332,7 @@ SN-FND-002 (app shell), [SN-PERF-002](perf.md#sn-perf-002) (harness). Coordinate
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #874 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1979,7 +2389,7 @@ app/integration_test/memory_soak_test.dart (open/close 50, 10,000-stroke sustain
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #875 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -2035,7 +2445,7 @@ SN-CORE-004 (SQLite + blob store), [SN-INK-022](ink.md#sn-ink-022) (tiling/lazy 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #876 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -2093,7 +2503,7 @@ app/integration_test/pdf_scroll_test.dart (60 s scroll, fps, blank-page detector
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #877 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2151,7 +2561,7 @@ app/integration_test/dense_page_test.dart (draw-on-dense-page latency and jank, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #878 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2209,7 +2619,7 @@ tools/perf_harness/test/battery_parse_test.dart (level sampling, drain math, per
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #879 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2267,7 +2677,7 @@ app/integration_test/frame_pacing_test.dart (120 fps on ProMotion, 60 fps floor,
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #880 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2325,7 +2735,7 @@ app/test/perf/thermal_policy_test.dart (state mapping, hysteresis with a fake cl
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #881 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2383,7 +2793,7 @@ tools/scripts/arch_check/test/draw_path_rule_test.dart (positive and negative fi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #882 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2441,7 +2851,7 @@ app/integration_test/shader_warmup_test.dart (first stroke after cold start on e
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #883 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -2499,7 +2909,7 @@ SN-FND-002 (monorepo scaffold with tools/perf_harness). Consumed by [SN-PERF-003
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #884 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -2557,7 +2967,7 @@ tools/perf_harness/test/dashboard_generator_test.dart (series assembly, retentio
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #885 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -2615,7 +3025,7 @@ tools/perf_harness/test/triage_classify_test.dart (UI versus raster classificati
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #886 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2673,7 +3083,7 @@ app/test/perf/repaint_scope_test.dart (paint counters per layer, broken-fixture 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #887 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2731,7 +3141,7 @@ tools/perf_harness/test/renderer_probe_test.dart (log-line parsing for each back
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #888 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2789,7 +3199,7 @@ app/test/perf/quality_ladder_policy_test.dart (capability selection, step table,
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #889 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -2847,7 +3257,7 @@ tools/perf_harness/test/soak_scenario_test.dart (scenario composition, phase ord
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #862 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2917,7 +3327,7 @@ Performance is a UX requirement, not an engineering target (docs/design/ux-princ
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #816 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2977,7 +3387,7 @@ No user-visible UI is added, so the **17 looks × light/dark** matrix is unaffec
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #837 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |

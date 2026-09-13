@@ -1,6 +1,6 @@
 # Backlog — area: shapes-diagrams
 
-18 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+19 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -26,6 +26,67 @@
 
 ## Issues
 
+### SN-BTY-034
+
+<a id="sn-bty-034"></a>
+
+**Tidy sketched boxes and arrows in a beautify pass via the shape recogniser**
+
+| Field | Value |
+|---|---|
+| GitHub | #1182 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | all |
+| Areas | shapes-diagrams, ocr-hwr, editor |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-SHP-001](shapes-diagrams.md#sn-shp-001), [SN-BTY-039](ocr-hwr.md#sn-bty-039) |
+| Security controls | `MASVS-PRIVACY-1`, `OWASP-A04`, `CWE-117`, `TM-I-05` |
+| Extra labels | agent-ready |
+
+#### Context
+A student's page is words *and* boxes and arrows. A beautify pass that straightens the writing but leaves a wobbly flowchart untouched feels half-finished. Sane Notes already has a shape recogniser and geometric fitter — RDP → $P/$Q → Taubin/Fitzgibbon least-squares producing editable shapes ([SN-SHP-001](shapes-diagrams.md#sn-shp-001), [SN-HWR-012](ocr-hwr.md#sn-hwr-012), `docs/architecture/ink-engine.md` §9) — and [SN-BTY-039](ocr-hwr.md#sn-bty-039) already separates drawing strokes from writing and hands them onward. The mistake to avoid is building a second, parallel "beautify shapes" implementation that drifts from the first. This issue is the batch, non-destructive pass that routes a page's sketched shapes into the **existing** recogniser and keeps diagrams coherent while it does.
+
+#### Scope
+**In:** a batch beautify entry that takes the drawing clusters [SN-BTY-039](ocr-hwr.md#sn-bty-039) identifies and feeds them to [SN-SHP-001](shapes-diagrams.md#sn-shp-001)'s recogniser with a confidence floor; per-shape preview with individual accept and reject inside [SN-BTY-013](editor.md#sn-bty-013); **arrow re-attachment** so an arrow whose endpoints touched two boxes still touches them after both are tidied; preservation of the shape-to-label relationship using the attachment edges from [SN-BTY-031](ocr-hwr.md#sn-bty-031) so a caption moves with its figure; commit as editable `Shape` objects in the same undoable batch as the rest of the pass; an arch test forbidding a second fitter.
+**Out:** the recogniser and geometric fitters ([SN-SHP-001](shapes-diagrams.md#sn-shp-001), [SN-HWR-012](ocr-hwr.md#sn-hwr-012)); the hold-to-snap live trigger, already in [SN-SHP-001](shapes-diagrams.md#sn-shp-001); the text-versus-drawing classification and protected-context rules ([SN-BTY-039](ocr-hwr.md#sn-bty-039)); diagram-to-structured-diagram conversion.
+
+#### Acceptance criteria
+- [ ] Every shape candidate on a page is routed through [SN-SHP-001](shapes-diagrams.md#sn-shp-001); an arch/CI test asserts no least-squares circle, ellipse or polygon fitting code exists outside `sane_ink`'s shape module.
+- [ ] Handwriting is never sent to the shape recogniser: a dotted "i", a crossed "t" and a lowercase "o" are rejected before routing, and the pass's writing-as-drawing error rate stays below 2 % on the mixed-page corpus.
+- [ ] Each candidate is previewed individually and can be accepted or rejected; rejecting one leaves its original ink untouched and does not block the others.
+- [ ] Candidates below the recogniser's confidence floor are left as ink — never "best-effort snapped".
+- [ ] An arrow whose endpoints touched two boxes still touches them after both are tidied: endpoint-to-shape distance changes by ≤ 2 px.
+- [ ] A label inside or attached to a shape moves with the shape and is never reflowed as text ([SN-BTY-031](ocr-hwr.md#sn-bty-031)).
+- [ ] Accepted shapes become editable `Shape` objects with node handles, not flattened ink (`docs/architecture/ink-engine.md` §9.4), and the whole page pass is one undoable batch ([SN-BTY-012](editor.md#sn-bty-012)).
+- [ ] Classifying and fitting a page with 40 candidates costs ≤ 300 ms on a background isolate with no frame > 16.7 ms.
+
+#### Technical notes
+`app/lib/features/editor/beautify/shape_pass.dart` orchestrates; the fitting is entirely [SN-SHP-001](shapes-diagrams.md#sn-shp-001)'s public API — do not reach into its internals and do not duplicate Taubin or Fitzgibbon. On mobile, ML Kit's shape/autodraw and nine-class gesture classifiers may be consulted through the `ShapeRecognizer` capability of `sane_ml` ([SN-HWR-002](ocr-hwr.md#sn-hwr-002)) as an accelerator, with the pure-Dart $P/$Q path as the default so web and low-end devices behave identically (ADR-0016 §3 engine matrix). Arrow re-attachment recomputes endpoints against the fitted geometry of the shapes the original endpoints were within tolerance of, using the attachment edges from [SN-BTY-031](ocr-hwr.md#sn-bty-031). Results commit as `Shape` objects through [SN-CORE-003](sync.md#sn-core-003) in the same op batch as the text-side beautification.
+
+#### Security & privacy
+On-device with no egress (MASVS-PRIVACY-1, ADR-0016); stroke features and classifications are note content and are never logged (TM-I-05, CWE-117). Integrity (OWASP-A04): the asymmetric error budget exists because turning someone's word into a circle is data loss in the user's eyes; the confidence floor plus per-shape accept keeps the failure mode "nothing happened", and the original ink is recoverable by Undo for every accepted shape.
+
+#### UX notes
+Shapes appear in the same beautify preview as the text items ([SN-BTY-013](editor.md#sn-bty-013)) — "Tidy 4 shapes" — each with its own toggle and an inline before/after. Reference `docs/design/screens-and-flows.md` §7.3 and PRD-LB-308. States: no shapes found, preview, partially accepted, applied, reverted. Accept reuses the existing shape-snap haptics ([SN-SHP-017](shapes-diagrams.md#sn-shp-017), [SN-IPAD-006](input-gestures.md#sn-ipad-006)) rather than inventing new feedback. All 17 looks and dark; Reduce Motion honoured. A11y: each candidate is a labelled toggle ("Tidy rectangle near top left"), keyboard-operable.
+
+#### Test plan
+`app/test/editor/beautify_shape_pass_test.dart` (routing, per-shape accept and reject, confidence floor, single undo), `app/test/editor/shape_pass_arrow_reattachment_test.dart`, `app/test/editor/shape_pass_label_follows_shape_test.dart`, `app/test/arch/no_duplicate_shape_fitter_test.dart`, golden `app/test/golden/beautify_shapes_before_after_*`, `app/test/perf/beautify_shapes_budget_test.dart`.
+
+#### Dependencies
+SN-SHP-001 (recogniser and fitter, reused not reimplemented), SN-BTY-039 (drawing-versus-writing separation and protected contexts). Uses [SN-BTY-031](ocr-hwr.md#sn-bty-031) attachment edges and [SN-BTY-013](editor.md#sn-bty-013) preview.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner, dependency-review)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md §20.3, docs/product/prd-02-library-documents-audio-search.md §11/§19.3)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text, style-model parameters or note content in logs
+- [ ] Threat-model rows re-checked (docs/security/threat-model.md TM-I-03/TM-I-05/TM-I-08/TM-I-10, TM-P-01/TM-P-05) and the controls matrix updated if a stored asset changed
+
+---
+
 ### SN-GCMP-015
 
 <a id="sn-gcmp-015"></a>
@@ -34,7 +95,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1071 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | Backlog |
@@ -161,7 +222,7 @@ Unit tests for every pure recognition/geometry stage; widget/golden tests for to
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #670 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -219,7 +280,7 @@ packages/sane_ink/test/shape/rdp_test.dart, dollar_q_test.dart (order/direction 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #671 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -277,7 +338,7 @@ app/integration_test/hold_to_shape_test.dart (snap on dwell, second-finger const
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #672 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -335,7 +396,7 @@ app/test/editor/shape_tool_test.dart (kind selection, drag preview, constrain, c
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #673 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -393,7 +454,7 @@ app/test/editor/arrow_test.dart (head options none/end/both, direction label, re
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #674 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -451,7 +512,7 @@ packages/sane_ink/test/shape/ruler_snap_test.dart (axis projection before smooth
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #675 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -509,7 +570,7 @@ packages/sane_core/test/shape_object_test.dart (fields, round-trip), app/test/ed
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #676 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -567,7 +628,7 @@ The deliverable is the test suite itself: recognition_corpus_test.dart (per-clas
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #677 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -625,7 +686,7 @@ packages/sane_ink/test/shape/snapping_test.dart (endpoint/grid/angle snapping vi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #678 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -684,7 +745,7 @@ packages/sane_core/test/connector_test.dart (attach, re-route on move, graceful 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #679 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -743,7 +804,7 @@ app/test/editor/polygon_test.dart (tap-to-add, close, hold-to-perfect, vertex ed
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #680 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -801,7 +862,7 @@ app/test/editor/protractor_test.dart (measure, constrain, detents, numeric entry
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #681 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M3 Audio & Recognition |
@@ -860,7 +921,7 @@ packages/sane_ink/test/shape/flood_fill_test.dart (bounded fill, threshold, temp
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #682 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M3 Audio & Recognition |
@@ -918,7 +979,7 @@ app/test/editor/measure_test.dart (readout, type-to-resize), dimension_label_tes
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #683 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -976,7 +1037,7 @@ app/test/editor/recognise_selection_test.dart (fit selected ink, supported class
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #684 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1034,7 +1095,7 @@ app/test/editor/diagram_mode_test.dart (palette, connector tool, snapping-on, au
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #685 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |

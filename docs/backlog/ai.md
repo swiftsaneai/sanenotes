@@ -1318,7 +1318,7 @@ None beyond baseline (CI/eval tooling, no shipped UI). Baseline: eval outputs ne
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #553 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1386,7 +1386,7 @@ Sage panel (design Search §11) shows 'Answering in हिन्दी' with a c
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1068 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1443,7 +1443,7 @@ Unit: readability/caption parse, opt-in gating (test/ai/url_to_note_test.dart). 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1065 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1500,7 +1500,7 @@ Unit: structured-output parsing, source-anchor mapping (test/ai/action_items_tes
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1069 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | Backlog |
@@ -1557,7 +1557,7 @@ Unit: graph-to-objects instantiation + layout non-overlap (test/ai/diagram_gen_t
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1074 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |

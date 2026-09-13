@@ -1,6 +1,6 @@
 # Backlog — area: ink
 
-45 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+50 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -334,6 +334,308 @@ SN-AND-004 (MotionEvent capture provides the pointer stream this filters).
 
 ---
 
+### SN-BTY-002
+
+<a id="sn-bty-002"></a>
+
+**Model beautification as a reversible derived overlay on the original ink**
+
+| Field | Value |
+|---|---|
+| GitHub | #1155 |
+| Type | feature |
+| Priority | p0 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | core |
+| Areas | ink, storage, ocr-hwr |
+| Size | L |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-CORE-003](sync.md#sn-core-003), [SN-CORE-005](storage.md#sn-core-005), [SN-CORE-010](sync.md#sn-core-010) |
+| Security controls | `MASVS-STORAGE-1`, `MASVS-PRIVACY-1`, `CWE-20`, `CWE-532` |
+| Extra labels | agent-ready, innovation |
+
+#### Context
+The single rule this whole epic rests on is that **the user's original strokes are never modified or deleted**. Beautification is a *derived* representation: a second, computed geometry that the renderer prefers when it exists, attached to the objects it came from. That makes it revertible at any granularity, safe to recompute when the algorithm improves, and safe to drop on a merge conflict. Apple's Smart Script and Samsung's Straighten both mutate in place and rely on undo; we do better, because undo dies with the session and our promise ("restore my original writing") must survive a restart, a sync merge, an export and a re-import.
+
+This issue defines that model in `packages/sane_core` and its persistence in the `.sanenote` bundle. Everything else in [SN-BTY-001](ocr-hwr.md#sn-bty-001) writes through it, so it lands first.
+
+#### Scope
+**In:** a `BeautifyOverlay` object in the document model (decision 4 object family) holding, per source stroke, the derived point list plus the transform provenance; a `BeautifyScope` grouping overlays into the unit the user acted on (word / line / selection / page) so revert granularity is exact; CRDT semantics (add-wins set membership, per-overlay LWW registers, HLC stamps) including the derived-data merge rule; op-log op types `beautify.apply` / `beautify.revert` with inverses; a `beautify` segment in the `.sanenote` bundle with its own schema byte and min-reader version; recompute/invalidations when a source stroke is edited, erased or re-styled; and the read API the renderer and exporters use (`effectiveGeometry(stroke)`).
+**Out:** the estimators and transforms that fill the overlay ([SN-BTY-003](ocr-hwr.md#sn-bty-003)..[SN-BTY-008](ink.md#sn-bty-008)); UI ([SN-BTY-010](editor.md#sn-bty-010), [SN-BTY-012](editor.md#sn-bty-012), [SN-BTY-013](editor.md#sn-bty-013)); the writer style profile (separate issue under this epic).
+
+#### Acceptance criteria
+- [ ] Applying, reverting and re-applying beautification leaves the source `Stroke.points` bytes **identical** — a round-trip test compares the serialised stroke segment byte-for-byte before and after.
+- [ ] Revert works at word, line, selection, page and notebook granularity, and each revert is a single op with a single undo step.
+- [ ] Two devices that beautify the same page concurrently converge: overlays merge by add-wins on scope id with LWW on content; **on any conflict involving the same source stroke the overlay is dropped and the original geometry wins** (fail-safe to the user's own hand), and a test proves this for a 3-device interleaving.
+- [ ] Editing, erasing, moving or re-styling a source stroke invalidates its overlay within the same op batch; a stale overlay can never be rendered (asserted by an invariant check in debug builds).
+- [ ] A `.sanenote` written with beautify overlays opens in a reader that does not understand the `beautify` segment and renders the **original** ink with no error and no data loss; the segment carries a schema byte and the manifest records min-reader version (docs/architecture/ink-engine.md §10.4).
+- [ ] Overlay storage costs <= 55% of the source stroke segment for a typical page (derived points are decimated at the same RDP epsilon and use the same delta + zig-zag varint + zstd encoding).
+- [ ] A malformed or truncated `beautify` segment fails closed: the page loads with original ink only, and no partial overlay is applied.
+
+#### Technical notes
+Model: `packages/sane_core/lib/src/model/beautify_overlay.dart` — `BeautifyOverlay { ObjectId id; ObjectId scopeId; ObjectId sourceStrokeId; int sourceRevision; List<InkPoint> points; BeautifyKind kinds; /* bitset: baseline|slant|size|spacing|smooth|respell */ double intensity; HlcStamp createdHlc; }` and `BeautifyScope { ObjectId id; ScopeGranularity granularity; List<ObjectId> strokeIds; }`. `sourceRevision` is the source stroke's LWW version at compute time; a mismatch means stale. Codecs reuse [SN-CORE-017](storage.md#sn-core-017) (delta, zig-zag varint, zstd, CBOR) and the columnar stroke layout of [SN-CORE-015](storage.md#sn-core-015); the bundle segment is added in [SN-CORE-005](storage.md#sn-core-005)'s manifest. CRDT rules follow [SN-CORE-003](sync.md#sn-core-003): membership add-wins, content LWW by HLC, tombstones per [SN-CORE-018](storage.md#sn-core-018). Derived-data merge rule is implemented as an explicit `DerivedObjectPolicy.dropOnConflict` so future derived objects (e.g. recognition caches) reuse it. Rendering reads `effectiveGeometry()`, which returns the overlay when present, fresh and enabled, else the original — `sane_render` never branches on beautify itself. Export ([SN-SHR-001](sharing-export.md#sn-shr-001) family) flattens whichever geometry is displayed, and PDF/PNG export records in its metadata that the ink shown is beautified.
+
+#### Security & privacy
+Overlays are note content: stored in the local encrypted store, E2E-encrypted before any sync write, never logged (MASVS-STORAGE-1, MASVS-PRIVACY-1, CWE-532, TM-I-05). Untrusted `.sanenote` input is hostile — validate the segment schema, cap point counts and segment size before decode, and parse off the UI isolate (CWE-20, TM-T-06, TM-D-01). Dropping the overlay on conflict is a deliberate integrity control: the user's own strokes are always the fallback, so a merge can never leave someone with only machine-derived writing.
+
+#### UX notes
+No direct UI. The model must support the affordances the UX issues need: a per-word "this was beautified" flag for [SN-BTY-013](editor.md#sn-bty-013)'s change list and [SN-BTY-012](editor.md#sn-bty-012)'s revert menu, and a per-scope timestamp so the editor can say "beautified just now" rather than an opaque state. `sane_core` is pure Dart and imports no Flutter.
+
+#### Test plan
+`packages/sane_core/test/model/beautify_overlay_test.dart` (construction, staleness, invariants), `packages/sane_core/test/crdt/beautify_merge_test.dart` (3-device concurrent apply/revert convergence, drop-on-conflict), `packages/sane_core/test/storage/beautify_segment_roundtrip_test.dart` (byte-identical source round trip, unknown-schema tolerance, truncated-segment fail-closed), plus a fuzz corpus entry for the `beautify` segment in the `.sanenote` fuzz suite.
+
+#### Dependencies
+SN-CORE-003 (add-wins set, LWW, HLC), SN-CORE-005 (`.sanenote` bundle + manifest), SN-CORE-010 (op model and op-log). Codecs [SN-CORE-017](storage.md#sn-core-017), snapshot writer [SN-CORE-015](storage.md#sn-core-015), tombstones [SN-CORE-018](storage.md#sn-core-018).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md PRD-ED-187)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text or note content in logs (TM-I-05)
+
+---
+
+### SN-BTY-008
+
+<a id="sn-bty-008"></a>
+
+**Regularise stroke geometry without losing pressure, tilt or brush character**
+
+| Field | Value |
+|---|---|
+| GitHub | #1161 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | core |
+| Areas | ink, brushes, ocr-hwr |
+| Size | L |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-002](ink.md#sn-bty-002), [SN-INK-003](ink.md#sn-ink-003), [SN-INK-004](ink.md#sn-ink-004) |
+| Security controls | `MASVS-PRIVACY-1`, `CWE-400`, `CWE-532` |
+| Extra labels | agent-ready |
+
+#### Context
+Structural fixes level the lines; this issue fixes the strokes themselves. Tremor, digitizer quantisation and low-pressure starts leave visible wobble that no amount of straightening hides, and damping it is the single biggest legibility win for writers with unsteady hands — which makes it an accessibility feature as much as a beautification one (docs/research/sources/accessibility-i18n-and-inclusive-design.md via docs/architecture/ink-engine.md §2.4 "Steady hand").
+
+The hard constraint: this must not turn ink into a different medium. Pressure, tilt, azimuth, twist and per-point timestamps carry the pen's expression, drive width and opacity through the brush response curves (docs/architecture/ink-engine.md §3.3), and `tMicros` is required for audio-synced handwriting replay (ADR-0015). Regularisation therefore operates on the centreline and its per-point dynamics and then re-renders through the **same** `sane_ink` geometry and `sane_brushes` preset — never through a parallel renderer.
+
+#### Scope
+**In:** a zero-phase smoothing pass over the decimated centreline; curvature-aware resampling; corner preservation so angular letters stay angular; carry-through and interpolation of pressure/tilt/azimuth/twist/`tMicros`; end-point handling so taper is unchanged; intensity-driven strength ([SN-BTY-011](settings.md#sn-bty-011)); a hard divergence bound versus the original; and an arch-lint rule that forbids painting or tessellation code inside `sane_ml`.
+**Out:** live stabilisation during writing, which is the existing 1-euro/streamline/motion filter chain ([SN-INK-003](ink.md#sn-ink-003)) and stays per-pen; brush parameter changes; shape snapping ([SN-SHP-002](shapes-diagrams.md#sn-shp-002)).
+
+#### Acceptance criteria
+- [ ] Divergence is bounded: discrete Frechet distance between the original and regularised centreline is <= 0.35 * strokeWidth at Light and <= 0.80 * strokeWidth at Neat, asserted per stroke on the corpus.
+- [ ] Dynamics survive: per-point pressure round-trips within 1/255, tilt and azimuth within 0.5 degrees, and `tMicros` remains strictly increasing with each resampled point's timestamp within +/-1 ms of linear interpolation along arc length.
+- [ ] Corners are preserved: vertices whose turning angle exceeds 50 degrees over a 3-sample window are pinned; the angle at such a vertex changes by <= 8 degrees after regularisation (letters v, w, k, x, z, and Devanagari conjuncts in the corpus).
+- [ ] Taper is unchanged: the first and last 8% of arc length keep their original point spacing so `taperStart`/`taperEnd` from the preset render identically (golden across all eight built-in pens).
+- [ ] Regularised ink renders through `sane_ink` `StrokeGeometry` + the stroke's `PenPreset`; a golden test of a textured (stamped) pencil and a chisel highlighter shows grain and nib behaviour unchanged.
+- [ ] A stroke already smooth (a deliberate straight ruler line, or output of [SN-SHP-002](shapes-diagrams.md#sn-shp-002)) is detected and left untouched; shape objects are never regularised.
+- [ ] Regularising 1,000 strokes costs <= 90 ms p95 on the Tier-2 reference device and allocates no more than 6 MB of transient memory.
+- [ ] `packages/sane_ml` contains no import of `dart:ui`, `package:flutter` or `sane_render` (arch-lint gate).
+
+#### Technical notes
+`packages/sane_ml/lib/src/beautify/stroke/` — `regularise.dart`, `corner_detect.dart`, `resample.dart`. Smoothing is **zero-phase** so the stroke does not lag its original path: run the existing `sane_ink` 1-euro filter forward and then backward over the stored points (`filter/one_euro.dart`, docs/architecture/ink-engine.md §2.2), or equivalently a Savitzky-Golay filter of window 7, order 3, which preserves peak curvature better than a moving average. Corner pinning runs before smoothing and splits the stroke into segments smoothed independently, with the pinned vertices held exactly. Resampling is arc-length uniform at the RDP epsilon already used for persistence (0.75 logical px, ink-engine §10.1) with dynamics interpolated linearly in arc length; `InkSample.pressureIsReal` is carried, never fabricated. Frechet distance is computed with the standard dynamic-programming free-space recursion on the decimated polylines and used as an assertion, then discarded. Output points are written to the [SN-BTY-002](ink.md#sn-bty-002) overlay; `sane_render` picks them up through `effectiveGeometry()` and tessellates with the stroke's existing `BrushRef` so the resolved parameter snapshot (docs/design/pen-and-brush-spec.md §9) still governs appearance.
+
+#### Security & privacy
+Local-only (MASVS-PRIVACY-1); no network. Ink coordinates, pressures and timestamps never appear in logs (CWE-532, TM-I-05) — the hot path logs nothing in profile/release per CLAUDE.md §6. Cap point counts and iteration limits so a crafted stroke with millions of points cannot exhaust memory on the beautify isolate; fail with a `Failure` and leave the stroke as-is (CWE-400, TM-D-01).
+
+#### UX notes
+The bar is that a beautified stroke still looks like it came out of the same pen. Users who like their raw hand keep it (intensity Off, [SN-BTY-011](settings.md#sn-bty-011)); users with tremor get a genuine aid and should be pointed at it from the accessibility settings alongside "Steady hand" ([SN-A11Y-001](a11y.md#sn-a11y-001)). Regularisation is included in the change list in [SN-BTY-013](editor.md#sn-bty-013) as "smoother strokes" so it is never a silent change. Goldens must cover light and dark because ink contrast differs by look.
+
+#### Test plan
+`packages/sane_ml/test/beautify/regularise_test.dart` (Frechet bound, dynamics round-trip, monotone time, corner pinning, taper span, already-smooth detection, resource caps), `packages/sane_ml/test/beautify/corner_detect_test.dart`, golden `app/test/golden/beautify/regularise_pens_*.png` for all eight built-in pens in light and dark, and an arch-lint case in `tools/scripts/arch_lint` asserting `sane_ml` has no render/Flutter imports.
+
+#### Dependencies
+SN-BTY-002 (overlay), SN-INK-003 (1-euro filter implementation to reuse), SN-INK-004 (stroke outline geometry contract). Brush presets from [SN-BRS-001](brushes.md#sn-brs-001) family.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md PRD-ED-187)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text or note content in logs (TM-I-05)
+
+---
+
+### SN-BTY-009
+
+<a id="sn-bty-009"></a>
+
+**Refine the just-finished word in real time within the frame budget**
+
+| Field | Value |
+|---|---|
+| GitHub | #1162 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | all |
+| Areas | ink, ocr-hwr, perf |
+| Size | L |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-004](ocr-hwr.md#sn-bty-004), [SN-BTY-008](ink.md#sn-bty-008), [SN-INK-002](ink.md#sn-ink-002) |
+| Security controls | `MASVS-PRIVACY-1`, `CWE-400`, `CWE-532` |
+| Extra labels | agent-ready, innovation |
+
+#### Context
+Apple's Smart Script refines handwriting **as you write** — the word you just finished quietly settles into a neater version a moment after you lift the pen — and it is the interaction that makes the feature feel magical rather than like a batch job. It is also iPad-only today. Shipping it on Android tablets, phones and the Web is the differentiator in [SN-BTY-001](ocr-hwr.md#sn-bty-001), and the engineering risk is entirely about latency: locked decision 7 says no frame may exceed 16.7 ms while writing, and beautification must be provably invisible on the draw path.
+
+#### Scope
+**In:** the pen-up word-completion trigger and its dwell/advance heuristics; dispatch of a per-word refine job to the beautify isolate ([SN-BTY-014](perf.md#sn-bty-014)); the commit-and-morph animation that swaps geometry at a frame boundary; cancellation when the user writes back into the word; backpressure and drop-to-retroactive behaviour under load; the per-notebook "refine as I write" toggle wired to the intensity control ([SN-BTY-011](settings.md#sn-bty-011)); and the latency evidence required to merge.
+**Out:** the estimators themselves; retroactive beautification ([SN-BTY-010](editor.md#sn-bty-010)); spelling correction, which is never automatic and always requires a tap ([SN-HWR-017](ocr-hwr.md#sn-hwr-017)).
+
+#### Acceptance criteria
+- [ ] A word is considered finished when no sample has landed in it for `dwell` (default 350 ms, configurable 200-800 ms) **and** either the pen has moved >= 1.2 * x-height to the right of the word's right edge, started a new line, or left hover range.
+- [ ] Refined geometry appears within 500 ms p95 of the trigger; the swap happens at a frame boundary with a 180 ms morph, or instantly when Reduce Motion is on ([SN-A11Y-006](a11y.md#sn-a11y-006)).
+- [ ] Real-time refinement changes pen-to-pixel latency by <= 1 ms (95% CI) versus the same session with beautify off, measured by [SN-PERF-002](perf.md#sn-perf-002) on the iPad, Tier-2 Android tablet and Chrome desktop reference devices; the timeline is attached to the PR (CLAUDE.md §5).
+- [ ] No frame exceeds 16.7 ms while writing with real-time beautify on, over a 2-minute continuous-writing scenario ([SN-PERF-007](perf.md#sn-perf-007)).
+- [ ] Nothing beautification-related runs on the UI isolate during `PointerMoveEvent` handling; asserted by a test that fails if the beautify entry point is reachable from the pointer handler, and by a timeline check that the UI isolate has no beautify frames.
+- [ ] Writing back into a word (or undoing) before the swap cancels the job; a cancelled job never commits, and a test covers the cancel-then-immediately-rewrite race.
+- [ ] Under load the queue is bounded at 8 pending words; overflow words are dropped from real time and handed to the retroactive pass ([SN-BTY-010](editor.md#sn-bty-010)) rather than queueing without limit.
+- [ ] Real-time mode is off unless the notebook's intensity is Light or Neat **and** the "refine as I write" toggle is on; a fresh install has both off.
+- [ ] The wet stroke is never touched: only committed strokes are refined, so the in-progress stroke path in `sane_ink`/`sane_ink_surface` is unmodified (docs/architecture/ink-engine.md §5.2).
+
+#### Technical notes
+`app/lib/features/editor/beautify/realtime_controller.dart` (Riverpod, listens to the stroke-commit stream from [SN-ED-002](editor.md#sn-ed-002)), `packages/sane_ml/lib/src/beautify/realtime/word_trigger.dart`. The trigger consumes the committed-stroke events produced on pointer-up (ink-engine §5.2), never raw pointer moves. Job payloads are `Float32List` point arrays sent to the long-lived beautify isolate as transferable typed data ([SN-BTY-014](perf.md#sn-bty-014)) to avoid copying. The commit path reuses [SN-BTY-002](ink.md#sn-bty-002)'s overlay op, scoped to the single word, and coalesces into one undo entry per 2-second window ([SN-BTY-012](editor.md#sn-bty-012)). The morph interpolates between original and refined point lists over 180 ms in the committed-ink layer; because committed ink is a tiled raster cache (ink-engine §6), animate in the overlay chrome layer for the duration and invalidate the affected tiles once on completion — do not re-raster tiles every animation frame. Web (Tier B) uses the same controller; the beautify worker is a `dart:isolate` on mobile/desktop and a web worker under the existing web isolate shim, and on web the budget relaxes to the 30 ms pen-to-pixel figure of decision 7 while the no-long-frame rule still holds.
+
+#### Security & privacy
+Local-only; no network call on any path (MASVS-PRIVACY-1, MASVS-NETWORK-1). The hot path logs nothing (CWE-532, TM-I-05). Bound the queue and the per-job work to protect against a pathological page acting as a denial of service on the writing experience (CWE-400, TM-D-01). Because refinement is automatic, the integrity rule is absolute: real-time mode may only apply geometric transforms — never a spelling change, never a content change — so the meaning of what was written cannot change without an explicit tap.
+
+#### UX notes
+The settling animation must be subtle: 180 ms, ease-out, no bounce, no colour flash, and nothing that pulls the eye away from where the pen is. If the user is still writing on the same line, the morph runs at half opacity change so peripheral motion is minimal. Reduce Motion swaps instantly. The toggle lives in the Handwriting & stylus settings tab ([SN-SET-007](settings.md#sn-set-007)) as "Refine as I write", with a one-line explanation and a link to "Restore my original writing" ([SN-BTY-012](editor.md#sn-bty-012)). First time it fires, a one-shot toast explains what happened and offers Undo ([SN-ED-027](editor.md#sn-ed-027)).
+
+#### Test plan
+`app/test/features/editor/beautify/realtime_trigger_test.dart` (dwell/advance conditions, cancel-on-rewrite, queue bound, off-by-default), `app/test/perf/beautify_realtime_latency_test.dart` wired to [SN-PERF-002](perf.md#sn-perf-002), `app/test/security/beautify_no_ui_isolate_work_test.dart` (reachability assertion), golden `app/test/golden/beautify/realtime_morph_frames_*.png`, and the `beautify_realtime` scenario added to `tools/perf_harness` and gated in CI ([SN-PERF-003](perf.md#sn-perf-003)).
+
+#### Dependencies
+SN-BTY-004 (baseline planner), SN-BTY-008 (stroke regularisation), SN-INK-002 (stroke capture/commit stream). Isolate infrastructure from [SN-BTY-014](perf.md#sn-bty-014); measurement from [SN-PERF-002](perf.md#sn-perf-002).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md PRD-ED-187)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text or note content in logs (TM-I-05)
+
+---
+
+### SN-BTY-024
+
+<a id="sn-bty-024"></a>
+
+**Commit synthesised ink through the real brush pipeline so corrections blend in**
+
+| Field | Value |
+|---|---|
+| GitHub | #1173 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M4 Identity, Sync & Privacy |
+| Platforms | all |
+| Areas | ink, brushes, ocr-hwr |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-023](ocr-hwr.md#sn-bty-023), [SN-BTY-008](ink.md#sn-bty-008) |
+| Security controls | `MASVS-PRIVACY-1`, `MASVS-STORAGE-1`, `CWE-117`, `TM-I-05`, `TM-R-01` |
+| Extra labels | agent-ready |
+
+#### Context
+[SN-BTY-023](ocr-hwr.md#sn-bty-023) produces centrelines with dynamics; it does not produce pixels. If those centrelines are painted by any path other than the normal one, a corrected word reads as foreign even when its shape is perfect — wrong taper, missing paper grain, wrong highlighter blend, different anti-aliasing. This issue routes synthesised strokes through exactly the same geometry, brush and tessellation stages as pen strokes (`docs/architecture/ink-engine.md` §§3–5) and makes them first-class `Stroke` objects, so undo, erase, lasso, export, search and sync all treat them as ordinary ink. [SN-BTY-008](ink.md#sn-bty-008) guarantees that regularised strokes keep pressure, tilt and brush character; this issue guarantees the same for strokes that were never drawn by a hand.
+
+#### Scope
+**In:** conversion of `SynthesisedWord` drafts into `sane_core` `Stroke` objects that inherit the **pen preset, colour role and base size of the ink they replace** (not the currently selected pen); geometry through the existing `StrokeGeometry` outline path; correct behaviour for every brush kind (pencil grain, marker multiply on its own layer, dashed/dotted spacing); tile invalidation and single-frame commit; a `synthesised` provenance property on the stroke with its schema bump; re-tessellation on zoom-bucket change; export parity.
+**Out:** synthesis ([SN-BTY-023](ocr-hwr.md#sn-bty-023)); the apply-versus-suggest decision ([SN-BTY-025](ocr-hwr.md#sn-bty-025)); the word-level edit transaction that calls this ([SN-BTY-030](ocr-hwr.md#sn-bty-030)); undo wiring ([SN-BTY-012](editor.md#sn-bty-012)).
+
+#### Acceptance criteria
+- [ ] A synthesised word committed beside hand-drawn ink of the same pen preset is pixel-comparable in a golden test: identical width response to the preset's thinning and taper curves, identical grain phase for stamped brushes, identical anti-aliasing.
+- [ ] Synthesised strokes inherit `penPresetId`, colour role and base size from the strokes they replace; changing the active pen afterwards does not restyle them.
+- [ ] Committing invalidates only the tiles the bounding box touches; `tools/perf_harness` shows no frame > 16.7 ms and no wet-ink latency change, and the commit happens in one frame with no flicker (the wet→committed hand-off rule, `docs/architecture/ink-engine.md` §5.2).
+- [ ] Synthesised strokes are fully first-class: erasable by both erasers, lasso-selectable, hit-testable through the R-tree, and indexed by background recognition ([SN-HWR-006](ocr-hwr.md#sn-hwr-006)) so the corrected word becomes searchable.
+- [ ] Highlighter ink keeps `multiply` and its own layer; pencil keeps tilt-driven grain; a dashed pen keeps its spacing.
+- [ ] PDF, PNG and SVG export and the searchable-PDF text layer ([SN-PDF-020](pdf.md#sn-pdf-020)) include synthesised ink with no visual or text-layer difference.
+- [ ] The `synthesised` flag round-trips through `.sanenote` and CRDT sync and is never used as a rendering difference — it is metadata, with a byte-identical encode→decode→encode test for the bumped stroke schema.
+
+#### Technical notes
+The bridge lives in `app/lib/features/editor/beautify/synthesis_commit.dart`, because `sane_ml` may not import `sane_ink` or `sane_render`. Geometry and painting reuse `packages/sane_ink` `StrokeGeometry` and `packages/sane_render` tile rasterisation unchanged — no new painter, no parallel tessellator. Provenance rides as an LWW property on the `Stroke` object ([SN-CORE-003](sync.md#sn-core-003)); add one field and bump the stroke `schema` byte per `docs/architecture/ink-engine.md` §10.4 with a golden round-trip test and a migration. Do **not** re-run the 1€ filter or enable resampling on synthesised points — they are already smooth; run only RDP decimation (ε ≈ 0.75 px) before persisting, matching §10.1.
+
+#### Security & privacy
+Synthesised strokes are note content: local-first, E2E-encryptable on sync, never logged (MASVS-STORAGE-1, TM-I-05, CWE-117). The `synthesised` provenance flag is stored deliberately so a user, a version-history view, or [SN-BTY-012](editor.md#sn-bty-012)'s revert can always tell machine-placed ink from hand-drawn ink — an integrity control against "the app quietly rewrote my notes" that also supports the attribution posture in TM-R-01. It must not be exposed to collaborators as a visible badge or colour without an explicit design decision, since that would broadcast that someone's spelling was corrected.
+
+#### UX notes
+Success means nothing looks different. Reference `docs/design/pen-and-brush-spec.md` §1.1 (stroke fields) and §4 (brush kinds); goldens must cover all 17 looks and dark mode because ink colour roles flip by look. Any entry animation is capped at 250 ms and respects Reduce Motion. A11y: synthesised ink contributes to OCR alt-text ([SN-A11Y-004](a11y.md#sn-a11y-004)) exactly like handwritten ink.
+
+#### Test plan
+`app/test/editor/synthesis_commit_test.dart` (preset and colour inheritance, provenance round-trip), golden `app/test/golden/synthesised_vs_handwritten_*` per brush kind across looks and dark, `packages/sane_core/test/stroke_schema_synthesised_test.dart` (byte round-trip, schema bump, migration), `app/test/perf/synthesis_commit_frame_test.dart`, `app/test/editor/synthesised_stroke_is_erasable_test.dart`, `app/test/sharing/synthesised_ink_export_parity_test.dart`.
+
+#### Dependencies
+SN-BTY-023 (drafts to render), SN-BTY-008 (brush-character preservation rules this must match). Commits through [SN-CORE-003](sync.md#sn-core-003); undo handled by [SN-BTY-012](editor.md#sn-bty-012).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner, dependency-review)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md §20.3, docs/product/prd-02-library-documents-audio-search.md §11/§19.3)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text, style-model parameters or note content in logs
+- [ ] Threat-model rows re-checked (docs/security/threat-model.md TM-I-03/TM-I-05/TM-I-08/TM-I-10, TM-P-01/TM-P-05) and the controls matrix updated if a stored asset changed
+
+---
+
+### SN-DIM-044
+
+<a id="sn-dim-044"></a>
+
+**Store stroke geometry DPR-independently so ink imports at identical physical size**
+
+| Field | Value |
+|---|---|
+| GitHub | #1144 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M2 Library & Documents |
+| Platforms | all |
+| Areas | ink, compat, storage |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-043](perf.md#sn-dim-043), [SN-INK-004](ink.md#sn-ink-004), [SN-CORE-013](storage.md#sn-core-013) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+A notebook written on a 3x phone and opened on a 1x web build must show strokes at the **same physical size and the same place on the page**, and a `.sanenote` bundle synced between devices must round-trip identically. This requires the document model to store stroke points and widths in DPR-independent page-logical units (the 800×1040 page space), never in the capturing device's pixels. This issue locks the on-wire/on-disk geometry to logical page units so import/sync is resolution-agnostic; [SN-DIM-043](perf.md#sn-dim-043) handles crisp rasterisation of that geometry at each device's DPR.
+
+#### Scope
+**In:** define stroke point/width units as page-logical in `sane_core`; conversion at capture time (device px → page logical) and at paint time (page logical → device px); a `.sanenote` format assertion + migration; a cross-DPR round-trip test.
+**Out:** rasterisation crispness ([SN-DIM-043](perf.md#sn-dim-043)), CRDT merge mechanics (owned by sync epic), export sizing to PDF/PNG (sharing epic).
+
+#### Acceptance criteria
+- [ ] Stroke `pts`, bounding box `bb`, and width `w` are persisted in page-logical units; the serialiser rejects any stroke carrying device-pixel coordinates.
+- [ ] A stroke captured at DPR 3.0 and re-opened at DPR 1.0 occupies the identical page-logical rectangle (±0.5 logical px) and the same visual position.
+- [ ] A `.sanenote` written on one device and read on another (different DPR, different logical screen size) reproduces every stroke's page-logical geometry byte-for-byte after decode.
+- [ ] Capture converts incoming `PointerEvent` logical coordinates to page-logical via the current page transform, independent of `devicePixelRatio`.
+- [ ] A format migration upgrades any pre-existing device-pixel strokes to logical units and is covered by a fixture test.
+- [ ] Width is DPR-independent: a `WIDTHS[1]` (2.6) stroke measures the same physical width on 1x and 3x once [SN-DIM-043](perf.md#sn-dim-043) rasterises it.
+
+#### Technical notes
+Page-logical space is the 800×1040 paged geometry / 2400×2400 freeform from `docs/design/screens-and-flows.md` §7.2. In `packages/sane_core` the `Stroke` value object holds logical points; the editor maps client → page coords using the page `Matrix4` (already used for `ptr`), never DPR. Confirm the serialisation choice from [SN-CORE-013](storage.md#sn-core-013). Keep pure Dart (no `package:flutter` in `sane_core`). Add a migration entry in the `.sanenote` version table.
+
+#### Security & privacy
+Stroke geometry is note content: it is only ever written as ciphertext to the user's cloud (encrypt in `sane_crypto` before write); no coordinates in logs (`docs/architecture/overview.md` §8.2). Validate decoded geometry bounds before use (fail closed on out-of-range).
+
+#### UX notes
+Users moving between phone, tablet and web must never see their notes shift, rescale, or drift — a core promise of the cross-surface product (`docs/product` local-first). No visible seam on open.
+
+#### Test plan
+Unit `packages/sane_core/test/stroke_logical_units_test.dart` (capture conversion, bounds); round-trip `sanenote_cross_dpr_roundtrip_test.dart`; migration fixture `stroke_pixel_to_logical_migration_test.dart`; golden cross-DPR visual-equality check in `sane_render`.
+
+#### Dependencies
+[SN-DIM-043](perf.md#sn-dim-043), [SN-INK-004](ink.md#sn-ink-004), [SN-CORE-013](storage.md#sn-core-013).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
 ### SN-GAND-002
 
 <a id="sn-gand-002"></a>
@@ -342,7 +644,7 @@ SN-AND-004 (MotionEvent capture provides the pointer stream this filters).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #562 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -400,7 +702,7 @@ Widget/unit test over the rect calculator (canvas geometry + palette dock positi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #976 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1004,7 +1306,7 @@ SN-FND-002 (monorepo scaffold to host the throwaway surface + perf harness).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #615 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1061,7 +1363,7 @@ packages/sane_ink/test/capture/normalise_test.dart (pressure clamp, no-pressure 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #616 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1118,7 +1420,7 @@ packages/sane_ink/test/capture/coalesce_test.dart (ordering, dedupe, batch inges
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #617 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1232,7 +1534,7 @@ packages/sane_ink/test/capture/palm_rejection_test.dart + app widget tests for m
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #618 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -1401,7 +1703,7 @@ app/test/editor/left_handed_test.dart (layout flip, dock + wrist-guard side, per
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #619 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1457,7 +1759,7 @@ packages/sane_ink/test/filter/stabilise_mapping_test.dart (monotonicity, range c
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #620 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1513,7 +1815,7 @@ packages/sane_ink/test/capture/estimated_reconcile_test.dart (index-matched patc
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #621 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1570,7 +1872,7 @@ packages/sane_ink/test/dynamics/response_curve_test.dart (4-node cubic eval, app
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #622 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1626,7 +1928,7 @@ packages/sane_ink/test/geometry/taper_test.dart (start/end ramps, pressure vs fi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #623 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1683,7 +1985,7 @@ packages/sane_render/test/commit/commit_test.dart (Stroke creation, same-frame r
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #624 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1740,7 +2042,7 @@ packages/sane_render/test/tiles/tile_cache_test.dart (dirty-set scoping, zoom-bu
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #625 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1853,7 +2155,7 @@ SN-CORE-002 (Stroke entity + cached bbox).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #626 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1910,7 +2212,7 @@ packages/sane_ink/test/index/hit_test_test.dart (tap tolerance across zoom, vect
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #627 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2024,7 +2326,7 @@ packages/sane_ink/test/serialise/stroke_codec_test.dart (round-trip fidelity, si
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #628 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2137,7 +2439,7 @@ SN-FND-002 (monorepo + plugins scaffold). Consumed by [SN-INK-006](ink.md#sn-ink
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #629 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2308,7 +2610,7 @@ This issue IS the test suite. Deliverables: golden fixtures per look (light+dark
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #630 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2420,7 +2722,7 @@ Manual/benchmark: harness run captured in the spike note; no automated tests for
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #849 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2487,7 +2789,7 @@ The surface is the Editor canvas (docs/design/screens-and-flows.md §7.2) and th
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #817 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2550,7 +2852,7 @@ Applies to the Editor canvas in `design/Sane Notes.dc.html` (`docs/design/screen
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #818 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2613,7 +2915,7 @@ This is the Editor canvas (`docs/design/screens-and-flows.md` §7.2). The enhanc
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #820 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |

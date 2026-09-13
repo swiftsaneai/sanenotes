@@ -99,7 +99,7 @@ SN-AND-022 (build config), SN-PRV-001 (privacy dashboard truth), SN-FND-003 (CI)
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #566 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -157,7 +157,7 @@ CI: manifest assertion unit test with a fixture manifest containing each banned 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #567 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -215,7 +215,7 @@ CI: size job with a golden budget file; a unit test for the budget parser. Integ
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #989 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -272,7 +272,7 @@ Verification, not automation: a checklist walkthrough comparing the four surface
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1100 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -331,7 +331,7 @@ Unit: attribution generator against a fixture SBOM (missing licence field, dual 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1109 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -390,7 +390,7 @@ Manual: run the scheduler with a near-future fixture date and confirm the tracki
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1111 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -450,7 +450,7 @@ Manual audit: for each row, log in and verify the recorded second factor and rol
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1112 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -567,7 +567,7 @@ Manual checklist: `docs/platform/ipad.md` §9 release-gate table validated on a 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #866 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -636,7 +636,7 @@ The imagery is drawn from the real screens in docs/design/screens-and-flows.md �
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #475 |
 | Type | epic |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -706,7 +706,7 @@ Each child carries its own tests. Epic-level verification: a full rehearsal rele
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #920 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -766,7 +766,7 @@ Surface-level only: the computed version string appears in **Settings -> About**
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #921 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -825,7 +825,7 @@ Public notes follow the product voice from `docs/design/screens-and-flows.md` §
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #922 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -886,7 +886,7 @@ Dry runs on a `v0.0.1-rc.N` tag with sandbox credentials: (1) happy path to Test
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #923 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -946,7 +946,7 @@ CI job `fastlane-lint`: `bundle exec fastlane lint`/`rubocop` on the Fastfiles p
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #924 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1006,7 +1006,7 @@ No end-user UI. The one user-visible coupling is the in-app update priority, whi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #925 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -1066,7 +1066,7 @@ Three user-visible pieces, all in the design system (`docs/design/design-system.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #926 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1126,7 +1126,7 @@ Two user-visible states, both themed from `docs/design/tokens.json` and rendered
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #927 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -1186,7 +1186,7 @@ The screenshots *are* a design surface: they must showcase the product's identit
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #928 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1246,7 +1246,7 @@ Listing copy is product copy: it follows the voice captured in `docs/design/scre
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #929 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -1305,7 +1305,7 @@ No end-user surface, but the gate protects several: it is what guarantees the **
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #930 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1365,7 +1365,7 @@ No end-user UI, and deliberately so: the user-visible consequence is that a bad 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #931 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1425,7 +1425,7 @@ Documentation, verified by use: (1) run the checklist against a release-candidat
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #932 |
 | Type | infra |
 | Priority | p0 |
 | Milestone | M8 Launch & Growth |
@@ -1486,7 +1486,7 @@ Drill-based, and the drill is the deliverable: (1) simulate a Critical report on
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #933 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1546,7 +1546,7 @@ No end-user surface; the user-facing effect is that the app they install never s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #934 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -1607,7 +1607,7 @@ Anchor to the design: the sheet reuses the overlay pattern and dimmed backdrop f
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #935 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M8 Launch & Growth |

@@ -13,61 +13,61 @@ lays out the options and trade-offs in its **Context** and **Technical notes**.
 | Issue | Title | Milestone | Area | Priority |
 |---|---|---|---|---|
 | #266 | Add a LICENSE placeholder and define the SPDX header policy | M0 | docs | p2 |
-| `SN-GOPS-005` | Establish repository governance: conduct, contribution terms and triage SLA | M0 | docs | p2 |
-| `SN-GUX-007` | Decide which page pixels are look-independent and prove it in goldens | M1 | theming | p1 |
+| #1101 | Establish repository governance: conduct, contribution terms and triage SLA | M0 | docs | p2 |
+| #1045 | Decide which page pixels are look-independent and prove it in goldens | M1 | theming | p1 |
 | #349 | Add an Archive state for non-destructive hide-from-library | M2 | library | p3 |
-| `SN-WEB-030` | Evaluate a DOM text overlay for IME, Scribble and selection on web | M2 | text | p2 |
+| #843 | Evaluate a DOM text overlay for IME, Scribble and selection on web | M2 | text | p2 |
 | #102 | Add skip-silence and Voice Boost to playback | M3 | audio | p3 |
 | #270 | Implement web ink-to-text recognition fallback path | M3 | ocr-hwr | p2 |
 | #274 | Add convert-as-you-write live recognition mode | M3 | ocr-hwr | p3 |
 | #279 | Add math recognition producing typeset expressions and LaTeX | M3 | ocr-hwr | p2 |
-| `SN-WEB-025` | Implement the web handwriting-recognition path with an explicit opt-in | M3 | ocr-hwr | p2 |
+| #838 | Implement the web handwriting-recognition path with an explicit opt-in | M3 | ocr-hwr | p2 |
 | #109 | Implement phone-number OTP sign-in | M4 | auth | p1 |
 | #113 | Adopt guest data in place when a user signs in later | M4 | auth | p1 |
 | #114 | Link multiple sign-in providers to one identity | M4 | auth | p2 |
 | #115 | Scope Pro entitlement to the account across all profiles | M4 | auth | p1 |
 | #208 | Define the web PWA at-rest key storage posture (wrapped keys in IndexedDB) | M4 | security | p1 |
-| `SN-GSEC-004` | Maintain the GDPR/DPDP Records of Processing and sub-processor register | M4 | privacy | p1 |
-| `SN-PRV-008` | Decide and integrate a verifiable parental-consent mechanism for minors | M4 | privacy | p1 |
-| `SN-SET-011` | Build the class-reminder timetable editor and local scheduling | M4 | settings | p2 |
-| `SN-SYNC-009` | Add optional content-free Drive push notifier | M4 | sync | p3 |
-| `SN-SYNC-021` | Implement drive-quota handling and sync soft cap | M4 | sync | p2 |
-| `SN-TEL-011` | SPIKE: choose the opt-in crash backend under ADR-0011 constraints | M4 | telemetry | p1 |
-| `SN-WEB-031` | Define and enforce the reduced web at-rest key protection posture | M4 | security | p0 |
+| #1029 | Maintain the GDPR/DPDP Records of Processing and sub-processor register | M4 | privacy | p1 |
+| #598 | Decide and integrate a verifiable parental-consent mechanism for minors | M4 | privacy | p1 |
+| #462 | Build the class-reminder timetable editor and local scheduling | M4 | settings | p2 |
+| #746 | Add optional content-free Drive push notifier | M4 | sync | p3 |
+| #758 | Implement drive-quota handling and sync soft cap | M4 | sync | p2 |
+| #945 | SPIKE: choose the opt-in crash backend under ADR-0011 constraints | M4 | telemetry | p1 |
+| #844 | Define and enforce the reduced web at-rest key protection posture | M4 | security | p0 |
 | #310 | Spike: verify Flutter multi-view and multi-window support on iPadOS 26 | M5 | compat | p1 |
 | #364 | Support video note capture and online-video and link embeds | M5 | images-media | p3 |
-| `SN-PDF-028` | Add the sane_pdfkit native accelerator behind the sane_pdf interface | M5 | pdf | p3 |
-| `SN-QA-009` | Set up the cloud device farm for functional and integration runs | M5 | qa | p2 |
-| `SN-COL-023` | Operate the relay: hosting decision, rate limits, log allow-list and runbook | M6 | collaboration | p2 |
+| #706 | Add the sane_pdfkit native accelerator behind the sane_pdf interface | M5 | pdf | p3 |
+| #912 | Set up the cloud device farm for functional and integration runs | M5 | qa | p2 |
+| #519 | Operate the relay: hosting decision, rate limits, log allow-list and runbook | M6 | collaboration | p2 |
 | #196 | Implement version history and snapshot ring retention | M6 | storage | p2 |
-| `SN-GCMP-012` | Implement URL / YouTube-to-note (transcript + summary) | M6 | ai | p3 |
-| `SN-GOPS-007` | Build the abuse-report intake and trust-and-safety response for rooms | M6 | collaboration | p1 |
-| `SN-NOTF-010` | Deliver shared-notebook activity notifications without leaking content | M6 | notifications | p2 |
-| `SN-SHR-020` | Add the default share-posture build-time flag (link-off/Can-view vs design default) | M6 | sharing-export | p1 |
-| `SN-SHR-025` | Implement Goodnotes and Notability import (tier-A best-effort + tier-B PDF fallback) | M6 | sharing-export | p3 |
-| `SN-SHR-026` | Implement OneNote import (PDF/.docx tier-B and Graph/.one tier-A, keep PDFs vector) | M6 | sharing-export | p3 |
-| `SN-TPL-011` | Define the template store catalogue format and browse-and-install surface | M6 | templates | p3 |
-| `SN-GA11-025` | Run accessibility usability sessions with disabled participants | M7 | a11y | p2 |
-| `SN-I18N-012` | Establish the translation workflow, glossary and linguistic QA gate | M7 | i18n | p2 |
+| #1068 | Implement URL / YouTube-to-note (transcript + summary) | M6 | ai | p3 |
+| #1103 | Build the abuse-report intake and trust-and-safety response for rooms | M6 | collaboration | p1 |
+| #958 | Deliver shared-notebook activity notifications without leaking content | M6 | notifications | p2 |
+| #800 | Add the default share-posture build-time flag (link-off/Can-view vs design default) | M6 | sharing-export | p1 |
+| #805 | Implement Goodnotes and Notability import (tier-A best-effort + tier-B PDF fallback) | M6 | sharing-export | p3 |
+| #806 | Implement OneNote import (PDF/.docx tier-B and Graph/.one tier-A, keep PDFs vector) | M6 | sharing-export | p3 |
+| #698 | Define the template store catalogue format and browse-and-install surface | M6 | templates | p3 |
+| #559 | Run accessibility usability sessions with disabled participants | M7 | a11y | p2 |
+| #903 | Establish the translation workflow, glossary and linguistic QA gate | M7 | i18n | p2 |
 | #429 | Draft the Privacy Policy and Terms of Service | M7 | privacy | p1 |
 | #445 | Decide the anti-tamper and MASVS-RESILIENCE posture in an ADR | M7 | security | p2 |
 | #121 | SPIKE: choose entitlement verification architecture (RevenueCat vs minimal verifier) | M8 | billing | p1 |
 | #122 | Implement the entitlement provider abstraction and RevenueCat adapter | M8 | billing | p0 |
 | #131 | Implement the family/household plan grant in the entitlement layer | M8 | billing | p2 |
 | #134 | Produce original Sane Sage master art to replace watermarked placeholders | M8 | brand | p0 |
-| `SN-DOC-005` | Publish the developer documentation site built from docs/ | M8 | docs | p2 |
-| `SN-DOC-009` | Publish the open .sanenote format specification and export guides | M8 | docs | p1 |
-| `SN-GCMP-016` | Publish a note as a public read-only web page | M8 | sharing-export | p3 |
-| `SN-GIPAD-015` | Complete the App Store DSA trader declaration and EU compliance metadata | M8 | release | p2 |
-| `SN-GOPS-004` | Apply the chosen licence: SPDX headers, dependency gate and NOTICE | M8 | release | p1 |
-| `SN-REL-012` | Gate rollout advancement on crash-free sessions and release health | M8 | release | p1 |
-| `SN-REL-015` | Add a release-blocker gate for placeholder art, licence and debug flags | M8 | release | p1 |
-| `SN-SITE-005` | Build the pricing page with honest Free versus Pro and student pricing | M8 | website | p1 |
-| `SN-SITE-013` | Provision website hosting on a content origin with hardened headers | M8 | website | p1 |
-| `SN-WEB-017` | Provision web hosting and CDN on an isolated origin with edge headers | M8 | ci-cd | p1 |
-| `SN-GCMP-010` | Implement web clipper / read-it-later capture | Backlog | sharing-export | p3 |
-| `SN-GCMP-011` | Support email-to-import for PDFs (ingest by email) | Backlog | sharing-export | p3 |
-| `SN-GIPAD-009` | SPIKE: decide the education deployment posture (Shared iPad, MDM config, ClassKit) | Backlog | compat | p3 |
+| #523 | Publish the developer documentation site built from docs/ | M8 | docs | p2 |
+| #528 | Publish the open .sanenote format specification and export guides | M8 | docs | p1 |
+| #1067 | Publish a note as a public read-only web page | M8 | sharing-export | p3 |
+| #989 | Complete the App Store DSA trader declaration and EU compliance metadata | M8 | release | p2 |
+| #1100 | Apply the chosen licence: SPDX headers, dependency gate and NOTICE | M8 | release | p1 |
+| #930 | Gate rollout advancement on crash-free sessions and release health | M8 | release | p1 |
+| #933 | Add a release-blocker gate for placeholder art, licence and debug flags | M8 | release | p1 |
+| #964 | Build the pricing page with honest Free versus Pro and student pricing | M8 | website | p1 |
+| #972 | Provision website hosting on a content origin with hardened headers | M8 | website | p1 |
+| #830 | Provision web hosting and CDN on an isolated origin with edge headers | M8 | ci-cd | p1 |
+| #1064 | Implement web clipper / read-it-later capture | Backlog | sharing-export | p3 |
+| #1066 | Support email-to-import for PDFs (ingest by email) | Backlog | sharing-export | p3 |
+| #983 | SPIKE: decide the education deployment posture (Shared iPad, MDM config, ClassKit) | Backlog | compat | p3 |
 
 ## Needs credentials or accounts from you (62)
 
@@ -77,10 +77,10 @@ mailbox and PGP key.
 
 | Issue | Title | Milestone | Area | Priority |
 |---|---|---|---|---|
-| `SN-PERF-004` | Define the device lab and Tier 1/2/3 reference-device configs | M0 | perf | p1 |
-| `SN-PERF-006` | Define the high-speed camera pen-to-pixel rig and protocol | M0 | perf | p1 |
-| `SN-GPRF-013` | Provision the self-hosted physical device runner for the perf gates | M1 | perf | p1 |
-| `SN-IPAD-031` | Configure the iOS and iPadOS app target: deployment target, capabilities, entitlements | M1 | ci-cd | p1 |
+| #869 | Define the device lab and Tier 1/2/3 reference-device configs | M0 | perf | p1 |
+| #871 | Define the high-speed camera pen-to-pixel rig and protocol | M0 | perf | p1 |
+| #1088 | Provision the self-hosted physical device runner for the perf gates | M1 | perf | p1 |
+| #814 | Configure the iOS and iPadOS app target: deployment target, capabilities, entitlements | M1 | ci-cd | p1 |
 | #363 | Add provider-backed GIF search and insert, free on all plans | M2 | images-media | p2 |
 | #70 | Build Credential Manager sign-in surface (passkeys, passwords, Google) | M4 | auth | p1 |
 | #106 | Implement Sign in with Google across all platforms | M4 | auth | p1 |
@@ -88,57 +88,57 @@ mailbox and PGP key.
 | #108 | Implement Sign in with Apple (native and web JS) | M4 | auth | p1 |
 | #109 | Implement phone-number OTP sign-in | M4 | auth | p1 |
 | #119 | Track and document maintainer OAuth client IDs and secrets | M4 | auth | p1 |
-| `SN-SYNC-003` | Implement iCloud Drive cloud-drive adapter | M4 | sync | p1 |
-| `SN-SYNC-004` | Implement Google Drive REST v3 cloud-drive adapter | M4 | sync | p1 |
-| `SN-WEB-018` | Implement web sign-in with Google, Microsoft, Apple and passkeys | M4 | auth | p1 |
-| `SN-WEB-019` | Implement Google Drive user-cloud sync on web with OneDrive support | M4 | sync | p1 |
+| #740 | Implement iCloud Drive cloud-drive adapter | M4 | sync | p1 |
+| #741 | Implement Google Drive REST v3 cloud-drive adapter | M4 | sync | p1 |
+| #831 | Implement web sign-in with Google, Microsoft, Apple and passkeys | M4 | auth | p1 |
+| #832 | Implement Google Drive user-cloud sync on web with OneDrive support | M4 | sync | p1 |
 | #321 | Handle Universal Links and associated domains landing in view or confirm | M5 | security | p1 |
-| `SN-PERF-013` | Build the battery and energy protocol for the 2-hour writing soak | M5 | perf | p1 |
-| `SN-PHN-013` | Ship quick-capture widgets, controls and Quick Settings tiles | M5 | notifications | p1 |
-| `SN-PHN-014` | Register share targets, app shortcuts and file handlers on phones | M5 | notifications | p1 |
-| `SN-QA-009` | Set up the cloud device farm for functional and integration runs | M5 | qa | p2 |
-| `SN-SEC-012` | Host assetlinks.json and AASA and enable link auto-verification | M5 | security | p1 |
-| `SN-COL-023` | Operate the relay: hosting decision, rate limits, log allow-list and runbook | M6 | collaboration | p2 |
-| `SN-SHR-026` | Implement OneNote import (PDF/.docx tier-B and Graph/.one tier-A, keep PDFs vector) | M6 | sharing-export | p3 |
-| `SN-A11Y-017` | Run the pre-beta accessibility audit and declare the store accessibility labels | M7 | a11y | p1 |
+| #878 | Build the battery and energy protocol for the 2-hour writing soak | M5 | perf | p1 |
+| #857 | Ship quick-capture widgets, controls and Quick Settings tiles | M5 | notifications | p1 |
+| #858 | Register share targets, app shortcuts and file handlers on phones | M5 | notifications | p1 |
+| #912 | Set up the cloud device farm for functional and integration runs | M5 | qa | p2 |
+| #592 | Host assetlinks.json and AASA and enable link auto-verification | M5 | security | p1 |
+| #519 | Operate the relay: hosting decision, rate limits, log allow-list and runbook | M6 | collaboration | p2 |
+| #806 | Implement OneNote import (PDF/.docx tier-B and Graph/.one tier-A, keep PDFs vector) | M6 | sharing-export | p3 |
+| #493 | Run the pre-beta accessibility audit and declare the store accessibility labels | M7 | a11y | p1 |
 | #79 | Prepare Google Play readiness: Data Safety, permissions rationale & gate | M7 | release | p1 |
 | #325 | Stand up the TestFlight beta pipeline for signed iPad builds | M7 | ci-cd | p1 |
-| `SN-PERF-024` | Run the beta performance soak across the full Tier 1 device lab | M7 | perf | p1 |
+| #889 | Run the beta performance soak across the full Tier 1 device lab | M7 | perf | p1 |
 | #427 | Author store privacy declarations: Apple Nutrition Labels and Play Data Safety | M7 | privacy | p1 |
-| `SN-QA-015` | Define the beta rings, tester cohorts and privacy-safe feedback intake | M7 | qa | p2 |
-| `SN-REL-007` | Define the beta program: TestFlight groups, Play tracks and feedback intake | M7 | release | p1 |
-| `SN-SEC-027` | Implement root/jailbreak detection and device attestation for paid/E2EE tiers | M7 | security | p2 |
-| `SN-SEC-035` | Operationalise the incident-response runbook and breach clock | M7 | security | p2 |
+| #918 | Define the beta rings, tester cohorts and privacy-safe feedback intake | M7 | qa | p2 |
+| #925 | Define the beta program: TestFlight groups, Play tracks and feedback intake | M7 | release | p1 |
+| #595 | Implement root/jailbreak detection and device attestation for paid/E2EE tiers | M7 | security | p2 |
+| #451 | Operationalise the incident-response runbook and breach clock | M7 | security | p2 |
 | #73 | Attest stateless services with Play Integrity without gating notes | M8 | security | p2 |
 | #122 | Implement the entitlement provider abstraction and RevenueCat adapter | M8 | billing | p0 |
 | #123 | Implement StoreKit 2 IAP with on-device JWS entitlement verification | M8 | billing | p0 |
 | #124 | Implement Google Play Billing purchase and acknowledgement | M8 | billing | p0 |
-| `SN-BILL-008` | Add Play Integrity licensing check with tiered, non-punitive enforcement | M8 | billing | p1 |
+| #779 | Add Play Integrity licensing check with tiered, non-punitive enforcement | M8 | billing | p1 |
 | #125 | Implement web checkout (Razorpay UPI AutoPay + Stripe) with entitlement bridge | M8 | billing | p1 |
 | #126 | Configure regional pricing and store products (INR-first, GST, global points) | M8 | billing | p0 |
 | #130 | Implement tiered student verification with annual re-verification | M8 | billing | p1 |
 | #133 | Build the billing sandbox and test matrix across stores and gateways | M8 | billing | p1 |
 | #140 | Produce store screenshots and listing art for App Store, Play and web | M8 | brand | p2 |
 | #174 | Implement signed, notarized releases (Play + Apple) | M8 | ci-cd | p1 |
-| `SN-CI-022` | Wire Android Play App Signing via upload key and OIDC | M8 | ci-cd | p1 |
-| `SN-CI-023` | Wire Apple App Store signing and notarytool notarization | M8 | ci-cd | p1 |
-| `SN-GOPS-006` | Stand up the user support operation: inbox, SLA and escalation path | M8 | docs | p1 |
-| `SN-GOPS-014` | Inventory organisational accounts with custody and continuity rules | M8 | release | p1 |
-| `SN-I18N-006` | Implement rupee currency formatting with lakh/crore grouping | M8 | i18n | p2 |
+| #584 | Wire Android Play App Signing via upload key and OIDC | M8 | ci-cd | p1 |
+| #585 | Wire Apple App Store signing and notarytool notarization | M8 | ci-cd | p1 |
+| #1102 | Stand up the user support operation: inbox, SLA and escalation path | M8 | docs | p1 |
+| #1111 | Inventory organisational accounts with custody and continuity rules | M8 | release | p1 |
+| #897 | Implement rupee currency formatting with lakh/crore grouping | M8 | i18n | p2 |
 | #324 | Reach App Store Connect readiness: nutrition label, export compliance, metadata | M8 | release | p1 |
-| `SN-PHN-022` | Produce phone store screenshots and listing assets | M8 | release | p2 |
-| `SN-REL-004` | Build the tag-driven release train workflow (release.yml) | M8 | release | p1 |
-| `SN-REL-005` | Introduce fastlane lanes for iOS and Android release automation | M8 | release | p1 |
-| `SN-REL-006` | Implement Play track promotion and staged rollout with automated halt | M8 | release | p1 |
-| `SN-REL-010` | Publish App Store and Play listings and metadata as code | M8 | release | p1 |
-| `SN-REL-017` | Inventory release secrets and define the rotation runbook | M8 | release | p0 |
-| `SN-SEC-036` | Stand up the vulnerability disclosure program and security.txt | M8 | security | p2 |
-| `SN-SITE-008` | Build the try-on-web launcher and native download page | M8 | website | p1 |
-| `SN-SITE-013` | Provision website hosting on a content origin with hardened headers | M8 | website | p1 |
-| `SN-TEL-012` | Implement the opt-in crash and metrics upload adapter | M8 | telemetry | p1 |
-| `SN-TEL-014` | Build the release symbolication pipeline for obfuscated crash reports | M8 | telemetry | p1 |
-| `SN-WEB-017` | Provision web hosting and CDN on an isolated origin with edge headers | M8 | ci-cd | p1 |
-| `SN-GCMP-011` | Support email-to-import for PDFs (ingest by email) | Backlog | sharing-export | p3 |
+| #866 | Produce phone store screenshots and listing assets | M8 | release | p2 |
+| #922 | Build the tag-driven release train workflow (release.yml) | M8 | release | p1 |
+| #923 | Introduce fastlane lanes for iOS and Android release automation | M8 | release | p1 |
+| #924 | Implement Play track promotion and staged rollout with automated halt | M8 | release | p1 |
+| #928 | Publish App Store and Play listings and metadata as code | M8 | release | p1 |
+| #935 | Inventory release secrets and define the rotation runbook | M8 | release | p0 |
+| #452 | Stand up the vulnerability disclosure program and security.txt | M8 | security | p2 |
+| #967 | Build the try-on-web launcher and native download page | M8 | website | p1 |
+| #972 | Provision website hosting on a content origin with hardened headers | M8 | website | p1 |
+| #946 | Implement the opt-in crash and metrics upload adapter | M8 | telemetry | p1 |
+| #948 | Build the release symbolication pipeline for obfuscated crash reports | M8 | telemetry | p1 |
+| #830 | Provision web hosting and CDN on an isolated origin with edge headers | M8 | ci-cd | p1 |
+| #1066 | Support email-to-import for PDFs (ingest by email) | Backlog | sharing-export | p3 |
 
 ## How to unblock one
 

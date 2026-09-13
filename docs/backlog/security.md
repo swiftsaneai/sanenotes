@@ -268,7 +268,7 @@ SN-AND-022 (Android build config).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #494 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M5 Phones & Platform Parity |
@@ -328,7 +328,7 @@ Add `app/test/security/android_manifest_exported_test.dart` (parses the merged m
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #495 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -695,7 +695,7 @@ None beyond baseline (pure library). Baseline: no key material or content in log
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #764 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -752,7 +752,7 @@ None beyond baseline (library). A tag/rollback failure surfaces as the [SN-CRY-0
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #765 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1550,7 +1550,7 @@ Threats: partial-decrypt/fallback-plaintext leak on error (exceptional condition
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #766 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1778,7 +1778,7 @@ None beyond baseline (verification). The user-facing guarantee it certifies (hon
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1055 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1836,7 +1836,7 @@ Unit: lock-state CRDT merge, cascade logic, re-lock timeout (test/library/notebo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1056 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1893,7 +1893,7 @@ Unit: filter applied to each consumer (test/security/locked_content_filter_test.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #977 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1950,7 +1950,7 @@ Unit: `plugins/sane_secure_store/test/file_protection_policy_test.dart` (policy 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #988 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2008,7 +2008,7 @@ Unit: `app/test/display_privacy_rules_test.dart` (state matrix: locked × captur
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1099 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -2068,7 +2068,7 @@ Process, not code: (1) run the M2 revision against the merged M2 work and confir
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1110 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -2128,7 +2128,7 @@ Fixtures: an SBOM containing an untracked binary component fails the CI check; a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1113 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -2188,7 +2188,7 @@ Manual: run the scheduler with fixture dates and confirm the correct set of issu
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1116 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -2248,7 +2248,7 @@ Developer-facing. The generated report leads with the four counts so a reader se
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1027 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -2305,7 +2305,7 @@ Unit: cache-write ciphertext assertions; backup-manifest exclusion checks. Widge
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1028 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -2362,7 +2362,7 @@ Manual/automated: validate SPF/DKIM/DMARC/CAA/MTA-STS with standard checkers; co
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1030 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2419,7 +2419,7 @@ Unit: fault-injection on crypto/sync/parse/storage asserting Result.failure, no 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1031 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -2476,7 +2476,7 @@ Dry-run: seed a synthetic high finding and confirm an alert + tracking issue wit
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1032 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -2533,7 +2533,7 @@ Manual/assisted MASTG procedures on iOS + Android reference devices; automated p
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1033 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -2590,7 +2590,7 @@ Unit: op-schema + bounds validators with malformed fixtures. Property/fuzz: feed
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1034 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -2647,7 +2647,7 @@ Process validation: run the template on one real feature and confirm the threat 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1035 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -2704,7 +2704,7 @@ Unit: SecureScratch write/consume/delete + error-path cleanup. Integration: run 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1038 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -2761,7 +2761,7 @@ Integration/black-box: burst tests against entitlement/trial endpoints assert th
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1003 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2832,7 +2832,7 @@ None visible beyond a faster, network-independent start. The Settings → About 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1008 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -2903,7 +2903,7 @@ No user-facing surface. Client-visible effects are error semantics: a rejected c
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1009 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -3030,7 +3030,7 @@ Unit/abuse: `app/test/security/universal_link_test.dart` (forged/unverified link
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #859 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M5 Phones & Platform Parity |
@@ -3365,7 +3365,7 @@ On rejection the importer shows a user-safe message ("This file could not be imp
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #586 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -3422,7 +3422,7 @@ Import PDF overlay (docs/design/screens-and-flows.md §9): on failure, toast "Th
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #587 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -3479,7 +3479,7 @@ Import overlay / image insertion (docs/design/screens-and-flows.md); a stripped-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #588 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M2 Library & Documents |
@@ -3536,7 +3536,7 @@ Import flow (docs/design/screens-and-flows.md): a rejected bundle shows "This fi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #589 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -3592,7 +3592,7 @@ Editor audio insert / player (docs/design/screens-and-flows.md editor toolbar): 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #590 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -3648,7 +3648,7 @@ Settings/typography import entry (docs/design/screens-and-flows.md Settings): fa
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #591 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -3762,7 +3762,7 @@ Inbound link → a confirm sheet ("Open this shared notebook?") before anything 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #592 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -3819,7 +3819,7 @@ Manual verification with `adb shell pm get-app-links` / Apple's AASA validator; 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #593 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -3932,7 +3932,7 @@ No new production code. Confirm [SN-AND-029](security.md#sn-and-029)'s security 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #435 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -3988,7 +3988,7 @@ Related: [SN-SEC-013](security.md#sn-sec-013), [SN-SEC-016](security.md#sn-sec-0
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #436 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M2 Library & Documents |
@@ -4045,7 +4045,7 @@ Related: [SN-SEC-017](security.md#sn-sec-017), [SN-TXT-001](text.md#sn-txt-001).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #594 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -4102,7 +4102,7 @@ None beyond baseline (headers/config). Effect: multithreaded features (skwasm re
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #437 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -4158,7 +4158,7 @@ Related: [SN-SEC-020](security.md#sn-sec-020) (locked-note state), [SN-SET-001](
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #438 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -4214,7 +4214,7 @@ Related: [SN-SEC-020](security.md#sn-sec-020), [SN-NOTF-001](notifications.md#sn
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #439 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -4271,7 +4271,7 @@ Settings → lock (six-tab Settings, docs/design/screens-and-flows.md §12); a l
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #440 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -4328,7 +4328,7 @@ Related: [SN-FND-004](devx.md#sn-fnd-004) (`print()` ban), [SN-TEL-001](telemetr
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #441 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -4385,7 +4385,7 @@ Related: [SN-SYNC-001](sync.md#sn-sync-001), [SN-COL-001](collaboration.md#sn-co
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #442 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -4441,7 +4441,7 @@ None beyond baseline (config). Effect: a device backup/restore never leaks keys;
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #443 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -4498,7 +4498,7 @@ Related: [SN-AUTH-002](auth.md#sn-auth-002), [SN-TEL-001](telemetry.md#sn-tel-00
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #444 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -4554,7 +4554,7 @@ Self-test: the helpers have their own tests (`app/test/security/helpers_test.dar
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #445 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -4610,7 +4610,7 @@ None. Blocks [SN-SEC-027](security.md#sn-sec-027), [SN-SEC-028](security.md#sn-s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #595 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -4666,7 +4666,7 @@ If the ADR chose advisory: a non-punitive notice ("This device appears rooted; E
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #596 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -4722,7 +4722,7 @@ None beyond baseline (build config). Baseline: crash reports remain opt-in and r
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #446 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -4779,7 +4779,7 @@ The verification report is the deliverable; backing assertions live in `app/test
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #447 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -4836,7 +4836,7 @@ Verification report + the backing abuse tests in `app/test/security/` (link_guar
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #448 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -4893,7 +4893,7 @@ Verification report + backing tests (`packages/sane_sync/test/security/pinning_t
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #449 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -4950,7 +4950,7 @@ Verification report + the backing web tests (`app/test/security/web_csp_test.dar
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #450 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -5007,7 +5007,7 @@ None (references all controls). Feeds [SN-SEC-034](security.md#sn-sec-034).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #597 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -5063,7 +5063,7 @@ The register + the added regression tests are the deliverable. Gate check: CI se
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #451 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -5120,7 +5120,7 @@ Related: [SN-SEC-036](security.md#sn-sec-036), [SN-CI-001](ci-cd.md#sn-ci-001) (
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #452 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -5177,7 +5177,7 @@ A CI check that fetches `/.well-known/security.txt`, validates RFC 9116 fields a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #827 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -5240,7 +5240,7 @@ No visible chrome; the user-visible requirement is that nothing breaks — the E
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #828 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -5302,7 +5302,7 @@ No user-visible chrome. Two indirect UX obligations: (1) if isolation is unavail
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #829 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -5364,7 +5364,7 @@ No visible chrome. Indirect UX requirements: the permission model must stay hone
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #844 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |

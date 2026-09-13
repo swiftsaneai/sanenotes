@@ -1,0 +1,230 @@
+[
+  {
+    "type": "feature",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-021",
+    "title": "Expose a fold-posture and hinge-geometry model in sane_ui",
+    "platforms": [
+      "android-phone",
+      "android-tablet",
+      "web"
+    ],
+    "areas": [
+      "compat",
+      "design-system"
+    ],
+    "size": "M",
+    "depends_on": [
+      "SN-DS-026",
+      "SN-AND-013"
+    ],
+    "body": "## Context\nFoldables (Galaxy Z Fold6, Pixel 9 Pro Fold, clamshell Z Flip, and the rumoured book-posture foldable iPhone) change usable geometry at runtime, and a crease or physical hinge can sit under content. Per docs/platform/android.md §7 (\"Foldables & desktop windowing\") and docs/platform/phones.md §7, the window size class changes on fold/unfold and MUST re-lay-out. Before any layout can react (SN-DIM-022..025) the app needs one cross-surface source of truth for fold posture and hinge bounds. SN-DS-026 already owns window size classes and adaptive primitives; this issue adds the fold/hinge dimension to that layer so every screen consumes it identically. SN-AND-013 provides the Android native transition handling; this issue turns its signals into a Flutter-level model.\n\n## Scope\n**In:**\n- A `SaneFoldInfo` value in sane_ui (posture: `flat` | `halfOpened` | `unknown`; hinge `Rect?` in local logical px; `orientation: vertical | horizontal`; `isSeparating: bool`; `occlusionType: none | full`) derived from `MediaQuery.displayFeaturesOf(context)` / `MediaQueryData.displayFeatures`.\n- An inherited widget / Riverpod provider so any widget reads current posture without recomputing.\n- Android source: `WindowInfoTracker.windowLayoutInfo` `FoldingFeature` (state, orientation, occlusionType, isSeparating, bounds) bridged through the existing plugin path.\n- Web source: `navigator.devicePosture` (`folded`/`continuous`) + CSS `env(viewport-segment-*)` mapped into the same model.\n- Emit posture-change events so consumers relayout without polling.\n\n**Out:**\n- Actual hinge-avoidance / tabletop layouts (SN-DIM-022, SN-DIM-023, SN-DIM-024).\n- State continuity across the transition (SN-PHN-017).\n- iPad multi-window and desktop windowing (no hinge) — SN-DIM-030/032.\n\n## Acceptance criteria\n- [ ] On a Pixel 9 Pro Fold inner display (2076x2152 px, ~884x916 dp) `SaneFoldInfo.hinge` returns the vertical crease Rect and `occlusionType` reflects the panel (NONE for the seamless inner display); on a device reporting a separating hinge, `isSeparating == true` and the hinge Rect width is non-zero (e.g. a 24 dp occlusion band).\n- [ ] On a Galaxy Z Fold6 folded to the 968x2376 px cover display the model reports posture `unknown`/no hinge and size class Compact; unfolding to 2160x1856 px flips to `flat` with a vertical hinge within one frame of the metrics change.\n- [ ] In tabletop posture the model reports `halfOpened` with `orientation == horizontal` and a hinge Rect splitting height near 50%.\n- [ ] On Chrome with the Device Posture API the model reports `folded` and derives two viewport segments from `env(viewport-segment-*)`; where the API is absent it degrades to `unknown` with no exceptions.\n- [ ] A posture change fires a single change notification (no duplicate rebuild storms) and is delivered in < 1 frame budget so downstream relayout stays within B5 (no frame > 16.7 ms).\n- [ ] Model correctly reports \"no fold\" (posture `flat`, hinge null) on non-folding devices (iPad, standard phones, desktop web) so consumers need no platform branch.\n\n## Technical notes\nLive in `packages/sane_ui` beside the SN-DS-026 size-class primitives (sane_ui is a pure leaf; the Android FoldingFeature stream is bridged by the plugin layer and injected at the `app/` composition root, never imported into sane_ui). Read `MediaQuery.displayFeaturesOf(context)`; map `DisplayFeature.type == fold/hinge`, `DisplayFeature.state` (postureFlat/postureHalfOpened), and `DisplayFeature.bounds` to `SaneFoldInfo`. Android: `androidx.window.layout.WindowInfoTracker.getOrCreate(activity).windowLayoutInfo` → collect `WindowLayoutInfo.displayFeatures` filtering `FoldingFeature`; read `occlusionType`, `orientation`, `state` (HALF_OPENED/FLAT), `isSeparating`, `bounds`; pass to the engine (Flutter already surfaces these as displayFeatures on API level support — verify parity and fall back to the plugin channel where the engine lags). Web: `navigator.devicePosture.type` + `devicePosture.addEventListener('change')`, plus CSS `@media (spanning: single-fold-vertical)` and `env(viewport-segment-width 0 0)`. Recompute on `WidgetsBindingObserver.didChangeMetrics` / `PlatformDispatcher.onMetricsChanged`. Provider exposed via Riverpod in `app/`.\n\n## Security & privacy\nNone beyond baseline. Posture/hinge geometry is not user content; do not log it with any note identifier and do not persist device model strings. Baseline: no note content in logs; tokens only.\n\n## UX notes\nFoundational — no direct UI. Consumers (SN-DIM-022/023/024) use it to keep controls off the crease. Reference docs/design/ux-principles.md §8 (adaptive layouts). Empty/unknown posture must be treated as a normal flat layout, never as an error state.\n\n## Test plan\nUnit tests in `packages/sane_ui/test/fold/fold_info_test.dart` feeding synthetic `displayFeatures` (vertical hinge, horizontal hinge, separating, occluding). Widget test that a posture change triggers exactly one rebuild. Integration probe in `app/integration_test/fold_posture_test.dart` driven by emulator fold commands (`adb emu fold`/`unfold`) across Pixel Fold and Z Fold profiles. Web unit test mocking `navigator.devicePosture`.\n\n## Dependencies\nDepends on SN-DS-026 (adaptive layout primitives and window size classes) and SN-AND-013 (Android foldable transitions). Parent epic SN-DIM-001. Related: {{SN-AND-013}}, {{SN-PHN-017}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-022",
+    "title": "Keep interactive controls and ink clear of the fold hinge",
+    "platforms": [
+      "android-phone",
+      "android-tablet",
+      "web"
+    ],
+    "areas": [
+      "compat",
+      "design-system",
+      "editor"
+    ],
+    "size": "M",
+    "depends_on": [
+      "SN-DIM-021",
+      "SN-DS-026"
+    ],
+    "body": "## Context\nA hinge that occludes or separates the display must never sit under a control the user has to hit or under ink the user is reading. docs/platform/phones.md §7 requires testing \"the fold seam and hinge occlusion\". This issue makes every screen route its layout around the hinge Rect provided by SN-DIM-021, and splits panes along the seam where that reads better than spanning it.\n\n## Scope\n**In:**\n- A `SaneHingeAware` layout wrapper that pads/reflows content out of the hinge Rect (with a configurable safe margin) and can split a two-pane layout exactly at the seam.\n- Editor: palette dock, page rail, page-nav, undo/redo and toolbar never land within the hinge band; the page itself may span a seamless crease but interactive stroke targets and selection handles are nudged clear.\n- Library and Settings two-pane layouts snap the divider to the hinge when a vertical separating hinge exists.\n- Respect handedness/left-handed mode when choosing which side controls move to.\n\n**Out:**\n- Tabletop (half-opened) posture layouts (SN-DIM-023/024).\n- State preservation across posture change (SN-PHN-017).\n\n## Acceptance criteria\n- [ ] On a Pixel 9 Pro Fold inner display (2076x2152 px) with a vertical hinge reported at the horizontal centre, no `SaneToolButton`, colour/width swatch, page-nav chevron, grip, or toolbar icon renders with any pixel inside the hinge Rect + an 8 dp margin; verified by a golden that overlays the hinge band.\n- [ ] With a separating hinge (isSeparating == true, e.g. a 24 dp occlusion band) the Library list/detail divider snaps to the hinge centre so neither pane straddles the crease.\n- [ ] The floating palette dock docked to bottom on an unfolded book posture reflows to the trailing display area and no control is occluded; docking to a left/right edge chooses the panel that does not cross the hinge.\n- [ ] Lasso selection handles and text-box drag handles that would fall under the hinge are offset outward by >= 8 dp so they remain tappable at 48 dp target size.\n- [ ] On a horizontal (tabletop-precursor) hinge the same rules apply vertically; on non-folding devices the wrapper is a no-op with zero added layout cost.\n- [ ] Hinge-avoidance recomputes on posture change within B5 (no frame > 16.7 ms) and adds no scroll or 2-D pan at 320 dp width (WCAG 1.4.10).\n\n## Technical notes\nImplement `SaneHingeAware` in `packages/sane_ui` on top of `LayoutBuilder` + the `SaneFoldInfo` from SN-DIM-021; subtract the hinge Rect from the available box using `EdgeInsetsDirectional` so it composes with RTL and left-handed mode. Use `Flexible`/`Wrap` for control rows so they reflow rather than clip. For two-pane splits, position the divider with the hinge centre from `DisplayFeature.bounds`. The paged canvas geometry stays fixed (800x1040 units, docs/design/ux-principles.md §8) — only chrome and hit-targets move; the page may visually span a seamless crease. Consumers: `app/lib/features/editor`, `app/lib/features/library`, `app/lib/features/settings`. Reuse SafeArea for system insets; hinge insets are additive.\n\n## Security & privacy\nNone beyond baseline. Note the shared/presentation risk is handled in SN-ED-021; here simply avoid rendering sensitive controls in an occluded band (a usability, not a disclosure, issue).\n\n## UX notes\nChrome is a guest, the page is the hero (ux-principles.md §2): the crease must never make the user hunt for a control or fight the hinge. When a vertical hinge exists, prefer docking the palette to the leading or trailing panel rather than centring it across the seam. Reference component-inventory.md (SaneToolPalette, SanePageThumb).\n\n## Test plan\nGolden matrix `app/test/golden/hinge_avoidance_test.dart` at Pixel Fold inner, Z Fold6 inner, and a synthetic separating-hinge profile, overlaying the hinge band and asserting no interactive control intersects it. Widget test that handles offset outward. Integration `app/integration_test/fold_posture_test.dart` extends SN-DIM-021 to assert control positions post-unfold.\n\n## Dependencies\nDepends on SN-DIM-021 (fold posture model) and SN-DS-026 (adaptive primitives). Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-023",
+    "title": "Add a tabletop/flex-mode editor layout (canvas top, controls bottom)",
+    "platforms": [
+      "android-phone",
+      "android-tablet",
+      "web"
+    ],
+    "areas": [
+      "compat",
+      "editor",
+      "design-system"
+    ],
+    "size": "L",
+    "depends_on": [
+      "SN-DIM-021",
+      "SN-DS-026"
+    ],
+    "body": "## Context\nWhen a foldable is half-opened and rests like a tiny laptop (\"tabletop\"/\"flex\" posture), the natural layout puts the readable content on the upper (near-vertical) panel and the touch controls on the lower (near-horizontal) panel. Android reports this as `FoldingFeature.state == HALF_OPENED` with `orientation == HORIZONTAL`; docs/platform/android.md §7 requires handling half-opened transitions. This issue delivers the editor's tabletop layout.\n\n## Scope\n**In:**\n- A tabletop editor arrangement, activated when SN-DIM-021 reports halfOpened + horizontal hinge: canvas/page occupies the upper segment; palette dock, page-nav, undo/redo and selection/text-edit bars move to the lower segment.\n- The split lands exactly on the hinge so neither region crosses the crease.\n- Smooth enter/exit as posture crosses the half-opened threshold, preserving the open page and scroll position.\n\n**Out:**\n- Audio-recording tabletop layout (SN-DIM-024, separate).\n- General state continuity engine (SN-PHN-017) — this issue consumes it.\n- Non-folding split-screen (SN-DIM-030).\n\n## Acceptance criteria\n- [ ] On a Pixel 9 Pro Fold at ~90-120° half-opened (horizontal hinge near the vertical centre of 2076x2152 px) the page renders in the upper segment and the palette dock + page-nav render in the lower segment, with a >= 8 dp clearance from the hinge band on both sides.\n- [ ] No interactive control renders in the upper (viewing) segment except a single Focus/exit affordance; the primary tool controls are all reachable in the lower thumb-region.\n- [ ] Crossing the half-opened threshold (from flat to tabletop and back) re-lays-out within B5 (no frame > 16.7 ms) and keeps the same page, scroll offset (±0 px) and selected tool.\n- [ ] At 200% Android font scale and 310% iOS-equivalent text scale the lower control cluster wraps (Wrap) without overflow and every target stays >= 48 dp.\n- [ ] On a clamshell Z Flip half-opened, the same canvas-top/controls-bottom split applies to the single inner display divided by the horizontal crease.\n- [ ] When posture returns to flat, the layout restores the normal editor (palette dock returns to its docked edge/handedness) with no page reload.\n\n## Technical notes\nAdd a `tabletop` branch to the editor scaffold in `app/lib/features/editor`, driven by `SaneFoldInfo` (SN-DIM-021) + `OrientationBuilder`/`LayoutBuilder`. Use a `Column` split at the hinge Rect with the page in the top `Expanded` and controls in a bottom region built from the existing `SaneToolPalette` reflowed to a row (component-inventory.md §5). Keep the page geometry fixed (ux-principles.md §8) and only re-home chrome. Animate the transition with a cross-fade honouring Reduce Motion (ux-principles.md §6). Preserve the `PageController`/scroll and tool provider state through the rebuild (do not recreate controllers — key them stably); rely on SN-PHN-017 for the deeper continuity guarantees. Web: use CSS viewport segments (`env(viewport-segment-*)`)/container queries mirror.\n\n## Security & privacy\nNone beyond baseline. No note content leaves the device; posture is not persisted with identifiers.\n\n## UX notes\nThis is a signature foldable delight — the \"book/laptop\" writing pose. Keep it calm: controls settle into the lower panel, the page stays put, no jump. Follow ux-principles.md §2 (chrome is a guest) and §8 (adaptive). The lower panel is the thumb zone (phones.md §7).\n\n## Test plan\nGolden `app/test/golden/tabletop_editor_test.dart` at Pixel Fold half-opened and Z Flip half-opened, asserting page-in-top / controls-in-bottom and hinge clearance. Widget test for threshold enter/exit preserving scroll + tool. Integration `app/integration_test/fold_posture_test.dart` covering flat→tabletop→flat.\n\n## Dependencies\nDepends on SN-DIM-021 and SN-DS-026. Consumes SN-PHN-017 for continuity. Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-024",
+    "title": "Add a tabletop/flex-mode layout for audio recording and playback",
+    "platforms": [
+      "android-phone",
+      "android-tablet",
+      "web"
+    ],
+    "areas": [
+      "compat",
+      "audio",
+      "editor"
+    ],
+    "size": "M",
+    "depends_on": [
+      "SN-DIM-021",
+      "SN-DIM-023",
+      "SN-AUD-001"
+    ],
+    "body": "## Context\nRecording a lecture on a half-opened foldable is a real pose: the device stands on the desk, mic up, and the user glances at the transcript/waveform while writing. In tabletop posture the recorder controls belong on the lower panel and the canvas/waveform readout on the upper. This mirrors SN-DIM-023 for the audio recorder bar (screens-and-flows.md §7.6, SaneAudioBar).\n\n## Scope\n**In:**\n- Tabletop arrangement of the SaneAudioBar: record/stop, live timer, transport, waveform+scrubber and speed control on the lower segment; canvas and a large readable timer/waveform on the upper segment.\n- Applies to all three audio states (idle-no-rec, recording, has-rec/playback).\n- Keeps recording running uninterrupted across the posture change.\n\n**Out:**\n- The audio engine itself (SN-AUD-001).\n- Rotation-while-recording continuity (SN-DIM-029).\n- Non-tabletop phone layout (phones.md §3).\n\n## Acceptance criteria\n- [ ] While recording on a Pixel 9 Pro Fold half-opened (horizontal hinge), the pulsing dot, live timer (mm:ss ticking +0.25 s / 250 ms) and Stop render in the lower segment; the upper segment shows the canvas and a large timer; no control crosses the hinge band (>= 8 dp clearance).\n- [ ] Entering tabletop mid-recording does not drop or restart the recording: the elapsed timer is continuous (no reset), and no audio frames are lost across the relayout (measured against the recorder buffer).\n- [ ] In has-rec/playback state the waveform+scrubber slider and 1x/1.5x/2x speed control are in the lower thumb region; the \"Ink replays in sync\" caption and dimmed post-playhead strokes render on the upper canvas.\n- [ ] Relayout across the half-opened threshold completes within B5 (no frame > 16.7 ms) and keeps playback position (±0 ms) and playback rate.\n- [ ] At 200%/310% text scale the transport row wraps without clipping the timer; targets stay >= 48 dp.\n- [ ] Returning to flat restores the standard under-toolbar audio bar with recording/playback state intact.\n\n## Technical notes\nExtend the editor tabletop branch (SN-DIM-023) with an audio variant in `app/lib/features/editor` + `packages/sane_audio` view models. Keep the recorder/playback controllers alive across the rebuild (do not tear down the `sane_audio` session; audio capture runs off the UI isolate per docs/architecture/overview.md §6 so relayout cannot stall it). Reuse SaneAudioBar / SaneWaveformScrubber (component-inventory.md §5), re-homed via the hinge split. Respect Reduce Motion for the level bars (keep the functional recording dot as a steady state). Web mirror via viewport segments.\n\n## Security & privacy\nNone beyond baseline. Audio is captured only with the user's action; the mic-in-use indicator remains visible in both segments. No content in logs.\n\n## UX notes\nThe tabletop record pose should feel purpose-built: big glanceable timer up top, thumb controls below. Preserve the microcopy (\"Recording — everything you write is time-linked\", \"Ink replays in sync\"). Follow ux-principles.md §6 motion rules.\n\n## Test plan\nGolden `app/test/golden/tabletop_audio_test.dart` for the three audio states half-opened. Integration `app/integration_test/fold_posture_test.dart` recording across flat→tabletop asserting the timer is monotonic and no buffer underrun. Widget test for playback position preserved.\n\n## Dependencies\nDepends on SN-DIM-021, SN-DIM-023 (tabletop editor) and SN-AUD-001 (audio engine). Related SN-DIM-029. Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-026",
+    "title": "Preserve an in-progress stroke across fold, unfold and rotation",
+    "platforms": [
+      "android-phone",
+      "android-tablet",
+      "ios-phone"
+    ],
+    "areas": [
+      "compat",
+      "editor",
+      "ink"
+    ],
+    "size": "M",
+    "depends_on": [
+      "SN-PHN-017",
+      "SN-INK-001"
+    ],
+    "body": "## Context\nThe hardest continuity case: the user is mid-stroke (pen still down) when the device folds/unfolds or rotates. The wet stroke lives on the low-latency front buffer and in the active-stroke capture on the UI isolate (docs/architecture/overview.md §6). A naive configuration change discards it, losing ink and breaking the \"never lose data\" contract. This issue makes an in-progress stroke survive a configuration change with no data loss.\n\n## Scope\n**In:**\n- Buffer the active stroke's captured points (in page coordinates) so a configuration change (fold/unfold/rotate/resize) does not lose them.\n- On the new configuration, either (a) re-anchor and continue the same stroke if the pointer is still down and mapped, or (b) commit the captured points as a completed stroke if the pointer stream is interrupted by the OS.\n- Never drop the stroke silently; the committed stroke is undoable as one unit.\n\n**Out:**\n- The rotation layout/timing itself (SN-DIM-027).\n- General state continuity (SN-PHN-017).\n- Latency budgets for normal drawing (SN-INK-001).\n\n## Acceptance criteria\n- [ ] On a Pixel 9 Pro Fold, drawing a stroke and unfolding mid-stroke results in the captured points being preserved and committed as one stroke (no partial loss, no duplicate); undo removes exactly that stroke.\n- [ ] Because ink is captured in page coordinates (not screen px), the committed stroke lands in the correct page location after the viewport changes size from cover (Compact) to inner (Expanded).\n- [ ] If the OS delivers a pointer-cancel during the fold, the stroke is committed from the buffered points rather than dropped; if the pointer stays down and remappable, drawing continues into the same stroke.\n- [ ] Rotating the device mid-stroke (portrait↔landscape) preserves the stroke identically (shared path with SN-DIM-027/028).\n- [ ] No frame during the transition exceeds 16.7 ms (B5) and the committed stroke matches the pre-transition geometry within 1 page unit.\n- [ ] Repeated mid-stroke folds (10x) leave no orphaned/partial strokes in the document and no undo-stack corruption.\n\n## Technical notes\nIn `packages/sane_ink` keep the active-stroke sample buffer in a controller that outlives widget rebuilds (page coordinates, per docs/design/ux-principles.md §1 wet-ink model). On `didChangeMetrics`/configuration change while a stroke is active, snapshot the buffer; on `PointerCancelEvent` (Flutter delivers cancel on interruption) finalize via the normal commit path so it pushes one undo snapshot (screens-and-flows.md §7.9). Because samples are already in page space, no re-projection of stored points is needed — only the front-buffer surface is re-created. Coordinate with the native low-latency surface (plugins/sane_ink_surface) so tearing down/recreating the surface flushes rather than discards. Never block the UI isolate (overview.md §6).\n\n## Security & privacy\nNone beyond baseline. The buffered stroke is in-memory note content; it is never logged and is committed to the local store through the normal encrypted path.\n\n## UX notes\nLosing ink mid-stroke because you opened your phone would be a trust-breaking bug. The user should see their stroke land where they drew it, undoable in one step. Follow ux-principles.md §10 (\"Undo is sacred\").\n\n## Test plan\nIntegration `app/integration_test/midstroke_config_change_test.dart`: synthesize a pointer-down + moves, trigger a fold/rotate, assert one committed stroke with correct geometry and a single undo. Unit test the buffer/commit-on-cancel path in `packages/sane_ink/test`. Golden of the committed stroke position post-transition.\n\n## Dependencies\nDepends on SN-PHN-017 (state continuity) and SN-INK-001 (ink engine / active-stroke model). Shares path with SN-DIM-028. Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-027",
+    "title": "Preserve editor state across orientation change within the frame budget",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "ios-phone",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "editor",
+      "perf"
+    ],
+    "size": "M",
+    "depends_on": [
+      "SN-DS-026",
+      "SN-PG-003",
+      "SN-PHN-017"
+    ],
+    "body": "## Context\nRotation is the most common runtime configuration change. It crosses aspect ratios and often size classes (a tablet portrait 820x1180 pt → landscape 1180x820 pt), and it must preserve full editor state and complete within the performance budget — no long relayout stall, no lost work. docs/platform/ipad.md §\"iPad multitasking\" forbids locking orientation; SN-PG-003 owns paged geometry+orientation. This issue is the editor-wide rotation continuity + timing contract.\n\n## Scope\n**In:**\n- Rotation preserves open note, page, scroll, zoom, tool, selection, undo/redo (same set as SN-PHN-017).\n- Rotation relayout completes within the frame budget: no frame > 16.7 ms (B5), first interactive frame after the rotate < 100 ms, sustained >= 60 fps (120 fps where the display allows) through the animation.\n- Chrome reflows (palette dock re-docks per edge/handedness, page rail shows/hides per width) while the page geometry stays fixed.\n\n**Out:**\n- Mid-stroke rotation (SN-DIM-028) and rotation-while-recording (SN-DIM-029) — separate.\n- Canvas rotate gesture with detents (SN-PG-007, a different feature).\n- Process death (SN-DIM-037).\n\n## Acceptance criteria\n- [ ] Rotating an iPad Pro 13\" (1032x1376 pt portrait ↔ 1376x1032 pt landscape) keeps the same page, scroll offset (re-centred through the aspect delta, ±1 dp), zoom (±0), tool/colour/width and any selection.\n- [ ] On a 120 Hz iPad the rotation animation sustains 120 fps (no frame > 8.3 ms) and never exceeds the 16.7 ms absolute ceiling; on a 60 Hz device it sustains 60 fps.\n- [ ] First interactive frame after rotation completes < 100 ms; there is no visible reload or spinner.\n- [ ] On an iPhone 18-class phone (portrait 402x874 pt ↔ landscape) the editor reflows the palette to a bottom row and hides the page rail per size class, preserving state.\n- [ ] At 200%/310% text scale the rotated layout reflows toolbar/labels without clipping or 2-D scroll (WCAG 1.4.10) at the narrow dimension.\n- [ ] Undo after a rotation reverts the last pre-rotation edit (stack intact).\n\n## Technical notes\nHandle via `OrientationBuilder`/`MediaQuery.orientationOf` + the SN-DS-026 size-class switch; keep state in providers above the rebuilt subtree (as SN-PHN-017). Re-project scroll offset through the viewport aspect change; keep page geometry fixed (ux-principles.md §8). Avoid heavy work on the rotation frame: cache completed strokes as `Picture`/tiles in sane_render so only chrome relayout runs on the UI isolate (overview.md §2/§6); defer thumbnail/index recompute. Respect Reduce Motion (cross-fade instead of rotate animation). iOS: do not set `UISupportedInterfaceOrientations` to a single value; honour `UIWindowScene`. Android: `android:configChanges`/`onConfigurationChanged` handled by the Flutter embedding — verify no full activity restart.\n\n## Security & privacy\nNone beyond baseline. A biometric-locked note stays locked through rotation.\n\n## UX notes\nRotation should feel instant and lossless — the page turns with the device. No jank, no reset. This is a direct expression of the \"never lags\" promise (ux-principles.md §0/§1).\n\n## Test plan\nIntegration `app/integration_test/rotation_continuity_test.dart` asserting state preserved and a FrameTiming capture with zero frames > 16.7 ms and first-interactive < 100 ms. Golden before/after rotate at iPad Pro and iPhone 18-class. Perf assertion wired into the SN-PERF harness (docs/platform/performance-budgets.md B4/B5).\n\n## Dependencies\nDepends on SN-DS-026, SN-PG-003 (paged geometry/orientation) and SN-PHN-017. Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-028",
+    "title": "Handle rotation and configuration change during an active stroke",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "ios-phone",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "editor",
+      "input-gestures"
+    ],
+    "size": "M",
+    "depends_on": [
+      "SN-DIM-027",
+      "SN-DIM-026"
+    ],
+    "body": "## Context\nRotating (or resizing) while the pen is down is the acute case of SN-DIM-026 for orientation. The policy must be explicit and lossless: either lock the rotation until the stroke ends, or commit-and-continue. This issue picks and implements the policy and proves no stroke is lost or garbled.\n\n## Scope\n**In:**\n- A defined policy: while a stroke is actively being drawn, defer the orientation relayout until pointer-up (short defer), OR commit the buffered stroke and relayout immediately if the OS forces the change; never garble the stroke.\n- Correct geometry after the change (page coordinates, per SN-DIM-026).\n- Applies to rotation, fold, and live resize divider drags that arrive mid-stroke.\n\n**Out:**\n- The buffering mechanism itself (SN-DIM-026) — this issue is the policy + timing layer.\n- Normal rotation continuity (SN-DIM-027).\n\n## Acceptance criteria\n- [ ] Drawing a stroke on an iPad and rotating mid-stroke results in one clean committed stroke with correct page geometry; the ink is not sheared, mirrored or offset (verified within 1 page unit vs the intended path).\n- [ ] If the policy defers relayout to pointer-up, the deferral is <= 250 ms and never blocks the UI isolate; if it commits-and-continues, the two segments join without a visible gap.\n- [ ] No frame during the mid-stroke rotation exceeds 16.7 ms (B5); the front-buffer wet-ink surface is recreated without a flash of missing ink.\n- [ ] A mid-stroke live-resize (Split View divider drag) is handled by the same policy with the same guarantees.\n- [ ] Undo after a mid-stroke rotation removes exactly the stroke(s) drawn, with no orphan fragments.\n- [ ] Palm rejection / stylus-only policy (screens-and-flows.md §7) is unaffected by the transition.\n\n## Technical notes\nExtend the ink input controller (`packages/sane_ink` + `app/lib/features/editor` gesture layer) to check \"stroke active?\" on `didChangeMetrics`. Prefer a short defer: hold the relayout one frame past `PointerUpEvent` when feasible; otherwise finalize via SN-DIM-026's commit-on-cancel. Recreate the native low-latency surface (plugins/sane_ink_surface) only after flushing the buffer. Because samples are in page space, no point re-projection is needed. Keep everything off the blocking path (overview.md §6). Document the chosen policy in docs/platform/android.md / ipad.md.\n\n## Security & privacy\nNone beyond baseline. In-flight stroke stays in memory and commits through the encrypted local store.\n\n## UX notes\nA user mid-word when the screen rotates must not lose the word. The join (or defer) must be invisible. Follow ux-principles.md §1 (wet ink is immediate) and §10 (undo is sacred).\n\n## Test plan\nIntegration `app/integration_test/midstroke_config_change_test.dart` (shared with SN-DIM-026) adding rotation + resize triggers; assert clean single stroke, correct geometry, zero frames > 16.7 ms. Widget/unit test of the defer-vs-commit policy branch.\n\n## Dependencies\nDepends on SN-DIM-027 (rotation continuity) and SN-DIM-026 (in-progress stroke buffer). Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  },
+  {
+    "type": "feature",
+    "priority": "p1",
+    "milestone": "M5 Phones & Platform Parity",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "key": "SN-DIM-029",
+    "title": "Keep audio recording uninterrupted across rotation and fold",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "ios-phone",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "audio",
+      "editor"
+    ],
+    "size": "M",
+    "depends_on": [
+      "SN-DIM-027",
+      "SN-AUD-001"
+    ],
+    "body": "## Context\nA lecture recording must not be interrupted by the user rotating the device or opening a foldable. Audio↔ink timeline anchors (screens-and-flows.md §7.6, \"everything you write is time-linked\") depend on a continuous clock. This issue guarantees recording (and playback) survives rotation/fold with no dropped audio frames and no timeline drift.\n\n## Scope\n**In:**\n- Recording continues across rotation/fold/resize with a monotonic elapsed clock and no dropped/duplicated audio frames.\n- Audio↔ink/text anchors stay correct (a stroke drawn just before the rotation still maps to the right audio timestamp).\n- Playback (has-rec state) preserves position and rate across the change.\n\n**Out:**\n- The recorder engine and anchor model (SN-AUD-001).\n- The tabletop audio layout (SN-DIM-024).\n- Rotation layout/timing (SN-DIM-027).\n\n## Acceptance criteria\n- [ ] Rotating an iPad while recording keeps the timer monotonic (no reset, no jump) and the saved duration on Stop equals wall-clock elapsed within ±50 ms.\n- [ ] No audio frames are dropped across the rotation (verified against the capture buffer counter); the mic session is not torn down by the configuration change.\n- [ ] A stroke timestamped immediately before the rotation maps to the correct audio position on playback (anchor drift < 50 ms).\n- [ ] Folding a Pixel 9 Pro Fold mid-recording (Compact→Expanded) does not interrupt capture; the recording indicator stays visible in the new layout.\n- [ ] During playback, rotating preserves the playhead (±0 ms) and the 1x/1.5x/2x rate; post-playhead strokes stay dimmed to .12.\n- [ ] No frame during the transition exceeds 16.7 ms (B5) and the audio thread is never blocked by the relayout.\n\n## Technical notes\nAudio capture already runs off the UI isolate (docs/architecture/overview.md §6), so relayout must not touch the recorder session — verify the `sane_audio` session and native recorder (plugins) are not disposed on configuration change. Keep the clock anchored to the audio device time base, not to widget lifecycle. iOS: ensure the `AVAudioSession`/recorder is scene-independent and not tied to a view controller that reinstantiates; keep background/interruption handling intact. Android: recorder in a bound service / foreground service survives `onConfigurationChanged`. Preserve playback position in a provider (SN-PHN-017 pattern).\n\n## Security & privacy\nNone beyond baseline. The mic-in-use indicator must remain visible in every layout the transition produces (privacy). No audio content in logs.\n\n## UX notes\nRotating or opening your phone during a lecture must never cost you a second of audio. The timer keeps ticking; the indicator stays. Preserve copy \"Recording — everything you write is time-linked\".\n\n## Test plan\nIntegration `app/integration_test/audio_config_change_test.dart`: start recording, rotate + fold, assert monotonic timer, no buffer underrun, anchor drift < 50 ms; playback variant asserts playhead+rate preserved. Unit test the clock source is device-time-based.\n\n## Dependencies\nDepends on SN-DIM-027 (rotation continuity) and SN-AUD-001 (audio engine). Related SN-DIM-024. Parent SN-DIM-001.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)\n- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)\n- [ ] Reviewed against docs/security/secure-coding-checklist.md\n"
+  }
+]

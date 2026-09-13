@@ -1,6 +1,6 @@
 # Backlog — area: onboarding
 
-16 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+17 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -24,6 +24,70 @@
 
 ## Issues
 
+### SN-BTY-051
+
+<a id="sn-bty-051"></a>
+
+**Introduce beautification with a before/after demo Sage offers exactly once**
+
+| Field | Value |
+|---|---|
+| GitHub | #1194 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | all |
+| Areas | onboarding, ocr-hwr, design-system |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-042](a11y.md#sn-bty-042), [SN-BTY-045](qa.md#sn-bty-045), [SN-DS-024](design-system.md#sn-ds-024) |
+| Security controls | `MASVS-PRIVACY-1` |
+| Extra labels | agent-ready |
+
+#### Context
+A feature nobody finds is a feature nobody has, and a feature that nags is a feature people disable along with everything near it. Beautification has a specific discovery problem: the people it helps most — someone who has always been told their handwriting is bad — are the least likely to go hunting in a settings tab, and the most likely to feel judged by an unsolicited "let me fix your writing".
+
+So the offer must be rare, earned, framed as help rather than criticism, and must demonstrate on **the user's own page** — because the whole point is "it still looks like you", which no stock sample can show. Sane Sage is the right messenger, and the mascot must stay a guide, not a salesman (docs/design/README.md tone rules; [SN-GUX-014](brand.md#sn-gux-014) one-mascot-per-surface).
+
+#### Scope
+**In:** the three discovery entry points; the once-per-profile Sage offer and its eligibility heuristic; the first-run introduction that frames [SN-BTY-013](editor.md#sn-bty-013)'s before/after preview on the user's own last page; permanent dismissal that propagates across the profile's devices; accessibility and localisation of the whole flow.
+**Out:** the preview widget ([SN-BTY-013](editor.md#sn-bty-013)) and the intensity control ([SN-BTY-011](settings.md#sn-bty-011), [SN-BTY-042](a11y.md#sn-bty-042)), both reused; the Sage overlay and mascot states ([SN-AI-018](ai.md#sn-ai-018), [SN-GUX-014](brand.md#sn-gux-014)); the general onboarding tour ([SN-ONB-005](onboarding.md#sn-onb-005)); telemetry ([SN-BTY-052](telemetry.md#sn-bty-052)).
+
+#### Acceptance criteria
+- [ ] Exactly **three** discovery points and no more: the editor tool overflow ("Tidy my writing"), Settings → Handwriting & stylus ([SN-SET-007](settings.md#sn-set-007)), and the single Sage offer.
+- [ ] The Sage offer fires **at most once per profile per major version** and only when all of: the user has written ≥ 3 pages of handwriting; the composite legibility of their recent writing ([SN-BTY-045](qa.md#sn-bty-045)) falls in the lower two bands (i.e. the feature would actually help); the pen is up and no stroke has been made for ≥ 2 s; no other overlay is showing; and the user is not in a focus/presentation mode.
+- [ ] The offer is **never** shown during writing, never over the active line, and never on a page in a protected context ([SN-BTY-039](ocr-hwr.md#sn-bty-039)).
+- [ ] One tap "Not for me" dismisses it permanently for that profile and suppresses it on the profile's other devices (a CRDT preference, [SN-SET-003](settings.md#sn-set-003)); a no-nag test asserts at most one offer per profile per major version across 100 simulated sessions.
+- [ ] The demo embeds [SN-BTY-013](editor.md#sn-bty-013)'s before/after preview over the user's **own** most recent page, with the intensity control ([SN-BTY-011](settings.md#sn-bty-011)), an explicit **Apply** and **Keep as I wrote it**; it is never auto-applied and closing it changes nothing.
+- [ ] If there is not enough of the user's handwriting, fall back to a bundled sample clearly labelled "example" — never presented as the user's writing.
+- [ ] Copy is help-framed and never judgemental; a written copy rule ("describe what the tool does, never what the writing is") is added to docs/design/ and reviewed with [SN-BRD-004](brand.md#sn-brd-004).
+- [ ] Fully operable by keyboard, switch and screen reader ([SN-A11Y-009](a11y.md#sn-a11y-009), [SN-A11Y-010](a11y.md#sn-a11y-010)); the before/after is announced textually ("Preview: 12 words tidied"), not conveyed by visuals alone; Reduce Motion replaces the morph with a cross-fade ([SN-A11Y-006](a11y.md#sn-a11y-006)).
+- [ ] Localised including RTL; the demo works with Devanagari and Arabic samples.
+- [ ] All 17 looks + dark; renders correctly at 400 px width and on tablets.
+
+#### Technical notes
+Offer eligibility is evaluated on the storage isolate against locally-computed metrics — **no network, no server-side targeting, no experiment service** (decision 8; [SN-PRV-010](privacy.md#sn-prv-010) bans always-on analytics SDKs). Implement the eligibility rule as a pure function in `packages/sane_core/lib/src/onboarding/beautify_offer.dart` so it is exhaustively unit-testable, and hold the "shown/dismissed" state as a per-profile LWW register so it converges across devices. UI in `app/lib/features/editor/beautify/intro/` reusing the mascot through the single `SaneSageMark` indirection ([SN-DS-024](design-system.md#sn-ds-024)) — the placeholder art is not releasable (CLAUDE.md §9), so the surface must degrade to a text-only offer if the asset is absent — and embedding [SN-BTY-013](editor.md#sn-bty-013)'s preview widget rather than a second renderer, so what is shown is exactly what applies.
+
+#### Security & privacy
+The demo renders the user's own note content in a promotional surface: it must never be captured into screenshots, diagnostics bundles ([SN-TEL-008](telemetry.md#sn-tel-008)) or crash artifacts, and must respect locked notebooks (never demo on locked content, [SN-GCMP-002](security.md#sn-gcmp-002)). Eligibility inputs are local metrics only and are never transmitted; the offer's shown/dismissed state may reach telemetry only as a coarse, content-free counter under [SN-BTY-052](telemetry.md#sn-bty-052). MASVS-PRIVACY-1.
+
+#### UX notes
+Design refs: docs/design/screens-and-flows.md (editor overflow, onboarding tips), docs/design/README.md (Sage tone), [SN-ONB-010](onboarding.md#sn-onb-010) first-run tips pattern. Sage appears in an inviting, non-blocking state with two buttons and no third option; the sheet is dismissible by tap-outside, Esc and back gesture. Empty state (not enough handwriting): labelled example. Error state: the offer simply does not appear — never an error toast.
+
+#### Test plan
+`packages/sane_core/test/onboarding/beautify_offer_test.dart` (eligibility truth table; no-nag across 100 simulated sessions; convergence of dismissal), `app/test/widget/beautify_intro_demo_test.dart` (own-page vs labelled-example, apply/keep, semantics, keyboard/switch, Reduce Motion), golden `app/test/golden/beautify_intro_*` across looks and RTL, and an integration test that the demo never mutates the document unless Apply is pressed.
+
+#### Dependencies
+SN-BTY-042 (strength control embedded in the demo), SN-BTY-045 (legibility metric for eligibility), SN-DS-024 (SaneSageMark indirection). Related: [SN-ONB-010](onboarding.md#sn-onb-010), [SN-GUX-014](brand.md#sn-gux-014).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner, dependency-review)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/design/screens-and-flows.md, docs/design/README.md)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, recognised text, style features or ink coordinates in logs
+
+---
+
 ### SN-GPHN-010
 
 <a id="sn-gphn-010"></a>
@@ -32,7 +96,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1023 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -221,7 +285,7 @@ Design: `docs/design/screens-and-flows.md` §3 + `design/Sane Notes.dc.html` 'Lo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #773 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -401,7 +465,7 @@ Design: `docs/design/screens-and-flows.md` §5 + `design/Sane Notes.dc.html` 'On
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #774 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -459,7 +523,7 @@ Design: `docs/design/screens-and-flows.md` §5 step 0. Voice is plain and warm, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #775 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -519,7 +583,7 @@ Design: `docs/design/screens-and-flows.md` §5 step 1. Multi-select chips use th
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #776 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -879,7 +943,7 @@ The measurement is transparent, not hidden: the user can view their own counts i
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #777 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -937,7 +1001,7 @@ Design: a developer-only overlay (no user-facing mock). Semi-transparent, high-c
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #835 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |

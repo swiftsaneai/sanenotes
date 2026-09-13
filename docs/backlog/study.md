@@ -34,7 +34,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1018 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -188,7 +188,7 @@ Children name their own tests. Epic-level gates: FSRS scheduling conformance vec
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #725 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -257,7 +257,7 @@ Unit: `packages/sane_core/test/study/study_model_test.dart` (immutability, equal
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #726 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -326,7 +326,7 @@ Widget: `app/test/features/study/card_composer_test.dart` (lasso → card, front
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #727 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -394,7 +394,7 @@ Unit: `packages/sane_core/test/study/fsrs_test.dart` (reference-vector conforman
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #728 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -463,7 +463,7 @@ Widget: `app/test/features/study/review_session_test.dart` (queue order, reveal,
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #729 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -531,7 +531,7 @@ Widget: `app/test/features/study/study_sets_test.dart` (subject/tag/manual membe
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #730 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -600,7 +600,7 @@ Widget: `app/test/features/study/quiz_test.dart` (generate → take → grade �
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #731 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -668,7 +668,7 @@ Widget: `app/test/features/study/focus_timer_test.dart` (countdown with fixed cl
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #732 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -736,7 +736,7 @@ Unit: `app/test/features/study/analytics_compute_test.dart` (retention, streak a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #733 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -804,7 +804,7 @@ Unit: `app/test/features/study/reminders_schedule_test.dart` (due-window computa
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #734 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -872,7 +872,7 @@ Unit: `app/test/features/study/export/csv_anki_export_test.dart` (CSV/TSV escapi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #735 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -941,7 +941,7 @@ Unit: `app/test/features/study/import/csv_anki_import_test.dart` (column mapping
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #736 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1010,7 +1010,7 @@ Widget: `app/test/features/study/linking/link_create_test.dart` (lasso→link, `
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #737 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1078,7 +1078,7 @@ Widget: `app/test/features/study/linking/backlinks_panel_test.dart` (A→B shows
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #738 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |

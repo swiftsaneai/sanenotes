@@ -1,6 +1,6 @@
 # Backlog — area: privacy
 
-25 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+27 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -31,6 +31,133 @@
 
 ## Issues
 
+### SN-BTY-022
+
+<a id="sn-bty-022"></a>
+
+**Show what the style model has learned, pause learning, and export it**
+
+| Field | Value |
+|---|---|
+| GitHub | #1171 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M4 Identity, Sync & Privacy |
+| Platforms | all |
+| Areas | privacy, settings, ocr-hwr |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-019](ocr-hwr.md#sn-bty-019), [SN-PRV-005](privacy.md#sn-prv-005) |
+| Security controls | `MASVS-PRIVACY-2`, `MASVS-PRIVACY-3`, `MASVS-CRYPTO-1`, `ASVS-V8`, `CWE-359`, `TM-P-05`, `TM-I-10` |
+| Extra labels | agent-ready |
+
+#### Context
+[SN-BTY-050](privacy.md#sn-bty-050) confines the handwriting style model — plain-language consent, no backup, no sync — and [SN-PRV-006](privacy.md#sn-prv-006) erases it along with everything else in a profile. Two things neither covers are still required: the user must be able to **see what has actually been learned**, and — under GDPR Art. 20 and India's DPDP portability duty ([SN-PRV-005](privacy.md#sn-prv-005)) — to **take it with them**. A student who has trained a model for two years should not lose it because they bought a new tablet. This issue adds inspection, pause and export to the same Settings surface rather than building a second screen.
+
+Export is also where the honest warning belongs: this file can reproduce your handwriting, so it is encrypted with a passphrase you choose and it never leaves the device unless you send it.
+
+#### Scope
+**In:** a coverage readout per script ([SN-BTY-021](ocr-hwr.md#sn-bty-021)) with a rendered sample of the learned alphabet drawn in the user's own hand ([SN-BTY-023](ocr-hwr.md#sn-bty-023)); a pause/resume-learning switch per profile and script; "Export my handwriting style" producing a single passphrase-encrypted `.sanestyle` file through the OS share/save sheet, with a pre-export warning; the decision — recorded here — that **import is not built**; the empty/low-coverage states.
+**Out:** the consent copy, privacy-dashboard entry and sync/backup confinement ([SN-BTY-050](privacy.md#sn-bty-050)); deletion and the erasure engine ([SN-PRV-006](privacy.md#sn-prv-006)); the store ([SN-BTY-019](ocr-hwr.md#sn-bty-019)); the trainer ([SN-BTY-020](ocr-hwr.md#sn-bty-020)); acceptance telemetry ([SN-BTY-052](telemetry.md#sn-bty-052)).
+
+#### Acceptance criteria
+- [ ] The panel renders a live sample of the learned alphabet via [SN-BTY-023](ocr-hwr.md#sn-bty-023), or an honest empty state at T0/T1 ("Keep writing — Sane Sage has learned 12 of your letters so far").
+- [ ] Pausing learning stops the trainer within one scheduling cycle, persists per profile and script, and resuming loses no existing exemplars.
+- [ ] Export writes one `.sanestyle` file encrypted with a user-supplied passphrase (Argon2id 64 MiB / 5 iterations → XChaCha20-Poly1305, matching TM-I-02 parameters); a weak passphrase is refused with the same strength meter as [SN-CRY-012](security.md#sn-cry-012); the file is never auto-uploaded and never attached to a share link.
+- [ ] A pre-export confirmation names the risk in plain language ("This file can be used to write in your handwriting") and requires an explicit action; cancelling leaves nothing on disk.
+- [ ] Export of a full two-script profile completes in ≤ 3 s on the mid-tier Android reference device with a progress state, and runs off the UI isolate.
+- [ ] Importing a `.sanestyle` file is not offered anywhere in the app; opening one shows "Handwriting styles can't be imported" with the reason — asserted by a test that no import route exists.
+- [ ] All controls are ≥ 44 pt / 48 dp, keyboard-reachable on web, screen-reader labelled, contrast ≥ 4.5:1 in all 17 looks and dark mode.
+- [ ] Nothing in this panel makes a network call; asserted by test.
+
+#### Technical notes
+`app/lib/features/settings/handwriting_style_panel.dart`, rendered inside the Handwriting & stylus tab ([SN-SET-007](settings.md#sn-set-007)) next to [SN-BTY-050](privacy.md#sn-bty-050)'s explanation block. The sample alphabet goes through `packages/sane_render` using [SN-BTY-023](ocr-hwr.md#sn-bty-023) output so the user sees exactly what corrections will look like. Export uses `packages/sane_crypto` for the passphrase KDF and AEAD and streams through a temp file that is deleted on cancel or failure; the container carries a schema version and a profile fingerprint but **no** account identifier. Pause state is a per-profile preference in `sane_core`, read by the [SN-BTY-020](ocr-hwr.md#sn-bty-020) scheduler.
+
+#### Security & privacy
+Implements transparency and portability over biometric-adjacent data (MASVS-PRIVACY-2/3, ASVS V8, CWE-359). **Import is deliberately absent**: accepting a style model from elsewhere would let someone install a victim's handwriting on their own device and make forged ink indistinguishable from authentic ink inside a shared note — if it is ever proposed it needs its own ADR and threat-model row. Export is the single sanctioned egress and is user-initiated, passphrase-protected, and excluded from OS backup paths (TM-I-10). The passphrase is never persisted or logged; the plaintext profile never touches an unencrypted temp file.
+
+#### UX notes
+Follows the calm, concrete voice of the privacy dashboard ([SN-PRV-002](privacy.md#sn-prv-002)) — no dark patterns, no scare copy. States to build: learning active, learning paused, nothing learned yet, exporting, export failed (disk, permission, cancelled), import attempted. The sample alphabet animates only on explicit tap and respects Reduce Motion. Design surface `docs/design/screens-and-flows.md` §12 Settings; `sane_ui` tokens, all 17 looks + dark.
+
+#### Test plan
+`app/test/settings/handwriting_style_panel_test.dart` (coverage display, pause/resume, empty state), `app/test/privacy/style_export_test.dart` (passphrase encryption, warning required, cancel leaves no residue, weak passphrase refused), `app/test/security/no_style_import_route_test.dart`, golden `app/test/golden/handwriting_style_panel_*` across looks + dark, `app/test/a11y/handwriting_style_panel_semantics_test.dart`, `app/test/security/style_panel_no_network_test.dart`.
+
+#### Dependencies
+SN-BTY-019 (store), SN-PRV-005 (data-subject-rights surface this portability action hangs off). Shares the Settings surface with [SN-BTY-050](privacy.md#sn-bty-050); deletion is [SN-PRV-006](privacy.md#sn-prv-006); renders via [SN-BTY-023](ocr-hwr.md#sn-bty-023); reads [SN-BTY-021](ocr-hwr.md#sn-bty-021).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner, dependency-review)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md §20.3, docs/product/prd-02-library-documents-audio-search.md §11/§19.3)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text, style-model parameters or note content in logs
+- [ ] Threat-model rows re-checked (docs/security/threat-model.md TM-I-03/TM-I-05/TM-I-08/TM-I-10, TM-P-01/TM-P-05) and the controls matrix updated if a stored asset changed
+
+---
+
+### SN-BTY-050
+
+<a id="sn-bty-050"></a>
+
+**Confine the handwriting style model: plain-language consent, no backup, no sync**
+
+| Field | Value |
+|---|---|
+| GitHub | #1193 |
+| Type | security |
+| Priority | p0 |
+| Milestone | M6 Collaboration, Sharing & Sage AI |
+| Platforms | all |
+| Areas | privacy, ocr-hwr, settings |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-022](privacy.md#sn-bty-022), [SN-PRV-002](privacy.md#sn-prv-002), [SN-PRV-006](privacy.md#sn-prv-006), [SN-SEC-023](security.md#sn-sec-023) |
+| Security controls | `MASVS-PRIVACY-1`, `MASVS-PRIVACY-2`, `MASVS-STORAGE-1`, `GDPR-Art17`, `DPDP-S12`, `CWE-117` |
+| Extra labels | agent-ready |
+
+#### Context
+To make writing neater in **your** hand, the app derives and stores a model of your hand: the learned glyph/slant/spacing profile ([SN-BTY-019](ocr-hwr.md#sn-bty-019), [SN-BTY-020](ocr-hwr.md#sn-bty-020)) and the per-writer thresholds the accessibility profiles add ([SN-BTY-040](a11y.md#sn-bty-040), [SN-BTY-041](a11y.md#sn-bty-041)). Handwriting is used in the real world to verify identity, so this is the most identifying artifact Sane Notes derives from note content — and the project's whole posture is that the device is the system of record and nothing leaves it without an explicit action (decisions 3, 6, 8).
+
+[SN-BTY-022](privacy.md#sn-bty-022) gives the user a screen to inspect, export and delete that model. This issue supplies the surrounding privacy guarantees that a settings screen cannot: the plain-language explanation people actually read, registration with the erasure engine so profile and account deletion reach it too, **default exclusion from sync and OS backup** with an explicit opt-in, a proof of zero egress, and consistency with the store privacy declarations.
+
+#### Scope
+**In:** the plain-language explanation panel and its copy rules; registration of the model as a named erasure scope so every deletion path reaches it; verified residue-free erasure; default exclusion from sync and OS auto-backup plus the explicit reversible opt-in; the data-subject-rights hook; the zero-egress proof; keeping the store declarations true.
+**Out:** the inspect/export/delete UI itself ([SN-BTY-022](privacy.md#sn-bty-022)); the model's construction ([SN-BTY-019](ocr-hwr.md#sn-bty-019), [SN-BTY-020](ocr-hwr.md#sn-bty-020)); the general erasure engine ([SN-PRV-006](privacy.md#sn-prv-006)) and dashboard shell ([SN-PRV-002](privacy.md#sn-prv-002)), both extended here; downloaded ML weights, which are not personal data ([SN-BTY-048](ocr-hwr.md#sn-bty-048)).
+
+#### Acceptance criteria
+- [ ] A plain-language panel (**≤ 150 words**, reading level ≈ grade 8, localised, RTL-correct) states exactly: what is derived (the shapes of your letters, your slant, size and spacing habits — from your own notes), where it lives (this device, this profile), that it never leaves the device unless you turn on syncing it, and what it is used for (making your writing neater while keeping it yours).
+- [ ] The handwriting model appears as a **named asset** in the privacy dashboard ([SN-PRV-002](privacy.md#sn-prv-002)) with its size and last-updated time, linking to [SN-BTY-022](privacy.md#sn-bty-022)'s panel.
+- [ ] The model is registered as an erasure **scope** so deletion from [SN-BTY-022](privacy.md#sn-bty-022), profile deletion, account deletion ([SN-AUTH-018](auth.md#sn-auth-018)) and the DSR surface ([SN-PRV-005](privacy.md#sn-prv-005)) all reach it through one code path; erasure of glyph model, thresholds and derived caches completes within **5 s**, is idempotent, survives app kill mid-operation (resumes on next launch), and requires no account.
+- [ ] A residue test proves nothing remains: no rows in SQLite, no blobs in the content-addressed store, no files in caches or temp, no keys in the secure store.
+- [ ] After deletion, beautification continues to work at Tier 0/1 ([SN-BTY-049](compat.md#sn-bty-049)) and the style guard re-enters conservative mode ([SN-BTY-047](ocr-hwr.md#sn-bty-047)); nothing crashes and no note content is touched.
+- [ ] The model and all derived artifacts are **excluded from sync and from OS auto-backup by default** (extends [SN-SEC-023](security.md#sn-sec-023), [SN-AND-030](security.md#sn-and-030), [SN-GSEC-002](security.md#sn-gsec-002)); an explicit, reversible opt-in includes them, and then only as E2E-encrypted payload (decision 3).
+- [ ] The explanation is reachable from Settings → Privacy & export ([SN-SET-012](settings.md#sn-set-012)) and from the point of first use of any style-synthesis feature ([SN-PRV-004](privacy.md#sn-prv-004) rationale pattern).
+- [ ] **Zero egress:** an automated test asserts no network call carries style features or templates, with the model present and with cloud AI enabled (MASVS-PRIVACY-2).
+- [ ] Style features, templates and thresholds never appear in logs, crash reports or the diagnostics bundle ([SN-TEL-008](telemetry.md#sn-tel-008)) — asserted by the redaction fuzz test ([SN-TEL-003](telemetry.md#sn-tel-003)).
+- [ ] The store declarations ([SN-PRV-015](privacy.md#sn-prv-015)) remain "no data collected": the panel copy and the declarations are checked against each other by [SN-PRV-016](privacy.md#sn-prv-016), and the DPIA ([SN-PRV-013](privacy.md#sn-prv-013)) gains a handwriting-model section.
+
+#### Technical notes
+Register the artifact with the erasure engine of [SN-PRV-006](privacy.md#sn-prv-006) as a named scope (`handwritingModel`) so [SN-BTY-022](privacy.md#sn-bty-022)'s delete button, profile deletion and account deletion ([SN-AUTH-018](auth.md#sn-auth-018)) all funnel into one implementation rather than three. Storage is [SN-BTY-019](ocr-hwr.md#sn-bty-019)'s per-profile encrypted store; exclusion flags follow the platform mechanisms already used for keys and caches — `isExcludedFromBackup` / `NSURLIsExcludedFromBackupKey` on Apple and `android:allowBackup`/`dataExtractionRules` on Android ([SN-SEC-023](security.md#sn-sec-023), [SN-AND-030](security.md#sn-and-030)). Sync exclusion is a manifest rule in `packages/sane_sync`. The explanation panel is a leaf widget in `app/lib/features/settings/privacy/` using `SaneSettingRow` ([SN-SET-004](settings.md#sn-set-004)) and `sane_ui` tokens, embedded by [SN-BTY-022](privacy.md#sn-bty-022)'s screen rather than duplicating it.
+
+#### Security & privacy
+This **is** the security work: LINDDUN *Identifiability*, *Disclosure* and *Unawareness* for a biometric-adjacent derived identifier; GDPR Art. 17 / DPDP erasure; MASVS-PRIVACY-1/2 and MASVS-STORAGE-1 for local confinement; CWE-117 for log injection/leakage. Fail closed: if deletion cannot complete, report failure and retry — never report success optimistically. Add the artifact to docs/security/threat-model.md's stored-assets table and to the controls matrix, and to the cleartext register ([SN-PRV-012](privacy.md#sn-prv-012)) if any part is stored unencrypted (it should not be). CODEOWNERS review required (privacy + security paths).
+
+#### UX notes
+Design refs: docs/design/screens-and-flows.md (Settings → Privacy, privacy dashboard) and docs/design/accessibility.md. Copy is concrete and non-alarming; no diagnosis-shaped language even though the model is built partly from accessibility profiles ([SN-BTY-040](a11y.md#sn-bty-040), [SN-BTY-041](a11y.md#sn-bty-041)). Deletion (driven from [SN-BTY-022](privacy.md#sn-bty-022)) shows a plain confirm ("Your notes are not affected"), a progress state, and a success announcement via [SN-GA11-002](a11y.md#sn-ga11-002). All 17 looks + dark; keyboard and switch operable ([SN-A11Y-009](a11y.md#sn-a11y-009)).
+
+#### Test plan
+`app/test/security/handwriting_model_egress_test.dart` (zero egress, cloud on and off), `packages/sane_core/test/privacy/handwriting_model_erasure_test.dart` (residue-free, idempotent, resumes after kill, reached from every deletion path), `packages/sane_sync/test/backup_exclusion_test.dart`, `app/test/widget/handwriting_model_explainer_test.dart` (copy length, semantics, keyboard/switch), golden `app/test/golden/privacy_handwriting_model_*`, and a declarations-match check in [SN-PRV-016](privacy.md#sn-prv-016).
+
+#### Dependencies
+SN-BTY-022 (inspect/export/delete panel this supplies guarantees for), SN-PRV-002 (privacy dashboard), SN-PRV-006 (erasure engine), SN-SEC-023 (backup exclusion). Artifact owned by [SN-BTY-019](ocr-hwr.md#sn-bty-019).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner, dependency-review)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/security/threat-model.md, docs/security/controls-matrix, docs/adr/0016-on-device-ml-and-ai.md)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, recognised text, style features or ink coordinates in logs
+
+---
+
 ### SN-GAND-020
 
 <a id="sn-gand-020"></a>
@@ -39,7 +166,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #997 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -97,7 +224,7 @@ Instrumented/manual matrix on a tablet with a second device user created (`adb s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #987 |
 | Type | security |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -155,7 +282,7 @@ Unit: `plugins/sane_media_picker/test/picker_result_test.dart` (type/size valida
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1108 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -216,7 +343,7 @@ Rehearsal: submit one access, one erasure and one parental request from test ide
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1026 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -273,7 +400,7 @@ Unit: per-store purge unit tests. Integration: the end-to-end erasure_completene
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1029 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -330,7 +457,7 @@ Review-based: a CI doc-consistency check that the sub-processor register and the
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1037 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -387,7 +514,7 @@ Review: PCI SAQ-A applicability walkthrough. Unit: assert no card/verification-d
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1036 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -926,7 +1053,7 @@ Design: onboarding, before the optional tour (`docs/design/screens-and-flows.md`
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #598 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |

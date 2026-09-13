@@ -1,6 +1,6 @@
 # Backlog — area: settings
 
-16 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+17 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -24,6 +24,67 @@
 ---
 
 ## Issues
+
+### SN-BTY-011
+
+<a id="sn-bty-011"></a>
+
+**Add a beautify intensity control with per-notebook and per-action scope**
+
+| Field | Value |
+|---|---|
+| GitHub | #1164 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | all |
+| Areas | settings, editor, ocr-hwr |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-002](ink.md#sn-bty-002) |
+| Security controls | `MASVS-PRIVACY-1`, `MASVS-STORAGE-1`, `CWE-532` |
+| Extra labels | agent-ready, innovation |
+
+#### Context
+Plenty of people love their handwriting exactly as it is, and for them an app that quietly "improves" it is an insult, not a feature. Every competitor that ships this makes it a global on/off at best (Apple's Auto-refine toggle; Samsung's one-tap clean-up). Sane Notes makes intensity a first-class, three-step control with a per-notebook default and a per-action override, defaulting to **Off**, so the feature is opt-in at every level and a lab notebook can stay raw while a lecture notebook gets tidied.
+
+This issue defines the intensity model, its persistence, and the single place every planner reads its parameters from — no planner may hard-code a strength constant.
+
+#### Scope
+**In:** the `BeautifyIntensity` enum (Off / Light / Neat) and the `BeautifyParams` bundle it resolves to; per-profile default, per-notebook override and per-action override with a clear precedence; persistence as an LWW register on the notebook so it syncs and merges; the resolution API every planner calls; the settings UI rows; the in-editor quick control; and the first-run explainer that introduces the feature without switching it on.
+**Out:** the planners themselves; the "refine as I write" toggle, which is a separate switch owned by [SN-BTY-009](ink.md#sn-bty-009) but gated by this control; per-pen settings (out of scope — this is a document-level behaviour).
+
+#### Acceptance criteria
+- [ ] A fresh install has intensity **Off** for every profile and every notebook; no ink is ever beautified until the user turns it on (asserted by a default-state test).
+- [ ] Precedence is: per-action override > per-notebook setting > per-profile default > Off; a table-driven test covers all combinations.
+- [ ] The per-notebook value persists as a CRDT LWW register, syncs, and converges on concurrent change; changing it never retroactively alters existing ink (existing overlays are untouched; new actions use the new value).
+- [ ] Every planner ([SN-BTY-004](ocr-hwr.md#sn-bty-004), [SN-BTY-005](ocr-hwr.md#sn-bty-005), [SN-BTY-006](ocr-hwr.md#sn-bty-006), [SN-BTY-007](ocr-hwr.md#sn-bty-007), [SN-BTY-008](ink.md#sn-bty-008)) takes its strength from `BeautifyParams`; a lint/arch test fails the build if a beautify planner contains a hard-coded intensity constant.
+- [ ] Light and Neat map to the documented parameter bundle: slant alpha 0.35/0.70, size clamp [0.90,1.12]/[0.80,1.25], Frechet bound 0.35/0.80 * strokeWidth, spacing gain 0.4/0.8 — one source of truth, documented in `docs/architecture/ink-engine.md` and referenced by tests.
+- [ ] Setting intensity to Off disables the Beautify commands, stops real-time mode, and **keeps existing overlays**, with a separate explicit action to revert them ([SN-BTY-012](editor.md#sn-bty-012)) — turning the feature off must not silently discard work either.
+- [ ] The settings rows and the in-editor control meet WCAG 2.2 AA: a labelled radio group with a value and a description, 44 pt / 48 dp targets, keyboard-operable, never colour-only.
+
+#### Technical notes
+`packages/sane_core/lib/src/model/beautify_intensity.dart` (enum + `BeautifyParams` immutable value object + resolution function), stored as a notebook LWW register alongside other per-notebook settings ([SN-CORE-002](storage.md#sn-core-002), [SN-CORE-003](sync.md#sn-core-003)) and as a per-profile preference through the preferences repository ([SN-SET-003](settings.md#sn-set-003) when it lands; until then the profile record in `sane_core`). The settings rows land in the Handwriting & stylus tab ([SN-SET-007](settings.md#sn-set-007)) using `SaneSettingRow` ([SN-SET-004](settings.md#sn-set-004)); the in-editor quick control sits in the Beautify sub-menu of the selection action bar ([SN-ED-011](editor.md#sn-ed-011)). Resolution is exposed as a Riverpod provider in `app/lib/features/editor/beautify/` and passed **into** `sane_ml` as a parameter — `sane_ml` never reads settings itself, preserving the package DAG (CLAUDE.md §3).
+
+#### Security & privacy
+The setting is note metadata: stored locally, E2E-encrypted when synced, never logged (MASVS-STORAGE-1, MASVS-PRIVACY-1, CWE-532). It is a privacy-relevant default in its own right — shipping Off means no automatic processing of anyone's handwriting until they ask for it, which is what the privacy dashboard and store privacy labels will state (decision 8, MASVS-PRIVACY-4 posture). No network.
+
+#### UX notes
+Three options with plain-language descriptions: **Off** ("Keep my handwriting exactly as I write it"), **Light** ("Gently even out lines and spacing"), **Neat** ("Tidy lines, slant and spacing — still your handwriting"). A live preview strip shows the same sample word at each setting, rendered from the user's own recent ink where available so they see their hand, not a stock sample. First-run explainer appears once, when the user first opens the Beautify menu — never as an interruption while writing — and its primary action is "Try it on this page", with "Not now" as an equal-weight option. Tokens from `sane_ui`, correct in all 17 looks and dark mode, adaptive to 400 px width.
+
+#### Test plan
+`packages/sane_core/test/model/beautify_intensity_test.dart` (defaults, precedence table, parameter bundles), `packages/sane_core/test/crdt/beautify_setting_merge_test.dart` (LWW convergence), `app/test/widget/settings/beautify_intensity_row_test.dart` (a11y semantics, keyboard, preview strip), `app/test/features/editor/beautify/intensity_gate_test.dart` (Off disables commands and real-time, keeps overlays), golden `app/test/golden/settings/beautify_intensity_*.png` across representative looks.
+
+#### Dependencies
+SN-BTY-002 (overlay model). Settings surfaces [SN-SET-004](settings.md#sn-set-004), [SN-SET-007](settings.md#sn-set-007); preferences [SN-SET-003](settings.md#sn-set-003).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md PRD-ED-187)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text or note content in logs (TM-I-05)
+
+---
 
 ### SN-SET-001
 
@@ -119,7 +180,7 @@ Children name their own tests. Epic-level gates: golden coverage of every tab ac
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #453 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -185,7 +246,7 @@ Widget: `app/test/settings/settings_screen_test.dart` (six tabs present, order, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #454 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -251,7 +312,7 @@ Unit: `packages/sane_core/test/settings/preferences_test.dart` (defaults, immuta
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #455 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -317,7 +378,7 @@ Widget: `packages/sane_ui/test/settings/sane_setting_row_test.dart` (variants re
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #456 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -384,7 +445,7 @@ Widget: `app/test/settings/account_plan_tab_test.dart` (Free vs Pro card + CTA, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #457 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -451,7 +512,7 @@ Widget: `app/test/settings/sync_backup_tab_test.dart` (options exclude SS Cloud;
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #458 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -518,7 +579,7 @@ Widget: `app/test/settings/stylus_input_tab_test.dart` (keys/defaults/copy; capa
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #459 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -585,7 +646,7 @@ Widget: `app/test/settings/stylus_calibration_test.dart` (curve write/read, capa
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #460 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -653,7 +714,7 @@ Widget: `app/test/settings/appearance_tab_test.dart` (17 cards, look/dark persis
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #461 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -718,7 +779,7 @@ Widget: `app/test/settings/notifications_tab_test.dart` (keys/defaults/copy; sha
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #462 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -784,7 +845,7 @@ Widget: `app/test/settings/timetable_editor_test.dart` (add/edit/delete, deleted
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #463 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -850,7 +911,7 @@ Widget: `app/test/settings/privacy_export_tab_test.dart` (onDevice default/copy;
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #464 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -917,7 +978,7 @@ Widget: `app/test/settings/security_section_test.dart` (app-lock enable+timeout;
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #465 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -983,7 +1044,7 @@ Widget: `app/test/settings/storage_usage_view_test.dart` (breakdown sums to tota
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #466 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1049,7 +1110,7 @@ Widget: `app/test/settings/about_screen_test.dart` (version present, licences li
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #772 |
 | Type | task |
 | Priority | p3 |
 | Milestone | M4 Identity, Sync & Privacy |

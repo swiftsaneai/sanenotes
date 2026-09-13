@@ -22,8 +22,15 @@ console.log(compact.join('\n'));
 console.log(`\n${issues.length} issues`);
 if (indexOnly) process.exit(0);
 
-rmSync(OUT, { recursive: true, force: true });
+// Remove only files this script generates. docs/backlog/ also holds hand-written, committed
+// reports (DEDUP-REPORT.md and friends); wiping the directory silently deleted them.
 mkdirSync(OUT, { recursive: true });
+const GENERATED = /^(README\.md|[a-z0-9-]+\.md)$/;
+const KEEP = new Set(['DEDUP-REPORT.md']);
+for (const f of readdirSync(OUT)) {
+  if (KEEP.has(f) || !GENERATED.test(f)) continue;
+  rmSync(join(OUT, f), { force: true });
+}
 
 const areas = [...new Set(issues.map(i => i.areas[0]))].sort();
 const childrenOf = k => issues.filter(i => i.parent === k);

@@ -1,6 +1,6 @@
 # Backlog — area: compat
 
-33 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+52 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -56,6 +56,46 @@
   - [SN-GPRF-003](compat.md#sn-gprf-003) **Validate the armeabi-v7a 32-bit build against the Tier 3 minimum bar** · p2 · test · S · M5 Phones & Platform Parity
   - [SN-GPRF-004](compat.md#sn-gprf-004) **Validate the x86_64 build on ChromeOS and emulators as functional-only** · p3 · test · S · M5 Phones & Platform Parity
   - [SN-GPRF-005](compat.md#sn-gprf-005) **Gate the Android 16 Tier-1 slot on a behaviour-change conformance run** · p1 · test · M · M5 Phones & Platform Parity
+- [SN-DIM-001](compat.md#sn-dim-001) **Guarantee correct layout on every supported screen dimension** (epic · M1 Ink Editor Alpha)
+  - [SN-DIM-002](compat.md#sn-dim-002) **Author the checked-in device and viewport dimensional matrix as data** · p1 · infra · M · M0 Foundations
+  - [SN-DIM-003](compat.md#sn-dim-003) **Make the dimension matrix extensible to unreleased and synthetic devices** · p2 · infra · S · M1 Ink Editor Alpha
+  - [SN-DIM-004](design-system.md#sn-dim-004) **Forbid hardcoded device names and raw pixel-width branches via an arch test** · p1 · infra · M · M1 Ink Editor Alpha
+  - [SN-DIM-005](design-system.md#sn-dim-005) **Build the cross-platform safe-area and inset resolver primitive** · p1 · feature · M · M1 Ink Editor Alpha
+  - [SN-DIM-006](editor.md#sn-dim-006) **Keep the editor canvas and palette dock clear of cutouts and rounded corners** · p1 · feature · M · M1 Ink Editor Alpha
+  - [SN-DIM-008](pages-canvas.md#sn-dim-008) **Render the fixed-aspect page correctly on any viewport without distorting ink** · p1 · feature · M · M1 Ink Editor Alpha
+  - [SN-DIM-009](pages-canvas.md#sn-dim-009) **Support ultra-wide, ultra-tall and square-ish viewports without breakage** · p2 · feature · M · M1 Ink Editor Alpha
+  - [SN-DIM-011](design-system.md#sn-dim-011) **Keep the editor usable at the minimum supported viewport of 320x480** · p2 · feature · M · M1 Ink Editor Alpha
+  - [SN-DIM-012](qa.md#sn-dim-012) **Build the layout golden harness that renders screens across the whole matrix** · p1 · test · L · M1 Ink Editor Alpha
+  - [SN-DIM-013](qa.md#sn-dim-013) **Fail CI on overflow, clipping or occlusion across the layout matrix** · p1 · test · M · M1 Ink Editor Alpha
+  - [SN-DIM-014](qa.md#sn-dim-014) **Promote Flutter overflow and layout assertions to hard test failures** · p1 · test · S · M1 Ink Editor Alpha
+  - [SN-DIM-016](design-system.md#sn-dim-016) **Ensure crisp rendering and hairline borders across device pixel ratios 1 to 4** · p2 · test · M · M1 Ink Editor Alpha
+  - [SN-DIM-021](compat.md#sn-dim-021) **Expose a fold-posture and hinge-geometry model in sane_ui** · p1 · feature · M · M5 Phones & Platform Parity
+  - [SN-DIM-022](compat.md#sn-dim-022) **Keep interactive controls and ink clear of the fold hinge** · p1 · feature · M · M5 Phones & Platform Parity
+  - [SN-DIM-023](compat.md#sn-dim-023) **Add a tabletop/flex-mode editor layout (canvas top, controls bottom)** · p1 · feature · L · M5 Phones & Platform Parity
+  - [SN-DIM-024](compat.md#sn-dim-024) **Add a tabletop/flex-mode layout for audio recording and playback** · p1 · feature · M · M5 Phones & Platform Parity
+  - [SN-DIM-026](compat.md#sn-dim-026) **Preserve an in-progress stroke across fold, unfold and rotation** · p1 · feature · M · M5 Phones & Platform Parity
+  - [SN-DIM-027](compat.md#sn-dim-027) **Preserve editor state across orientation change within the frame budget** · p1 · feature · M · M5 Phones & Platform Parity
+  - [SN-DIM-028](compat.md#sn-dim-028) **Handle rotation and configuration change during an active stroke** · p1 · feature · M · M5 Phones & Platform Parity
+  - [SN-DIM-029](compat.md#sn-dim-029) **Keep audio recording uninterrupted across rotation and fold** · p1 · feature · M · M5 Phones & Platform Parity
+  - [SN-DIM-030](compat.md#sn-dim-030) **Reflow layout continuously during live window resize** · p1 · feature · L · M5 Phones & Platform Parity
+  - [SN-DIM-032](compat.md#sn-dim-032) **Support two app windows side by side editing different notebooks** · p2 · feature · L · M5 Phones & Platform Parity
+  - [SN-DIM-033](compat.md#sn-dim-033) **Keep two windows coherent when they open the same notebook** · p2 · feature · M · M5 Phones & Platform Parity
+  - [SN-DIM-036](compat.md#sn-dim-036) **Adapt available space when a keyboard or trackpad attaches** · p2 · feature · M · M5 Phones & Platform Parity
+  - [SN-DIM-037](compat.md#sn-dim-037) **Restore editor state after process death at a different window size** · p1 · feature · L · M5 Phones & Platform Parity
+  - [SN-DIM-038](qa.md#sn-dim-038) **Build the foldable, orientation and resize continuity test matrix** · p1 · test · L · M5 Phones & Platform Parity
+  - [SN-DIM-041](compat.md#sn-dim-041) **Verify every screen holds at platform-max text scale on the smallest viewport** · p1 · test · L · M5 Phones & Platform Parity
+  - [SN-DIM-042](design-system.md#sn-dim-042) **Make sane_ui chrome reflow under text growth without truncating labels** · p1 · feature · M · M1 Ink Editor Alpha
+  - [SN-DIM-043](perf.md#sn-dim-043) **Author ink and hairline geometry in logical units, rasterise at devicePixelRatio** · p1 · feature · M · M1 Ink Editor Alpha
+  - [SN-DIM-044](ink.md#sn-dim-044) **Store stroke geometry DPR-independently so ink imports at identical physical size** · p1 · feature · M · M2 Library & Documents
+  - [SN-DIM-045](perf.md#sn-dim-045) **Make chrome animation and layout refresh-rate independent across 60/90/120Hz** · p1 · feature · M · M1 Ink Editor Alpha
+  - [SN-DIM-046](perf.md#sn-dim-046) **Gate the reflow transition frame budget for rotate, resize, fold and keyboard** · p1 · test · M · M5 Phones & Platform Parity
+  - [SN-DIM-047](perf.md#sn-dim-047) **Bound relayout cost so resize never does an O(n) pass over all pages or strokes** · p1 · task · M · M1 Ink Editor Alpha
+  - [SN-DIM-048](perf.md#sn-dim-048) **Invalidate thumbnails, tiles and page rasters incrementally on resize and DPR change** · p2 · feature · M · M2 Library & Documents
+  - [SN-DIM-049](perf.md#sn-dim-049) **Hold the memory budget at the largest viewport and highest DPR with a 600-page PDF** · p1 · test · M · M5 Phones & Platform Parity
+  - [SN-DIM-050](design-system.md#sn-dim-050) **Define the reduced-effects look-degradation profile for the low-end layout tier** · p1 · feature · M · M5 Phones & Platform Parity
+  - [SN-DIM-051](qa.md#sn-dim-051) **Golden-test the degraded looks on the low-end tier across 17 looks and dark mode** · p2 · test · S · M5 Phones & Platform Parity
+  - [SN-DIM-053](qa.md#sn-dim-053) **Add a per-release device-farm job that runs the layout matrix on real and virtual devices** · p1 · infra · L · M7 Beta Hardening & Security Audit
+  - [SN-DIM-055](compat.md#sn-dim-055) **Prove a new unreleased device or viewport is added to the matrix in under an hour** · p2 · docs · S · M5 Phones & Platform Parity
 - [SN-PHN-001](compat.md#sn-phn-001) **Deliver first-class iPhone and Android phone experiences** (epic · M5 Phones & Platform Parity)
   - [SN-PHN-002](compat.md#sn-phn-002) **Define window size classes and the adaptive layout resolver** · p1 · task · M · M5 Phones & Platform Parity
   - [SN-PHN-003](design-system.md#sn-phn-003) **Build the compact phone shell with bottom navigation and push routing** · p1 · feature · L · M5 Phones & Platform Parity
@@ -517,6 +557,1277 @@ SN-FND-002 (build scaffold), SN-AND-022 (Android build config / NDK).
 
 ---
 
+### SN-BTY-049
+
+<a id="sn-bty-049"></a>
+
+**Define beautification capability tiers and degrade gracefully with no model**
+
+| Field | Value |
+|---|---|
+| GitHub | #1192 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | all |
+| Areas | compat, ocr-hwr, perf |
+| Size | M |
+| SDLC | design |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-HWR-002](ocr-hwr.md#sn-hwr-002), [SN-BTY-037](ocr-hwr.md#sn-bty-037) |
+| Security controls | — |
+| Extra labels | agent-ready, innovation |
+
+#### Context
+Sane Notes runs on five surfaces and on hardware from a current iPad Pro to a 4 GB Android tablet and a browser with no WebGPU. ADR-0016 is blunt about the cost: capability varies wildly by device, OS and price, ML Kit is mobile-only, and web is the weakest surface. If beautification is built as one monolithic ML feature, it exists on flagships and is a dead menu item everywhere else — exactly the Apple-vs-non-Apple gap we are positioning against ([SN-HWR-001](ocr-hwr.md#sn-hwr-001), PRD-LB §1.2 "five surfaces in lock-step").
+
+These are **device capability** tiers and they are orthogonal to [SN-BTY-035](i18n.md#sn-bty-035)'s per-script tiers: script tiers answer "have we validated beautification for this writing system?", these answer "what can this device actually run?". The effective capability is the intersection of the two, and both must pass before an action is offered.
+
+The answer is a tier ladder where the **bottom rung needs no model and no recognition at all**. Straightening baselines, normalising slant and letter size, regularising word and line spacing, aligning lists and margins, and pulling drifting lines level are pure geometry over stroke data we already have. That is most of the "structure" half of the maintainer's brief, and it can run on literally every supported device.
+
+#### Scope
+**In:** the three-tier definition; the runtime capability probe and resolver; the per-tier feature matrix and its enforcement in the UI; the explain-and-upgrade path; per-tier latency budgets; the golden matrix.
+**Out:** the model manifest and download ([SN-BTY-048](ocr-hwr.md#sn-bty-048)); the transforms themselves ([SN-BTY-004](ocr-hwr.md#sn-bty-004)–[SN-BTY-008](ink.md#sn-bty-008), [SN-BTY-040](a11y.md#sn-bty-040), [SN-BTY-041](a11y.md#sn-bty-041)); the perf/incrementality work ([SN-BTY-014](perf.md#sn-bty-014)); phone tuning ([SN-BTY-043](a11y.md#sn-bty-043)).
+
+#### Acceptance criteria
+- [ ] **Tier 0 — geometric, no model, no recognition, everywhere:** baseline straightening, slant normalisation, letter-size normalisation, word/line spacing, list and margin alignment, drift correction. Available on every supported device and browser including Tier 3 Android and Safari without WebGPU.
+- [ ] **Tier 1 — + recognition:** word-aware spacing and segmentation, per-letter normalisation, list/heading detection, spellcheck **flagging** (no re-render).
+- [ ] **Tier 2 — + style synthesis:** re-render a corrected word in the user's own hand; every Tier 2 edit is Class C under [SN-BTY-037](ocr-hwr.md#sn-bty-037) and always reviewed.
+- [ ] Tier is resolved by a **runtime capability probe** (recogniser availability, model presence, memory class, compute backend), never a platform string — mirroring the registry pattern of [SN-HWR-002](ocr-hwr.md#sn-hwr-002) and the ink-tier rule in CLAUDE.md §8.
+- [ ] The effective capability is the **intersection** of this device tier and [SN-BTY-035](i18n.md#sn-bty-035)'s per-script tier; a unit test covers the full cross-product, including "capable device, unvalidated script" ⇒ off.
+- [ ] The UI **never offers an action the resolved tier cannot perform**; unavailable actions are either absent or shown disabled with a one-line reason and a concrete next step ("Correcting spelling in your handwriting needs the writing model — 9 MB").
+- [ ] No crash and **no silent no-op** when a model is missing: a test drives every entry point with all models removed and asserts either a working Tier 0 result or an explicit explained state.
+- [ ] Tier 0 meets its own budget: a line tidies in ≤ 300 ms and a 2,000-stroke page in ≤ 3 s on the Tier 3 reference device ([SN-PERF-004](perf.md#sn-perf-004)), off the UI isolate.
+- [ ] Tier changes at runtime (model finished downloading, device under memory pressure, thermal throttle via [SN-PERF-015](perf.md#sn-perf-015)) are handled without losing in-flight work and without changing already-applied edits.
+- [ ] A golden matrix covers Tier 0/1/2 × light/dark across the 17 looks for the beautify affordances ([SN-QA-005](qa.md#sn-qa-005)).
+- [ ] The tier matrix is documented in docs/adr/0016-on-device-ml-and-ai.md so a new agent can see at a glance what each surface gets.
+
+#### Technical notes
+Resolver in `packages/sane_ml/lib/src/beautify/tier_resolver.dart` returning `BeautifyTier` from a `CapabilityReport` assembled from the [SN-HWR-002](ocr-hwr.md#sn-hwr-002) registry, the model manifest ([SN-BTY-048](ocr-hwr.md#sn-bty-048)) and a device-class probe (memory, compute backend). Tier 0 lives entirely in `packages/sane_ink/lib/src/beautify/` (pure Dart, no `package:flutter`, no ML dependency) so it compiles and runs on web and in headless tests. App-level gating goes through a Riverpod provider in `app/lib/features/editor/beautify/`; no feature package may import another (CLAUDE.md §3). Follow the graceful-degradation precedents in [SN-GAND-012](compat.md#sn-gand-012) (no Play services) and [SN-GUX-010](sync.md#sn-gux-010) (cloud-only action degradation) for the copy and interaction pattern.
+
+#### Security & privacy
+Degradation must never become a silent escalation: a missing on-device capability MUST NOT fall back to cloud inference. Any cloud path stays behind the per-request opt-in and the data-leaves-device banner of [SN-HWR-019](ocr-hwr.md#sn-hwr-019) / [SN-AI-019](ai.md#sn-ai-019) (decision 6, ADR-0016 §7). A test asserts that with all models absent and cloud disabled, no network call is attempted by any beautify entry point. The capability report is device state only — no content, no stable identifier, never logged with note data.
+
+#### UX notes
+Design refs: docs/design/screens-and-flows.md §12, docs/design/accessibility.md, and the empty/loading/error/offline matrix of [SN-GUX-009](design-system.md#sn-gux-009). Tone: never apologise for the device, state the capability and the next step. Disabled controls carry an accessible explanation (not just a tooltip) and are announced by the status announcer ([SN-GA11-002](a11y.md#sn-ga11-002)). All 17 looks + dark; RTL mirrored.
+
+#### Test plan
+`packages/sane_ml/test/beautify/tier_resolver_test.dart` (matrix of capability reports ⇒ tier), `packages/sane_ink/test/beautify/tier0_geometry_test.dart` (works with no recogniser at all), `app/test/widget/beautify_tier_gating_test.dart` (no unavailable action offered; explanations present and accessible), `app/test/security/beautify_no_cloud_fallback_test.dart` (negative: zero egress with models absent), golden matrix `app/test/golden/beautify_tier_*`, and a Tier 3 perf test.
+
+#### Dependencies
+SN-HWR-002 (capability registry pattern and recogniser availability), SN-BTY-037 (Class C routing for Tier 2). Budgets from [SN-PERF-004](perf.md#sn-perf-004); models from [SN-BTY-048](ocr-hwr.md#sn-bty-048).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner, dependency-review)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/overview.md §2, docs/platform/performance-budgets.md)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, recognised text, style features or ink coordinates in logs
+
+---
+
+### SN-DIM-001
+
+<a id="sn-dim-001"></a>
+
+**Guarantee correct layout on every supported screen dimension**
+
+| Field | Value |
+|---|---|
+| GitHub | #1203 |
+| Type | epic |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | compat, design-system, perf |
+| Size | XL |
+| SDLC | design |
+| Parent | — |
+| Depends on | — |
+| Security controls | — |
+| Extra labels | — |
+
+#### Context
+The maintainer's requirement is explicit: Sane Notes "should be reliable for all the types of dimensions and everything, like the latest iPhone 18, foldable phones, and these types of dimensions. There should be no lag and no issue in the design and everything." Every logical size, aspect ratio, density, cutout, fold state, orientation, window size and text-scale must render correctly **and** stay inside the performance budgets (`docs/platform/performance-budgets.md`) — including on devices that do not exist yet. This is a cross-cutting discipline, not a per-screen fix: it needs one canonical, data-driven device/viewport matrix, one safe-area contract, aspect-independent page rendering, and a golden + assertion gate that fails CI the instant any dimension overflows, clips or occludes a control.
+
+This epic does **not** re-invent the layout primitives — those live in [SN-DS-026](design-system.md#sn-ds-026) (adaptive layout primitives / window size classes) and [SN-PHN-002](compat.md#sn-phn-002) (window-size-class resolver). It does not restate the support-tier registry, which is [SN-GPRF-006](compat.md#sn-gprf-006). It builds the *dimensional-correctness* layer on top of them and holds the line for every surface ([SN-IPAD-001](input-gestures.md#sn-ipad-001), [SN-AND-001](compat.md#sn-and-001), [SN-WEB-001](compat.md#sn-web-001), [SN-PHN-001](compat.md#sn-phn-001)) under one epic.
+
+#### Scope
+**In:** a checked-in dimensional device/viewport matrix ([SN-DIM-002](compat.md#sn-dim-002)) and its extensibility to unreleased/synthetic devices ([SN-DIM-003](compat.md#sn-dim-003)); enforcement that no widget branches on device name or raw pixel width ([SN-DIM-004](design-system.md#sn-dim-004)); a cross-platform safe-area/inset primitive ([SN-DIM-005](design-system.md#sn-dim-005)) and the editor+palette occlusion guarantee ([SN-DIM-006](editor.md#sn-dim-006)); fold/hinge-aware reflow ([SN-DIM-022](compat.md#sn-dim-022)); aspect-independent page fit ([SN-DIM-008](pages-canvas.md#sn-dim-008)); extreme aspect ratios ([SN-DIM-009](pages-canvas.md#sn-dim-009)), desktop live-resize ([SN-DIM-030](compat.md#sn-dim-030)) and the 320×480 minimum viewport ([SN-DIM-011](design-system.md#sn-dim-011)); the layout-matrix golden harness ([SN-DIM-012](qa.md#sn-dim-012)), the overflow/clip/occlusion CI gate ([SN-DIM-013](qa.md#sn-dim-013)) and overflow-assertion promotion ([SN-DIM-014](qa.md#sn-dim-014)); text-scale integrity ([SN-DIM-041](compat.md#sn-dim-041)), density/DPR correctness ([SN-DIM-016](design-system.md#sn-dim-016)) and resize/relayout performance ([SN-DIM-046](perf.md#sn-dim-046)). The full child set additionally spans fold/hinge posture and reflow, tabletop layouts, orientation and configuration-change (incl. in-stroke) continuity, live window resize, multi-window and external-display adaptation, refresh-rate/DPR/text-scale correctness, bounded relayout cost and memory, the low-end effect-degradation profile, and the layout verification matrix and device farm — every surviving child is enumerated in the checklist below.
+**Out:** the layout primitives themselves ([SN-DS-026](design-system.md#sn-ds-026), [SN-PHN-002](compat.md#sn-phn-002)); editor-state preservation across window/fold changes ([SN-PHN-017](compat.md#sn-phn-017), [SN-IPAD-010](compat.md#sn-ipad-010)); the OS/arch/browser support registry ([SN-GPRF-006](compat.md#sn-gprf-006)) and runtime update wall ([SN-GPRF-007](compat.md#sn-gprf-007)); look/theme correctness ([SN-QA-005](qa.md#sn-qa-005), [SN-GUX-015](qa.md#sn-gux-015)).
+
+#### Acceptance criteria
+- [ ] Every child below is delivered and its acceptance criteria met, and the layout-matrix gate ([SN-DIM-013](qa.md#sn-dim-013)) is green across the full matrix ([SN-DIM-002](compat.md#sn-dim-002)) × light/dark.
+- [ ] Key screens (Library, Editor, Search, Settings, each overlay) render with no overflow, clipping or occlusion from 320×480 CSS px up to an ultrawide (3440×1440) window, at DPR 1.0–4.0, at text scale 85%–320%, in portrait and landscape, folded and unfolded.
+- [ ] A newly-added synthetic device row (e.g. an "iPhone 18 Pro Max-class" 440×956 pt entry, or a foldable at 2076×2152 with a 24 pt hinge inset) is covered by the golden matrix with no code change beyond the data row.
+- [ ] No frame exceeds the display frame budget (16.7 ms at 60 Hz, 8.3 ms at 120 Hz) during a window-class change, rotation, or continuous desktop resize ([SN-DIM-046](perf.md#sn-dim-046)).
+
+### Children (all must land)
+- [ ] [SN-DIM-002](compat.md#sn-dim-002) — Author the checked-in device and viewport dimensional matrix as data
+- [ ] [SN-DIM-003](compat.md#sn-dim-003) — Make the dimension matrix extensible to unreleased and synthetic devices
+- [ ] [SN-DIM-004](design-system.md#sn-dim-004) — Forbid hardcoded device names and raw pixel-width branches via an arch test
+- [ ] [SN-DIM-005](design-system.md#sn-dim-005) — Build the cross-platform safe-area and inset resolver primitive
+- [ ] [SN-DIM-006](editor.md#sn-dim-006) — Keep the editor canvas and palette dock clear of cutouts and rounded corners
+- [ ] [SN-DIM-008](pages-canvas.md#sn-dim-008) — Render the fixed-aspect page correctly on any viewport without distorting ink
+- [ ] [SN-DIM-009](pages-canvas.md#sn-dim-009) — Support ultra-wide, ultra-tall and square-ish viewports without breakage
+- [ ] [SN-DIM-011](design-system.md#sn-dim-011) — Keep the editor usable at the minimum supported viewport of 320x480
+- [ ] [SN-DIM-012](qa.md#sn-dim-012) — Build the layout golden harness that renders screens across the whole matrix
+- [ ] [SN-DIM-013](qa.md#sn-dim-013) — Fail CI on overflow, clipping or occlusion across the layout matrix
+- [ ] [SN-DIM-014](qa.md#sn-dim-014) — Promote Flutter overflow and layout assertions to hard test failures
+- [ ] [SN-DIM-016](design-system.md#sn-dim-016) — Ensure crisp rendering and hairline borders across device pixel ratios 1 to 4
+- [ ] [SN-DIM-021](compat.md#sn-dim-021) — Expose a fold-posture and hinge-geometry model in sane_ui
+- [ ] [SN-DIM-022](compat.md#sn-dim-022) — Keep interactive controls and ink clear of the fold hinge
+- [ ] [SN-DIM-023](compat.md#sn-dim-023) — Add a tabletop/flex-mode editor layout (canvas top, controls bottom)
+- [ ] [SN-DIM-024](compat.md#sn-dim-024) — Add a tabletop/flex-mode layout for audio recording and playback
+- [ ] [SN-DIM-026](compat.md#sn-dim-026) — Preserve an in-progress stroke across fold, unfold and rotation
+- [ ] [SN-DIM-027](compat.md#sn-dim-027) — Preserve editor state across orientation change within the frame budget
+- [ ] [SN-DIM-028](compat.md#sn-dim-028) — Handle rotation and configuration change during an active stroke
+- [ ] [SN-DIM-029](compat.md#sn-dim-029) — Keep audio recording uninterrupted across rotation and fold
+- [ ] [SN-DIM-030](compat.md#sn-dim-030) — Reflow layout continuously during live window resize
+- [ ] [SN-DIM-032](compat.md#sn-dim-032) — Support two app windows side by side editing different notebooks
+- [ ] [SN-DIM-033](compat.md#sn-dim-033) — Keep two windows coherent when they open the same notebook
+- [ ] [SN-DIM-036](compat.md#sn-dim-036) — Adapt available space when a keyboard or trackpad attaches
+- [ ] [SN-DIM-037](compat.md#sn-dim-037) — Restore editor state after process death at a different window size
+- [ ] [SN-DIM-038](qa.md#sn-dim-038) — Build the foldable, orientation and resize continuity test matrix
+- [ ] [SN-DIM-041](compat.md#sn-dim-041) — Verify every screen holds at platform-max text scale on the smallest viewport
+- [ ] [SN-DIM-042](design-system.md#sn-dim-042) — Make sane_ui chrome reflow under text growth without truncating labels
+- [ ] [SN-DIM-043](perf.md#sn-dim-043) — Author ink and hairline geometry in logical units, rasterise at devicePixelRatio
+- [ ] [SN-DIM-044](ink.md#sn-dim-044) — Store stroke geometry DPR-independently so ink imports at identical physical size
+- [ ] [SN-DIM-045](perf.md#sn-dim-045) — Make chrome animation and layout refresh-rate independent across 60/90/120Hz
+- [ ] [SN-DIM-046](perf.md#sn-dim-046) — Gate the reflow transition frame budget for rotate, resize, fold and keyboard
+- [ ] [SN-DIM-047](perf.md#sn-dim-047) — Bound relayout cost so resize never does an O(n) pass over all pages or strokes
+- [ ] [SN-DIM-048](perf.md#sn-dim-048) — Invalidate thumbnails, tiles and page rasters incrementally on resize and DPR change
+- [ ] [SN-DIM-049](perf.md#sn-dim-049) — Hold the memory budget at the largest viewport and highest DPR with a 600-page PDF
+- [ ] [SN-DIM-050](design-system.md#sn-dim-050) — Define the reduced-effects look-degradation profile for the low-end layout tier
+- [ ] [SN-DIM-051](qa.md#sn-dim-051) — Golden-test the degraded looks on the low-end tier across 17 looks and dark mode
+- [ ] [SN-DIM-053](qa.md#sn-dim-053) — Add a per-release device-farm job that runs the layout matrix on real and virtual devices
+- [ ] [SN-DIM-055](compat.md#sn-dim-055) — Prove a new unreleased device or viewport is added to the matrix in under an hour
+
+#### Technical notes
+Children touch `packages/sane_ui` (layout/inset primitives, leaf per `docs/architecture/overview.md` §5), `app/` (shell composition, screens), `tools/device_lab` (the matrix data + harness), and the CI verification workflow. APIs: `MediaQuery.sizeOf`, `MediaQuery.viewPaddingOf`/`viewInsetsOf`, `MediaQuery.displayFeatures` (`DisplayFeature`), `MediaQuery.textScalerOf`, `MediaQuery.devicePixelRatioOf`, `LayoutBuilder`, `FittedBox`, `SafeArea`, `OrientationBuilder`; platform: iOS `safeAreaInsets`/`UIWindowScene`, Android `WindowMetrics`/`WindowInfoTracker`/`FoldingFeature`/window size classes, web `env(safe-area-inset-*)`/`visualViewport`/container queries. This epic aligns with the perf discipline ([SN-PERF-001](perf.md#sn-perf-001)), accessibility ([SN-A11Y-001](a11y.md#sn-a11y-001)) and quality ([SN-QA-001](qa.md#sn-qa-001)) epics; its gate composes with [SN-QA-005](qa.md#sn-qa-005).
+
+#### Security & privacy
+Mostly none beyond baseline (layout math; no note content, ink coordinates, tokens or PII logged — `CLAUDE.md` §7.3). Real cases handled by children: content visible in the app-switcher snapshot and in multi-window/presentation mode ([SN-DIM-006](editor.md#sn-dim-006), [SN-DIM-022](compat.md#sn-dim-022)); the "data leaves device" and PRO/consent chrome must never be occluded by a cutout or hinge ([SN-DIM-013](qa.md#sn-dim-013)); golden fixtures must be synthetic only.
+
+#### UX notes
+The promise is "no lag and no issue in the design and everything" on every surface and every dimension — the calm, page-first UX of `docs/design/ux-principles.md` must hold whether the viewport is a 320 px budget phone, a 22:9 unfolded flip, a Stage Manager window, or a hypothetical future device. Fixed editor geometry (page 800×1040 units, max 820 px; freeform 2400×2400) stays constant while chrome reflows.
+
+#### Test plan
+Each child names its own test files under `app/test/goldens/`, `packages/sane_ui/test/layout/`, `app/integration_test/` and `tools/device_lab/`. The epic is verified when the aggregate matrix gate ([SN-DIM-013](qa.md#sn-dim-013)) passes on the full device/viewport set. Further dimension-correctness work is tracked as additional children under this epic.
+
+#### Dependencies
+[SN-DS-026](design-system.md#sn-ds-026), [SN-PHN-002](compat.md#sn-phn-002), [SN-QA-005](qa.md#sn-qa-005), [SN-GPRF-006](compat.md#sn-gprf-006) (referenced/depended by the children).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-002
+
+<a id="sn-dim-002"></a>
+
+**Author the checked-in device and viewport dimensional matrix as data**
+
+| Field | Value |
+|---|---|
+| GitHub | #1118 |
+| Type | infra |
+| Priority | p1 |
+| Milestone | M0 Foundations |
+| Platforms | all |
+| Areas | compat, qa |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-GPRF-006](compat.md#sn-gprf-006), [SN-PERF-004](perf.md#sn-perf-004) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+"Reliable for all the types of dimensions" is only testable if the dimensions are **data**, not prose. [SN-GPRF-006](compat.md#sn-gprf-006) makes the OS/arch/browser/stylus *support tiers* machine-readable; it does not carry the per-device **geometry** the layout tests must iterate. This issue adds a single source-of-truth dimensional matrix that every layout golden, reflow test and the harness ([SN-DIM-012](qa.md#sn-dim-012)) consume, so a new device is one data row, not a code change.
+
+#### Scope
+**In:** `tools/device_lab/dimensions/devices.json` (+ a typed Dart loader in `tools/device_lab` and a schema test) with one row per device/viewport, each carrying: logical size (dp/pt, portrait), physical px, devicePixelRatio/density, aspect ratio, refresh rate, safe-area insets (top/right/bottom/left for the natural orientation), display-feature/fold state (with hinge inset where applicable), stylus capability, orientation support, and the support tier (referenced from [SN-GPRF-006](compat.md#sn-gprf-006), not restated). Rows cover: iPhone SE (375×667, DPR 2, no cutout) through iPhone 15/15 Pro (393×852, Dynamic Island top 59 pt, home indicator 34 pt, DPR 3) and 15 Pro Max (430×932); every current iPad (mini 744×1133, Air 11" 820×1180, Pro 11" 834×1194, Pro 13" 1032×1376); Galaxy Tab S-series (~800×1280 dp), Pixel Tablet (1600×2560 px), Xiaomi/OnePlus/Lenovo tablets; Galaxy Z Fold folded cover (~344 dp wide) and unfolded (2076×2152, 24 pt hinge inset), Z Flip folded (~306×260 dp cover) and unfolded (~22:9), Pixel Fold folded+unfolded; Android phones from a 4-inch budget (320×533 dp) to a 6.9-inch (480×1040 dp); Chromebooks with USI (resizable 1280×800→1920×1080); web breakpoints 320, 360, 375, 414, 600, 768, 834, 1024, 1180, 1280, 1440, 1920 and an ultrawide 3440×1440.
+**Out:** synthetic/unreleased generation ([SN-DIM-003](compat.md#sn-dim-003)); the golden harness that renders across the rows ([SN-DIM-012](qa.md#sn-dim-012)); tier logic ([SN-GPRF-006](compat.md#sn-gprf-006)).
+
+#### Acceptance criteria
+- [ ] `devices.json` validates against a committed JSON schema; the schema test fails a row missing any of {logical size, physical px, DPR, aspect, refresh, insets, foldState, stylus, tier-ref, source anchor}.
+- [ ] A typed loader exposes rows to Dart callers and throws on an unknown/malformed row id rather than returning null.
+- [ ] The matrix contains ≥ 45 rows spanning the device list above; each fold-capable device has both a folded and an unfolded row, and the Z Fold unfolded row is exactly 2076×2152 with a 24 pt hinge inset.
+- [ ] Each row's `tier` cross-references a [SN-GPRF-006](compat.md#sn-gprf-006) registry id; a CI check fails if a referenced id does not exist there.
+- [ ] The file is dependency-free and offline (no network, no hosted matrix); README documents how to add a row.
+- [ ] Each row also carries its supported-orientation set and text-scale range, and this file is the single source consumed by both the golden layout matrix ([SN-DIM-012](qa.md#sn-dim-012)) and the per-release device-farm job ([SN-DIM-053](qa.md#sn-dim-053)).
+
+#### Technical notes
+Mirror the shape/tooling of [SN-GPRF-006](compat.md#sn-gprf-006) and [SN-PERF-018](perf.md#sn-perf-018) so "docs that are also data" is one idiom (JSON + schema test + drift check). Insets are stored for the natural orientation; consumers derive rotated insets. Logical sizes are the Flutter `MediaQuery.sizeOf` equivalent (`viewPaddingOf` for insets, `displayFeatures` for the hinge). Keep geometry only here; tier/version support stays in [SN-GPRF-006](compat.md#sn-gprf-006) referenced by id. Land in M0 so the harness and every M1 layout test can consume it.
+
+#### Security & privacy
+None beyond baseline: geometry constants only, no PII, no logging, no network. Supply-chain: the matrix is a code-reviewed, deterministic build input, never fetched at runtime (sec: supply-chain).
+
+#### UX notes
+No user surface. It is the contract behind "works on every dimension": the website's device support copy, the golden matrix, and manual test charters all read the same rows, so the team never quotes three different device lists.
+
+#### Test plan
+`tools/device_lab/dimensions/devices_schema_test.dart` (schema, required fields, tier-ref existence), loader unit tests (known row, unknown row, malformed row), and a count/coverage test asserting the device families above are present. Consumed by [SN-DIM-012](qa.md#sn-dim-012).
+
+#### Dependencies
+[SN-GPRF-006](compat.md#sn-gprf-006), [SN-PERF-004](perf.md#sn-perf-004)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-003
+
+<a id="sn-dim-003"></a>
+
+**Make the dimension matrix extensible to unreleased and synthetic devices**
+
+| Field | Value |
+|---|---|
+| GitHub | #1121 |
+| Type | infra |
+| Priority | p2 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | compat, qa |
+| Size | S |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-002](compat.md#sn-dim-002) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+The maintainer explicitly wants reliability "on devices that do not exist yet" — "the latest iPhone 18, foldable phones, and these types of dimensions." A matrix of only shipped devices ([SN-DIM-002](compat.md#sn-dim-002)) cannot prove that. This issue makes the matrix **generative**: parametric sweeps and projected future-device rows fill the gaps between real hardware and stress the layout beyond today's extremes, so a new form factor is caught before it ships, not after.
+
+#### Scope
+**In:** a `synthetic` section and generator in `tools/device_lab/dimensions` that emits rows from parameter sweeps — width 320→3440 in steps, aspect ratios from 1.0 (square) through 4:3, 16:9, 20:9, 22:9 and 32:9, DPR 1.0–4.0, safe-area insets 0→80 pt, and hinge insets 0→32 pt at both orientations — plus explicit projected rows tagged `unreleased: true` for an "iPhone 18 / 18 Pro Max class" (≈ 440×956 pt, enlarged top cutout / under-display sensor inset), a "Fold-class Apple device" placeholder, and a next-gen ultra-tall flip. Rows carry a `projected` provenance note and are excluded from support-tier claims.
+**Out:** the shipped-device rows ([SN-DIM-002](compat.md#sn-dim-002)); the harness that renders them ([SN-DIM-012](qa.md#sn-dim-012)); any runtime support claim (`unreleased`/`projected` rows are test-only).
+
+#### Acceptance criteria
+- [ ] The generator produces a deterministic set of synthetic rows (same input → byte-identical output) merged with the shipped rows behind one loader API.
+- [ ] Sweeps include at least: aspect 1.0, 1.33, 1.78, 2.0, 2.22, 2.44 and 3.56; DPR 1.0, 1.5, 2.0, 2.625, 3.0, 4.0; top inset 0/24/44/59/80 pt; hinge inset 0/16/24/32 pt.
+- [ ] Projected rows exist for an iPhone-18-Pro-Max-class 440×956 pt device and a foldable at 2076×2152 with a 24 pt hinge, each flagged `unreleased`/`projected`.
+- [ ] Projected/synthetic rows are excluded from any support-tier or store-requirements output and included only in the golden/reflow matrix.
+- [ ] Adding a projected device requires only a data/parameter edit; the harness ([SN-DIM-012](qa.md#sn-dim-012)) picks it up with no code change.
+
+#### Technical notes
+Pure Dart generator, no platform channels. Reuse the loader/schema from [SN-DIM-002](compat.md#sn-dim-002); add provenance fields (`shipped` | `projected` | `generated`). Keep the sweep bounded so the nightly matrix stays within its time budget ([SN-DIM-012](qa.md#sn-dim-012)). Sizes feed `MediaQuery` overrides in tests via `MediaQueryData(size, devicePixelRatio, padding, displayFeatures)`. This is the concrete mechanism that satisfies "extensible to unreleased devices."
+
+#### Security & privacy
+None beyond baseline: synthetic geometry only; no PII, no network. Projected rows must never leak into user-facing support copy (that would be a false claim) — enforced by the tier-exclusion check.
+
+#### UX notes
+No user surface. It future-proofs the design: when the next iPhone or foldable lands, its layout has already been proven, keeping the "no issue in the design" promise ahead of hardware.
+
+#### Test plan
+`tools/device_lab/dimensions/synthetic_test.dart` — determinism, sweep coverage, projected-row presence, and the tier-exclusion invariant. Integrates into the [SN-DIM-012](qa.md#sn-dim-012) harness input.
+
+#### Dependencies
+[SN-DIM-002](compat.md#sn-dim-002)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-021
+
+<a id="sn-dim-021"></a>
+
+**Expose a fold-posture and hinge-geometry model in sane_ui**
+
+| Field | Value |
+|---|---|
+| GitHub | #1205 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | android-phone, android-tablet, web |
+| Areas | compat, design-system |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DS-026](design-system.md#sn-ds-026), [SN-AND-013](compat.md#sn-and-013) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Foldables (Galaxy Z Fold6, Pixel 9 Pro Fold, clamshell Z Flip, and the rumoured book-posture foldable iPhone) change usable geometry at runtime, and a crease or physical hinge can sit under content. Per docs/platform/android.md §7 ("Foldables & desktop windowing") and docs/platform/phones.md §7, the window size class changes on fold/unfold and MUST re-lay-out. Before any layout can react (SN-DIM-022..025) the app needs one cross-surface source of truth for fold posture and hinge bounds. SN-DS-026 already owns window size classes and adaptive primitives; this issue adds the fold/hinge dimension to that layer so every screen consumes it identically. SN-AND-013 provides the Android native transition handling; this issue turns its signals into a Flutter-level model.
+
+#### Scope
+**In:**
+- A `SaneFoldInfo` value in sane_ui (posture: `flat` | `halfOpened` | `unknown`; hinge `Rect?` in local logical px; `orientation: vertical | horizontal`; `isSeparating: bool`; `occlusionType: none | full`) derived from `MediaQuery.displayFeaturesOf(context)` / `MediaQueryData.displayFeatures`.
+- An inherited widget / Riverpod provider so any widget reads current posture without recomputing.
+- Android source: `WindowInfoTracker.windowLayoutInfo` `FoldingFeature` (state, orientation, occlusionType, isSeparating, bounds) bridged through the existing plugin path.
+- Web source: `navigator.devicePosture` (`folded`/`continuous`) + CSS `env(viewport-segment-*)` mapped into the same model.
+- Emit posture-change events so consumers relayout without polling.
+
+**Out:**
+- Actual hinge-avoidance / tabletop layouts (SN-DIM-022, SN-DIM-023, SN-DIM-024).
+- State continuity across the transition (SN-PHN-017).
+- iPad multi-window and desktop windowing (no hinge) — SN-DIM-030/032.
+
+#### Acceptance criteria
+- [ ] On a Pixel 9 Pro Fold inner display (2076x2152 px, ~884x916 dp) `SaneFoldInfo.hinge` returns the vertical crease Rect and `occlusionType` reflects the panel (NONE for the seamless inner display); on a device reporting a separating hinge, `isSeparating == true` and the hinge Rect width is non-zero (e.g. a 24 dp occlusion band).
+- [ ] On a Galaxy Z Fold6 folded to the 968x2376 px cover display the model reports posture `unknown`/no hinge and size class Compact; unfolding to 2160x1856 px flips to `flat` with a vertical hinge within one frame of the metrics change.
+- [ ] In tabletop posture the model reports `halfOpened` with `orientation == horizontal` and a hinge Rect splitting height near 50%.
+- [ ] On Chrome with the Device Posture API the model reports `folded` and derives two viewport segments from `env(viewport-segment-*)`; where the API is absent it degrades to `unknown` with no exceptions.
+- [ ] A posture change fires a single change notification (no duplicate rebuild storms) and is delivered in < 1 frame budget so downstream relayout stays within B5 (no frame > 16.7 ms).
+- [ ] Model correctly reports "no fold" (posture `flat`, hinge null) on non-folding devices (iPad, standard phones, desktop web) so consumers need no platform branch.
+
+#### Technical notes
+Live in `packages/sane_ui` beside the SN-DS-026 size-class primitives (sane_ui is a pure leaf; the Android FoldingFeature stream is bridged by the plugin layer and injected at the `app/` composition root, never imported into sane_ui). Read `MediaQuery.displayFeaturesOf(context)`; map `DisplayFeature.type == fold/hinge`, `DisplayFeature.state` (postureFlat/postureHalfOpened), and `DisplayFeature.bounds` to `SaneFoldInfo`. Android: `androidx.window.layout.WindowInfoTracker.getOrCreate(activity).windowLayoutInfo` → collect `WindowLayoutInfo.displayFeatures` filtering `FoldingFeature`; read `occlusionType`, `orientation`, `state` (HALF_OPENED/FLAT), `isSeparating`, `bounds`; pass to the engine (Flutter already surfaces these as displayFeatures on API level support — verify parity and fall back to the plugin channel where the engine lags). Web: `navigator.devicePosture.type` + `devicePosture.addEventListener('change')`, plus CSS `@media (spanning: single-fold-vertical)` and `env(viewport-segment-width 0 0)`. Recompute on `WidgetsBindingObserver.didChangeMetrics` / `PlatformDispatcher.onMetricsChanged`. Provider exposed via Riverpod in `app/`.
+
+#### Security & privacy
+None beyond baseline. Posture/hinge geometry is not user content; do not log it with any note identifier and do not persist device model strings. Baseline: no note content in logs; tokens only.
+
+#### UX notes
+Foundational — no direct UI. Consumers (SN-DIM-022/023/024) use it to keep controls off the crease. Reference docs/design/ux-principles.md §8 (adaptive layouts). Empty/unknown posture must be treated as a normal flat layout, never as an error state.
+
+#### Test plan
+Unit tests in `packages/sane_ui/test/fold/fold_info_test.dart` feeding synthetic `displayFeatures` (vertical hinge, horizontal hinge, separating, occluding). Widget test that a posture change triggers exactly one rebuild. Integration probe in `app/integration_test/fold_posture_test.dart` driven by emulator fold commands (`adb emu fold`/`unfold`) across Pixel Fold and Z Fold profiles. Web unit test mocking `navigator.devicePosture`.
+
+#### Dependencies
+Depends on SN-DS-026 (adaptive layout primitives and window size classes) and SN-AND-013 (Android foldable transitions). Parent epic SN-DIM-001. Related: [SN-AND-013](compat.md#sn-and-013), [SN-PHN-017](compat.md#sn-phn-017).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-022
+
+<a id="sn-dim-022"></a>
+
+**Keep interactive controls and ink clear of the fold hinge**
+
+| Field | Value |
+|---|---|
+| GitHub | #1131 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | android-phone, android-tablet, web |
+| Areas | compat, design-system, editor |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-021](compat.md#sn-dim-021), [SN-DS-026](design-system.md#sn-ds-026) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+A hinge that occludes or separates the display must never sit under a control the user has to hit or under ink the user is reading. docs/platform/phones.md §7 requires testing "the fold seam and hinge occlusion". This issue makes every screen route its layout around the hinge Rect provided by SN-DIM-021, and splits panes along the seam where that reads better than spanning it.
+
+#### Scope
+**In:**
+- A `SaneHingeAware` layout wrapper that pads/reflows content out of the hinge Rect (with a configurable safe margin) and can split a two-pane layout exactly at the seam.
+- Editor: palette dock, page rail, page-nav, undo/redo and toolbar never land within the hinge band; the page itself may span a seamless crease but interactive stroke targets and selection handles are nudged clear.
+- Library and Settings two-pane layouts snap the divider to the hinge when a vertical separating hinge exists.
+- Respect handedness/left-handed mode when choosing which side controls move to.
+
+**Out:**
+- Tabletop (half-opened) posture layouts (SN-DIM-023/024).
+- State preservation across posture change (SN-PHN-017).
+
+#### Acceptance criteria
+- [ ] On a Pixel 9 Pro Fold inner display (2076x2152 px) with a vertical hinge reported at the horizontal centre, no `SaneToolButton`, colour/width swatch, page-nav chevron, grip, or toolbar icon renders with any pixel inside the hinge Rect + an 8 dp margin; verified by a golden that overlays the hinge band.
+- [ ] With a separating hinge (isSeparating == true, e.g. a 24 dp occlusion band) the Library list/detail divider snaps to the hinge centre so neither pane straddles the crease.
+- [ ] The floating palette dock docked to bottom on an unfolded book posture reflows to the trailing display area and no control is occluded; docking to a left/right edge chooses the panel that does not cross the hinge.
+- [ ] Lasso selection handles and text-box drag handles that would fall under the hinge are offset outward by >= 8 dp so they remain tappable at 48 dp target size.
+- [ ] On a horizontal (tabletop-precursor) hinge the same rules apply vertically; on non-folding devices the wrapper is a no-op with zero added layout cost.
+- [ ] Hinge-avoidance recomputes on posture change within B5 (no frame > 16.7 ms) and adds no scroll or 2-D pan at 320 dp width (WCAG 1.4.10).
+
+#### Technical notes
+Implement `SaneHingeAware` in `packages/sane_ui` on top of `LayoutBuilder` + the `SaneFoldInfo` from SN-DIM-021; subtract the hinge Rect from the available box using `EdgeInsetsDirectional` so it composes with RTL and left-handed mode. Use `Flexible`/`Wrap` for control rows so they reflow rather than clip. For two-pane splits, position the divider with the hinge centre from `DisplayFeature.bounds`. The paged canvas geometry stays fixed (800x1040 units, docs/design/ux-principles.md §8) — only chrome and hit-targets move; the page may visually span a seamless crease. Consumers: `app/lib/features/editor`, `app/lib/features/library`, `app/lib/features/settings`. Reuse SafeArea for system insets; hinge insets are additive.
+
+#### Security & privacy
+None beyond baseline. Note the shared/presentation risk is handled in SN-ED-021; here simply avoid rendering sensitive controls in an occluded band (a usability, not a disclosure, issue).
+
+#### UX notes
+Chrome is a guest, the page is the hero (ux-principles.md §2): the crease must never make the user hunt for a control or fight the hinge. When a vertical hinge exists, prefer docking the palette to the leading or trailing panel rather than centring it across the seam. Reference component-inventory.md (SaneToolPalette, SanePageThumb).
+
+#### Test plan
+Golden matrix `app/test/golden/hinge_avoidance_test.dart` at Pixel Fold inner, Z Fold6 inner, and a synthetic separating-hinge profile, overlaying the hinge band and asserting no interactive control intersects it. Widget test that handles offset outward. Integration `app/integration_test/fold_posture_test.dart` extends SN-DIM-021 to assert control positions post-unfold.
+
+#### Dependencies
+Depends on SN-DIM-021 (fold posture model) and SN-DS-026 (adaptive primitives). Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-023
+
+<a id="sn-dim-023"></a>
+
+**Add a tabletop/flex-mode editor layout (canvas top, controls bottom)**
+
+| Field | Value |
+|---|---|
+| GitHub | #1119 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | android-phone, android-tablet, web |
+| Areas | compat, editor, design-system |
+| Size | L |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-021](compat.md#sn-dim-021), [SN-DS-026](design-system.md#sn-ds-026) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+When a foldable is half-opened and rests like a tiny laptop ("tabletop"/"flex" posture), the natural layout puts the readable content on the upper (near-vertical) panel and the touch controls on the lower (near-horizontal) panel. Android reports this as `FoldingFeature.state == HALF_OPENED` with `orientation == HORIZONTAL`; docs/platform/android.md §7 requires handling half-opened transitions. This issue delivers the editor's tabletop layout.
+
+#### Scope
+**In:**
+- A tabletop editor arrangement, activated when SN-DIM-021 reports halfOpened + horizontal hinge: canvas/page occupies the upper segment; palette dock, page-nav, undo/redo and selection/text-edit bars move to the lower segment.
+- The split lands exactly on the hinge so neither region crosses the crease.
+- Smooth enter/exit as posture crosses the half-opened threshold, preserving the open page and scroll position.
+
+**Out:**
+- Audio-recording tabletop layout (SN-DIM-024, separate).
+- General state continuity engine (SN-PHN-017) — this issue consumes it.
+- Non-folding split-screen (SN-DIM-030).
+
+#### Acceptance criteria
+- [ ] On a Pixel 9 Pro Fold at ~90-120° half-opened (horizontal hinge near the vertical centre of 2076x2152 px) the page renders in the upper segment and the palette dock + page-nav render in the lower segment, with a >= 8 dp clearance from the hinge band on both sides.
+- [ ] No interactive control renders in the upper (viewing) segment except a single Focus/exit affordance; the primary tool controls are all reachable in the lower thumb-region.
+- [ ] Crossing the half-opened threshold (from flat to tabletop and back) re-lays-out within B5 (no frame > 16.7 ms) and keeps the same page, scroll offset (±0 px) and selected tool.
+- [ ] At 200% Android font scale and 310% iOS-equivalent text scale the lower control cluster wraps (Wrap) without overflow and every target stays >= 48 dp.
+- [ ] On a clamshell Z Flip half-opened, the same canvas-top/controls-bottom split applies to the single inner display divided by the horizontal crease.
+- [ ] When posture returns to flat, the layout restores the normal editor (palette dock returns to its docked edge/handedness) with no page reload.
+
+#### Technical notes
+Add a `tabletop` branch to the editor scaffold in `app/lib/features/editor`, driven by `SaneFoldInfo` (SN-DIM-021) + `OrientationBuilder`/`LayoutBuilder`. Use a `Column` split at the hinge Rect with the page in the top `Expanded` and controls in a bottom region built from the existing `SaneToolPalette` reflowed to a row (component-inventory.md §5). Keep the page geometry fixed (ux-principles.md §8) and only re-home chrome. Animate the transition with a cross-fade honouring Reduce Motion (ux-principles.md §6). Preserve the `PageController`/scroll and tool provider state through the rebuild (do not recreate controllers — key them stably); rely on SN-PHN-017 for the deeper continuity guarantees. Web: use CSS viewport segments (`env(viewport-segment-*)`)/container queries mirror.
+
+#### Security & privacy
+None beyond baseline. No note content leaves the device; posture is not persisted with identifiers.
+
+#### UX notes
+This is a signature foldable delight — the "book/laptop" writing pose. Keep it calm: controls settle into the lower panel, the page stays put, no jump. Follow ux-principles.md §2 (chrome is a guest) and §8 (adaptive). The lower panel is the thumb zone (phones.md §7).
+
+#### Test plan
+Golden `app/test/golden/tabletop_editor_test.dart` at Pixel Fold half-opened and Z Flip half-opened, asserting page-in-top / controls-in-bottom and hinge clearance. Widget test for threshold enter/exit preserving scroll + tool. Integration `app/integration_test/fold_posture_test.dart` covering flat→tabletop→flat.
+
+#### Dependencies
+Depends on SN-DIM-021 and SN-DS-026. Consumes SN-PHN-017 for continuity. Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-024
+
+<a id="sn-dim-024"></a>
+
+**Add a tabletop/flex-mode layout for audio recording and playback**
+
+| Field | Value |
+|---|---|
+| GitHub | #1132 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | android-phone, android-tablet, web |
+| Areas | compat, audio, editor |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-021](compat.md#sn-dim-021), [SN-DIM-023](compat.md#sn-dim-023), [SN-AUD-001](audio.md#sn-aud-001) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Recording a lecture on a half-opened foldable is a real pose: the device stands on the desk, mic up, and the user glances at the transcript/waveform while writing. In tabletop posture the recorder controls belong on the lower panel and the canvas/waveform readout on the upper. This mirrors SN-DIM-023 for the audio recorder bar (screens-and-flows.md §7.6, SaneAudioBar).
+
+#### Scope
+**In:**
+- Tabletop arrangement of the SaneAudioBar: record/stop, live timer, transport, waveform+scrubber and speed control on the lower segment; canvas and a large readable timer/waveform on the upper segment.
+- Applies to all three audio states (idle-no-rec, recording, has-rec/playback).
+- Keeps recording running uninterrupted across the posture change.
+
+**Out:**
+- The audio engine itself (SN-AUD-001).
+- Rotation-while-recording continuity (SN-DIM-029).
+- Non-tabletop phone layout (phones.md §3).
+
+#### Acceptance criteria
+- [ ] While recording on a Pixel 9 Pro Fold half-opened (horizontal hinge), the pulsing dot, live timer (mm:ss ticking +0.25 s / 250 ms) and Stop render in the lower segment; the upper segment shows the canvas and a large timer; no control crosses the hinge band (>= 8 dp clearance).
+- [ ] Entering tabletop mid-recording does not drop or restart the recording: the elapsed timer is continuous (no reset), and no audio frames are lost across the relayout (measured against the recorder buffer).
+- [ ] In has-rec/playback state the waveform+scrubber slider and 1x/1.5x/2x speed control are in the lower thumb region; the "Ink replays in sync" caption and dimmed post-playhead strokes render on the upper canvas.
+- [ ] Relayout across the half-opened threshold completes within B5 (no frame > 16.7 ms) and keeps playback position (±0 ms) and playback rate.
+- [ ] At 200%/310% text scale the transport row wraps without clipping the timer; targets stay >= 48 dp.
+- [ ] Returning to flat restores the standard under-toolbar audio bar with recording/playback state intact.
+
+#### Technical notes
+Extend the editor tabletop branch (SN-DIM-023) with an audio variant in `app/lib/features/editor` + `packages/sane_audio` view models. Keep the recorder/playback controllers alive across the rebuild (do not tear down the `sane_audio` session; audio capture runs off the UI isolate per docs/architecture/overview.md §6 so relayout cannot stall it). Reuse SaneAudioBar / SaneWaveformScrubber (component-inventory.md §5), re-homed via the hinge split. Respect Reduce Motion for the level bars (keep the functional recording dot as a steady state). Web mirror via viewport segments.
+
+#### Security & privacy
+None beyond baseline. Audio is captured only with the user's action; the mic-in-use indicator remains visible in both segments. No content in logs.
+
+#### UX notes
+The tabletop record pose should feel purpose-built: big glanceable timer up top, thumb controls below. Preserve the microcopy ("Recording — everything you write is time-linked", "Ink replays in sync"). Follow ux-principles.md §6 motion rules.
+
+#### Test plan
+Golden `app/test/golden/tabletop_audio_test.dart` for the three audio states half-opened. Integration `app/integration_test/fold_posture_test.dart` recording across flat→tabletop asserting the timer is monotonic and no buffer underrun. Widget test for playback position preserved.
+
+#### Dependencies
+Depends on SN-DIM-021, SN-DIM-023 (tabletop editor) and SN-AUD-001 (audio engine). Related SN-DIM-029. Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-026
+
+<a id="sn-dim-026"></a>
+
+**Preserve an in-progress stroke across fold, unfold and rotation**
+
+| Field | Value |
+|---|---|
+| GitHub | #1134 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | android-phone, android-tablet, ios-phone |
+| Areas | compat, editor, ink |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-PHN-017](compat.md#sn-phn-017), [SN-INK-001](ink.md#sn-ink-001) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+The hardest continuity case: the user is mid-stroke (pen still down) when the device folds/unfolds or rotates. The wet stroke lives on the low-latency front buffer and in the active-stroke capture on the UI isolate (docs/architecture/overview.md §6). A naive configuration change discards it, losing ink and breaking the "never lose data" contract. This issue makes an in-progress stroke survive a configuration change with no data loss.
+
+#### Scope
+**In:**
+- Buffer the active stroke's captured points (in page coordinates) so a configuration change (fold/unfold/rotate/resize) does not lose them.
+- On the new configuration, either (a) re-anchor and continue the same stroke if the pointer is still down and mapped, or (b) commit the captured points as a completed stroke if the pointer stream is interrupted by the OS.
+- Never drop the stroke silently; the committed stroke is undoable as one unit.
+
+**Out:**
+- The rotation layout/timing itself (SN-DIM-027).
+- General state continuity (SN-PHN-017).
+- Latency budgets for normal drawing (SN-INK-001).
+
+#### Acceptance criteria
+- [ ] On a Pixel 9 Pro Fold, drawing a stroke and unfolding mid-stroke results in the captured points being preserved and committed as one stroke (no partial loss, no duplicate); undo removes exactly that stroke.
+- [ ] Because ink is captured in page coordinates (not screen px), the committed stroke lands in the correct page location after the viewport changes size from cover (Compact) to inner (Expanded).
+- [ ] If the OS delivers a pointer-cancel during the fold, the stroke is committed from the buffered points rather than dropped; if the pointer stays down and remappable, drawing continues into the same stroke.
+- [ ] Rotating the device mid-stroke (portrait↔landscape) preserves the stroke identically (shared path with SN-DIM-027/028).
+- [ ] No frame during the transition exceeds 16.7 ms (B5) and the committed stroke matches the pre-transition geometry within 1 page unit.
+- [ ] Repeated mid-stroke folds (10x) leave no orphaned/partial strokes in the document and no undo-stack corruption.
+
+#### Technical notes
+In `packages/sane_ink` keep the active-stroke sample buffer in a controller that outlives widget rebuilds (page coordinates, per docs/design/ux-principles.md §1 wet-ink model). On `didChangeMetrics`/configuration change while a stroke is active, snapshot the buffer; on `PointerCancelEvent` (Flutter delivers cancel on interruption) finalize via the normal commit path so it pushes one undo snapshot (screens-and-flows.md §7.9). Because samples are already in page space, no re-projection of stored points is needed — only the front-buffer surface is re-created. Coordinate with the native low-latency surface (plugins/sane_ink_surface) so tearing down/recreating the surface flushes rather than discards. Never block the UI isolate (overview.md §6).
+
+#### Security & privacy
+None beyond baseline. The buffered stroke is in-memory note content; it is never logged and is committed to the local store through the normal encrypted path.
+
+#### UX notes
+Losing ink mid-stroke because you opened your phone would be a trust-breaking bug. The user should see their stroke land where they drew it, undoable in one step. Follow ux-principles.md §10 ("Undo is sacred").
+
+#### Test plan
+Integration `app/integration_test/midstroke_config_change_test.dart`: synthesize a pointer-down + moves, trigger a fold/rotate, assert one committed stroke with correct geometry and a single undo. Unit test the buffer/commit-on-cancel path in `packages/sane_ink/test`. Golden of the committed stroke position post-transition.
+
+#### Dependencies
+Depends on SN-PHN-017 (state continuity) and SN-INK-001 (ink engine / active-stroke model). Shares path with SN-DIM-028. Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-027
+
+<a id="sn-dim-027"></a>
+
+**Preserve editor state across orientation change within the frame budget**
+
+| Field | Value |
+|---|---|
+| GitHub | #1120 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, ios-phone, android-phone |
+| Areas | compat, editor, perf |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DS-026](design-system.md#sn-ds-026), [SN-PG-003](pages-canvas.md#sn-pg-003), [SN-PHN-017](compat.md#sn-phn-017) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Rotation is the most common runtime configuration change. It crosses aspect ratios and often size classes (a tablet portrait 820x1180 pt → landscape 1180x820 pt), and it must preserve full editor state and complete within the performance budget — no long relayout stall, no lost work. docs/platform/ipad.md §"iPad multitasking" forbids locking orientation; SN-PG-003 owns paged geometry+orientation. This issue is the editor-wide rotation continuity + timing contract.
+
+#### Scope
+**In:**
+- Rotation preserves open note, page, scroll, zoom, tool, selection, undo/redo (same set as SN-PHN-017).
+- Rotation relayout completes within the frame budget: no frame > 16.7 ms (B5), first interactive frame after the rotate < 100 ms, sustained >= 60 fps (120 fps where the display allows) through the animation.
+- Chrome reflows (palette dock re-docks per edge/handedness, page rail shows/hides per width) while the page geometry stays fixed.
+
+**Out:**
+- Mid-stroke rotation (SN-DIM-028) and rotation-while-recording (SN-DIM-029) — separate.
+- Canvas rotate gesture with detents (SN-PG-007, a different feature).
+- Process death (SN-DIM-037).
+
+#### Acceptance criteria
+- [ ] Rotating an iPad Pro 13" (1032x1376 pt portrait ↔ 1376x1032 pt landscape) keeps the same page, scroll offset (re-centred through the aspect delta, ±1 dp), zoom (±0), tool/colour/width and any selection.
+- [ ] On a 120 Hz iPad the rotation animation sustains 120 fps (no frame > 8.3 ms) and never exceeds the 16.7 ms absolute ceiling; on a 60 Hz device it sustains 60 fps.
+- [ ] First interactive frame after rotation completes < 100 ms; there is no visible reload or spinner.
+- [ ] On an iPhone 18-class phone (portrait 402x874 pt ↔ landscape) the editor reflows the palette to a bottom row and hides the page rail per size class, preserving state.
+- [ ] At 200%/310% text scale the rotated layout reflows toolbar/labels without clipping or 2-D scroll (WCAG 1.4.10) at the narrow dimension.
+- [ ] Undo after a rotation reverts the last pre-rotation edit (stack intact).
+
+#### Technical notes
+Handle via `OrientationBuilder`/`MediaQuery.orientationOf` + the SN-DS-026 size-class switch; keep state in providers above the rebuilt subtree (as SN-PHN-017). Re-project scroll offset through the viewport aspect change; keep page geometry fixed (ux-principles.md §8). Avoid heavy work on the rotation frame: cache completed strokes as `Picture`/tiles in sane_render so only chrome relayout runs on the UI isolate (overview.md §2/§6); defer thumbnail/index recompute. Respect Reduce Motion (cross-fade instead of rotate animation). iOS: do not set `UISupportedInterfaceOrientations` to a single value; honour `UIWindowScene`. Android: `android:configChanges`/`onConfigurationChanged` handled by the Flutter embedding — verify no full activity restart.
+
+#### Security & privacy
+None beyond baseline. A biometric-locked note stays locked through rotation.
+
+#### UX notes
+Rotation should feel instant and lossless — the page turns with the device. No jank, no reset. This is a direct expression of the "never lags" promise (ux-principles.md §0/§1).
+
+#### Test plan
+Integration `app/integration_test/rotation_continuity_test.dart` asserting state preserved and a FrameTiming capture with zero frames > 16.7 ms and first-interactive < 100 ms. Golden before/after rotate at iPad Pro and iPhone 18-class. Perf assertion wired into the SN-PERF harness (docs/platform/performance-budgets.md B4/B5).
+
+#### Dependencies
+Depends on SN-DS-026, SN-PG-003 (paged geometry/orientation) and SN-PHN-017. Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-028
+
+<a id="sn-dim-028"></a>
+
+**Handle rotation and configuration change during an active stroke**
+
+| Field | Value |
+|---|---|
+| GitHub | #1199 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, ios-phone, android-phone |
+| Areas | compat, editor, input-gestures |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-027](compat.md#sn-dim-027), [SN-DIM-026](compat.md#sn-dim-026) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Rotating (or resizing) while the pen is down is the acute case of SN-DIM-026 for orientation. The policy must be explicit and lossless: either lock the rotation until the stroke ends, or commit-and-continue. This issue picks and implements the policy and proves no stroke is lost or garbled.
+
+#### Scope
+**In:**
+- A defined policy: while a stroke is actively being drawn, defer the orientation relayout until pointer-up (short defer), OR commit the buffered stroke and relayout immediately if the OS forces the change; never garble the stroke.
+- Correct geometry after the change (page coordinates, per SN-DIM-026).
+- Applies to rotation, fold, and live resize divider drags that arrive mid-stroke.
+
+**Out:**
+- The buffering mechanism itself (SN-DIM-026) — this issue is the policy + timing layer.
+- Normal rotation continuity (SN-DIM-027).
+
+#### Acceptance criteria
+- [ ] Drawing a stroke on an iPad and rotating mid-stroke results in one clean committed stroke with correct page geometry; the ink is not sheared, mirrored or offset (verified within 1 page unit vs the intended path).
+- [ ] If the policy defers relayout to pointer-up, the deferral is <= 250 ms and never blocks the UI isolate; if it commits-and-continues, the two segments join without a visible gap.
+- [ ] No frame during the mid-stroke rotation exceeds 16.7 ms (B5); the front-buffer wet-ink surface is recreated without a flash of missing ink.
+- [ ] A mid-stroke live-resize (Split View divider drag) is handled by the same policy with the same guarantees.
+- [ ] Undo after a mid-stroke rotation removes exactly the stroke(s) drawn, with no orphan fragments.
+- [ ] Palm rejection / stylus-only policy (screens-and-flows.md §7) is unaffected by the transition.
+
+#### Technical notes
+Extend the ink input controller (`packages/sane_ink` + `app/lib/features/editor` gesture layer) to check "stroke active?" on `didChangeMetrics`. Prefer a short defer: hold the relayout one frame past `PointerUpEvent` when feasible; otherwise finalize via SN-DIM-026's commit-on-cancel. Recreate the native low-latency surface (plugins/sane_ink_surface) only after flushing the buffer. Because samples are in page space, no point re-projection is needed. Keep everything off the blocking path (overview.md §6). Document the chosen policy in docs/platform/android.md / ipad.md.
+
+#### Security & privacy
+None beyond baseline. In-flight stroke stays in memory and commits through the encrypted local store.
+
+#### UX notes
+A user mid-word when the screen rotates must not lose the word. The join (or defer) must be invisible. Follow ux-principles.md §1 (wet ink is immediate) and §10 (undo is sacred).
+
+#### Test plan
+Integration `app/integration_test/midstroke_config_change_test.dart` (shared with SN-DIM-026) adding rotation + resize triggers; assert clean single stroke, correct geometry, zero frames > 16.7 ms. Widget/unit test of the defer-vs-commit policy branch.
+
+#### Dependencies
+Depends on SN-DIM-027 (rotation continuity) and SN-DIM-026 (in-progress stroke buffer). Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-029
+
+<a id="sn-dim-029"></a>
+
+**Keep audio recording uninterrupted across rotation and fold**
+
+| Field | Value |
+|---|---|
+| GitHub | #1135 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, ios-phone, android-phone |
+| Areas | compat, audio, editor |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-027](compat.md#sn-dim-027), [SN-AUD-001](audio.md#sn-aud-001) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+A lecture recording must not be interrupted by the user rotating the device or opening a foldable. Audio↔ink timeline anchors (screens-and-flows.md §7.6, "everything you write is time-linked") depend on a continuous clock. This issue guarantees recording (and playback) survives rotation/fold with no dropped audio frames and no timeline drift.
+
+#### Scope
+**In:**
+- Recording continues across rotation/fold/resize with a monotonic elapsed clock and no dropped/duplicated audio frames.
+- Audio↔ink/text anchors stay correct (a stroke drawn just before the rotation still maps to the right audio timestamp).
+- Playback (has-rec state) preserves position and rate across the change.
+
+**Out:**
+- The recorder engine and anchor model (SN-AUD-001).
+- The tabletop audio layout (SN-DIM-024).
+- Rotation layout/timing (SN-DIM-027).
+
+#### Acceptance criteria
+- [ ] Rotating an iPad while recording keeps the timer monotonic (no reset, no jump) and the saved duration on Stop equals wall-clock elapsed within ±50 ms.
+- [ ] No audio frames are dropped across the rotation (verified against the capture buffer counter); the mic session is not torn down by the configuration change.
+- [ ] A stroke timestamped immediately before the rotation maps to the correct audio position on playback (anchor drift < 50 ms).
+- [ ] Folding a Pixel 9 Pro Fold mid-recording (Compact→Expanded) does not interrupt capture; the recording indicator stays visible in the new layout.
+- [ ] During playback, rotating preserves the playhead (±0 ms) and the 1x/1.5x/2x rate; post-playhead strokes stay dimmed to .12.
+- [ ] No frame during the transition exceeds 16.7 ms (B5) and the audio thread is never blocked by the relayout.
+
+#### Technical notes
+Audio capture already runs off the UI isolate (docs/architecture/overview.md §6), so relayout must not touch the recorder session — verify the `sane_audio` session and native recorder (plugins) are not disposed on configuration change. Keep the clock anchored to the audio device time base, not to widget lifecycle. iOS: ensure the `AVAudioSession`/recorder is scene-independent and not tied to a view controller that reinstantiates; keep background/interruption handling intact. Android: recorder in a bound service / foreground service survives `onConfigurationChanged`. Preserve playback position in a provider (SN-PHN-017 pattern).
+
+#### Security & privacy
+None beyond baseline. The mic-in-use indicator must remain visible in every layout the transition produces (privacy). No audio content in logs.
+
+#### UX notes
+Rotating or opening your phone during a lecture must never cost you a second of audio. The timer keeps ticking; the indicator stays. Preserve copy "Recording — everything you write is time-linked".
+
+#### Test plan
+Integration `app/integration_test/audio_config_change_test.dart`: start recording, rotate + fold, assert monotonic timer, no buffer underrun, anchor drift < 50 ms; playback variant asserts playhead+rate preserved. Unit test the clock source is device-time-based.
+
+#### Dependencies
+Depends on SN-DIM-027 (rotation continuity) and SN-AUD-001 (audio engine). Related SN-DIM-024. Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-030
+
+<a id="sn-dim-030"></a>
+
+**Reflow layout continuously during live window resize**
+
+| Field | Value |
+|---|---|
+| GitHub | #1136 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, web |
+| Areas | compat, design-system, perf |
+| Size | L |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DS-026](design-system.md#sn-ds-026), [SN-IPAD-010](compat.md#sn-ipad-010), [SN-AND-013](compat.md#sn-and-013), [SN-GWEB-004](compat.md#sn-gweb-004) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+On iPadOS Split View / Slide Over / Stage Manager, Android split-screen and freeform/desktop windows, and browser window resize, the available width changes continuously as the user drags a divider — not in discrete jumps. If the layout only snaps at breakpoints the content visibly lurches. docs/platform/ipad.md §"iPad multitasking" and android.md §7 require adapting to arbitrary window sizes; SN-IPAD-010 and SN-AND-013 own the platform hooks. This issue makes the shared layout reflow smoothly across the whole continuum.
+
+#### Scope
+**In:**
+- Continuous, per-frame reflow of chrome (sidebar/rail, palette dock, page rail, toolbars, Library grid columns) as the window width sweeps from ~320 dp to extra-large, not just at the 600/840/1200/1600 dp class boundaries.
+- Elements that change mode at a class boundary cross-fade or slide rather than pop.
+- The fixed page geometry re-centres continuously; the Library grid re-columns fluidly.
+
+**Out:**
+- The per-frame frame-budget guarantee during the drag (SN-DIM-046, perf-focused sibling).
+- Two app instances (SN-DIM-032).
+- Software-keyboard insets (SN-GPHN-002).
+
+#### Acceptance criteria
+- [ ] Dragging an iPad Split View divider from 2/3 to 1/3 (e.g. 981→320 pt on a 12.9" iPad) reflows the editor continuously: the palette dock stays docked and reachable at every intermediate width, and the page re-centres each frame with no lurch.
+- [ ] Crossing the 600 dp and 840 dp class boundaries during the drag transitions sidebar↔rail and shows/hides the page rail via a cross-fade/slide, not an instant pop.
+- [ ] On a resizable Chrome window, dragging from 1600 to 360 CSS px reflows with no horizontal page scroll at any width and full function at 320 CSS px (WCAG 1.4.10).
+- [ ] On Android freeform/desktop (ChromeOS) window resize the Library grid re-columns fluidly (4→3→2→1) with cards keeping their 3:4 aspect and no clipped text.
+- [ ] At every intermediate width, all controls meet the platform min target (44 pt iPad / 48 dp Android / 24 CSS px web) and no control is off-screen.
+- [ ] At 200% text scale the continuous reflow still avoids clipping and 2-D scroll across the whole width sweep.
+- [ ] Under browser pinch-zoom, the `visualViewport` offset keeps the active field and toolbar visible and the canvas does not jump.
+- [ ] A half-screen snap (~720 px) resolves to the correct size class and collapses the sidebar at the < 900 px `narrow` threshold exactly once.
+- [ ] Two consecutive automated resize sweeps produce byte-identical final layouts (deterministic), and the URL/history stays stable across resize ([SN-GWEB-004](compat.md#sn-gweb-004)).
+
+#### Technical notes
+Drive layout from `MediaQuery.sizeOf(context)` via `LayoutBuilder` so every build uses the live size, and interpolate continuous properties (grid column count via `SliverGridDelegateWithMaxCrossAxisExtent`, sidebar width, dock length) as functions of width rather than switching only at class thresholds (extend SN-DS-026). For mode changes at a boundary, wrap in `AnimatedSwitcher`/`AnimatedAlign` (respect Reduce Motion). iPad: coexist with Stage Manager/Split View/Slide Over resize handles (ipad.md §windowing); do not lock size via `UIWindowScene.sizeRestrictions`. Web: `ResizeObserver` + CSS container queries (`@container`) and `window.visualViewport`; avoid layout thrash by reading sizes once per frame. Android: `onConfigurationChanged` continuous metrics via `WindowMetricsCalculator.computeCurrentWindowMetrics`.
+
+#### Security & privacy
+None beyond baseline. In multi-window the app-switcher/screenshot snapshot must not expose a locked note (handled with SN-DIM-032/SN-GCMP-001); no new surface here.
+
+#### UX notes
+Resizing should feel like the layout breathes with the window — calm and continuous, never a jolt (ux-principles.md §2, §8). The page stays the hero at every width.
+
+#### Test plan
+Integration `app/integration_test/resize_continuity_test.dart`: sweep the window width in small steps (e.g. 20 dp) and assert no off-screen control, no horizontal scroll, correct target sizes, and cross-fade (not pop) at boundaries. Golden `app/test/golden/layout_matrix_test.dart` at many discrete widths (320/375/600/840/1024/1200/1600 dp). Web test via a headless resize.
+
+#### Dependencies
+Depends on SN-DS-026 (adaptive primitives), SN-IPAD-010 (Split View/Slide Over/Stage Manager adaptation) and SN-AND-013 (Android/ChromeOS windowing). Paired with SN-DIM-046. Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/ipad.md, android.md, web.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-032
+
+<a id="sn-dim-032"></a>
+
+**Support two app windows side by side editing different notebooks**
+
+| Field | Value |
+|---|---|
+| GitHub | #1137 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, web |
+| Areas | compat, editor, storage |
+| Size | L |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-ED-029](editor.md#sn-ed-029), [SN-IPAD-009](compat.md#sn-ipad-009), [SN-CORE-001](storage.md#sn-core-001) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Power users open two windows of the same app side by side — iPadOS multi-window (multiple `UIWindowScene`s), Android multi-instance (a second task), and on web a second browser tab — each editing a different notebook. docs/platform/ipad.md §windowing and the SN-IPAD-009 spike cover the platform feasibility; SN-ED-029 delivers split view / multi-window / document tabs. This issue guarantees two independent editor windows on different notebooks behave correctly and keep the local store coherent.
+
+#### Scope
+**In:**
+- Two windows/instances, each with independent editor state (page, tool, scroll, zoom, undo stack) editing different notebooks.
+- A shared local store (drift/SQLite + blob store, SN-CORE-001) that stays coherent across both windows (writes from one visible to the other on next read; no corruption).
+- Correct scene/instance lifecycle: opening, focusing and closing the second window.
+
+**Out:**
+- Two windows on the SAME notebook (SN-DIM-033).
+- Real-time collaboration between users (separate collaboration epic).
+- The split-view/tabs UI itself (SN-ED-029).
+
+#### Acceptance criteria
+- [ ] On an M-series iPad with Stage Manager, two Sane Notes windows can be open at arbitrary sizes (e.g. 720x1080 pt and 900x700 pt), each showing a different notebook, each with its own tool selection and undo stack that do not interfere.
+- [ ] On Android, launching a second instance (multi-instance / a second task) opens a different notebook in a separate task with independent state; both appear in Recents.
+- [ ] A stroke committed in window A on notebook X is persisted and does not appear in window B (notebook Y); the store shows no cross-write.
+- [ ] Closing window B does not lose window A state; closing A while B is open keeps B fully functional.
+- [ ] On web, a second tab editing a different notebook does not clobber the first tab's IndexedDB/local state (per-notebook rows), verified after edits in both.
+- [ ] Memory with two editor windows open stays within budget on the tablet slot (no doubling that breaches the 300 MB low-end ceiling on constrained devices; documented if a device caps to one window).
+
+#### Technical notes
+iOS: declare `UIApplicationSupportsMultipleScenes` and manage `UISceneSession`s; verify Flutter multi-view/multi-window support (SN-IPAD-009 spike; degrade to in-app tabs per ipad.md §L4 if native scenes aren't feasible, recording the outcome in ADR-0001). Android: `android:documentLaunchMode`/`FLAG_ACTIVITY_MULTIPLE_TASK` + `resizeableActivity`; each instance is its own FlutterEngine or multi-view. Store coherence: route all writes through the storage isolate (overview.md §6); use per-notebook row scoping and a single shared drift database with WAL so concurrent readers see committed writes. Web: a second tab is a second app instance; scope local state per notebook id and use a `BroadcastChannel`/storage events to invalidate stale caches.
+
+#### Security & privacy
+Baseline plus: a second window must respect per-notebook biometric lock (SN-GCMP-001) independently; opening notebook Y in window B must not bypass A's lock on notebook X. The app-switcher/mission-control snapshot of each scene must obscure a locked note. No cross-window leakage of decrypted content.
+
+#### UX notes
+Two notebooks side by side is a genuine study workflow (compare lecture notes with a problem set). Each window is a full, independent editor. Follow ux-principles.md §8 (a new window per notebook where the platform supports it).
+
+#### Test plan
+Integration `app/integration_test/multi_window_test.dart` (patrol where needed) opening two scenes/instances on different notebooks, editing both, asserting independent state and store coherence. Store test in `packages/sane_core/test` for concurrent readers/writers. Manual matrix on iPad Stage Manager + Android multi-instance + two web tabs.
+
+#### Dependencies
+Depends on SN-ED-029 (split view/multi-window/tabs), SN-IPAD-009 (multi-window spike) and SN-CORE-001 (document model/store). Parent SN-DIM-001. Related [SN-IPAD-009](compat.md#sn-ipad-009).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/ipad.md, android.md, web.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-033
+
+<a id="sn-dim-033"></a>
+
+**Keep two windows coherent when they open the same notebook**
+
+| Field | Value |
+|---|---|
+| GitHub | #1138 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, web |
+| Areas | compat, sync, editor |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-032](compat.md#sn-dim-032), [SN-CORE-001](storage.md#sn-core-001) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+The harder multi-window case: two windows/instances open the SAME notebook. Without coordination, edits in one can clobber the other. Sane Notes' document model is an add-wins CRDT with per-object HLC (CLAUDE.md §2 decision 4), which makes local same-device concurrency mergeable — this issue makes two windows on one notebook stay coherent and live-updating (or, where that is infeasible on a platform, a clear read-only-in-the-second-window guard).
+
+#### Scope
+**In:**
+- Two windows on the same notebook see each other's committed edits live (or near-live) via the local store + CRDT merge, with no lost updates or corruption.
+- Undo scoping is well-defined (per-window undo of that window's own edits; document the exact rule).
+- Where live two-way editing is infeasible on a platform, the second window opens read-only with a clear, honest banner and a "take over editing" affordance.
+
+**Out:**
+- Cross-user/network collaboration (collaboration epic).
+- The base multi-window plumbing (SN-DIM-032).
+
+#### Acceptance criteria
+- [ ] On iPad Stage Manager, a stroke committed in window A on notebook X appears in window B (same notebook) within 500 ms with no duplication and no lost prior edits.
+- [ ] Concurrent edits to the same page from both windows merge via CRDT with no corruption (add-wins; per-object HLC); a scripted interleave of 100 ops from both windows converges to one identical document.
+- [ ] Undo in window B reverts window B's last edit, not window A's (documented per-window undo rule); the undo stacks do not corrupt each other.
+- [ ] If a platform cannot support live two-way editing, the second window opens read-only with the banner "Open in another window — editing there" and a control to move editing here; this state is announced to AT.
+- [ ] Closing one window leaves the notebook fully editable in the other with all merged content intact.
+- [ ] No decrypted content crosses process boundaries except through the shared encrypted local store.
+
+#### Technical notes
+Use the shared drift database as the coordination point: writes go through the storage isolate (overview.md §6) and both windows observe change streams (drift `watch`) to re-hydrate. Apply CRDT merge from `packages/sane_core` (add-wins object set + LWW registers + per-object HLC, CLAUDE.md decision 4) so concurrent local edits converge. Web: coordinate tabs via `BroadcastChannel` + storage events; a Web Lock (`navigator.locks`) can elect a single writer if live merge in a tab is deferred. Per-window undo stacks are independent, keyed by window id. Fall back to a read-only second window with `navigator.locks`/an editing-owner flag where live merge isn't ready; record the decision in an ADR.
+
+#### Security & privacy
+Baseline plus: same-notebook coherence must not leak decrypted objects across processes except through the encrypted store; the read-only fallback must still honour biometric lock. No content in logs.
+
+#### UX notes
+Two views of one notebook should feel like one live document, not two forks. If the platform forces read-only, be honest and offer a one-tap takeover (ux-principles.md §4 error/empty voice, "no dead ends").
+
+#### Test plan
+Integration `app/integration_test/same_notebook_multi_window_test.dart`: edit the same notebook in two windows, assert live propagation < 500 ms and CRDT convergence. Unit test the merge + per-window undo in `packages/sane_core/test`. Web test with two contexts sharing IndexedDB + BroadcastChannel.
+
+#### Dependencies
+Depends on SN-DIM-032 (multi-window plumbing) and SN-CORE-001 (CRDT/document model). Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/ipad.md, android.md, web.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-036
+
+<a id="sn-dim-036"></a>
+
+**Adapt available space when a keyboard or trackpad attaches**
+
+| Field | Value |
+|---|---|
+| GitHub | #1139 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, web |
+| Areas | compat, input-gestures, editor |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DS-026](design-system.md#sn-ds-026), [SN-GPHN-002](editor.md#sn-gphn-002) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+Attaching a hardware keyboard/trackpad (iPad Magic Keyboard, Android/ChromeOS keyboard case) changes both the available space (the software keyboard no longer appears; a pointer becomes available) and the expected input model (shortcuts, hover, right-click, precise pointer). docs/design/ux-principles.md §8 requires input to adapt, not just size. This issue adapts the layout and input affordances when a physical keyboard/trackpad is present or removed.
+
+#### Scope
+**In:**
+- Detect hardware keyboard/trackpad presence and adapt: prefer the hardware keyboard (no software keyboard eating space), enable hover states, right-click context menus, and precise-pointer cursors.
+- Reclaim the space that the software keyboard would have used when a hardware keyboard is attached.
+- Re-flow when the keyboard case is attached/detached at runtime (e.g. iPad docked into a Magic Keyboard) without losing editor state.
+
+**Out:**
+- The full keyboard-shortcut map (gestures-and-shortcuts spec) — consume it, don't define it.
+- Software-keyboard insets (SN-GPHN-002).
+
+#### Acceptance criteria
+- [ ] Docking an iPad into a Magic Keyboard at runtime reclaims the bottom area (no software keyboard reserved), reflows the editor within B5 (no frame > 16.7 ms), and preserves the open page/tool/scroll.
+- [ ] With a trackpad/mouse present, hover states appear on controls and cards (cards lift 3 px per component-inventory.md §9) and a precise cursor changes per tool (crosshair/text/cell); with touch-only these are absent.
+- [ ] Right-click / secondary-click opens the context menu equivalent of the long-press actions; every hover-only affordance has a pointer + touch equivalent (ux-principles.md §8).
+- [ ] Detaching the keyboard/trackpad reverts to touch-first affordances and re-enables the software keyboard path (SN-GPHN-002) without state loss.
+- [ ] On ChromeOS/web with a physical keyboard, the same adaptations apply via pointer + keyboard media queries; at 200% text scale the reclaimed layout still avoids clipping.
+- [ ] Focus order and a visible focus ring (2 px accent, offset 2, WCAG 2.4.11) work for keyboard navigation when a hardware keyboard is attached.
+
+#### Technical notes
+Detect pointer kind via `MediaQuery` / `PointerDeviceKind` on incoming events and hover via `MouseRegion`; detect hardware keyboard on iOS through `GCKeyboard`/trait changes (verify via the plugin), on Android/ChromeOS via `InputDevice`/configuration `keyboard`/`navigation`. Reflow through the SN-DS-026 size-class + an "has hardware keyboard" flag so the software-keyboard reservation (SN-GPHN-002) is skipped. Provide right-click via `onSecondaryTapDown`/`GestureDetector` and `ContextMenuController`. Cursors via `MouseCursor`/`SystemMouseCursors`. Keep state in providers across the attach/detach rebuild (SN-PHN-017 pattern).
+
+#### Security & privacy
+None beyond baseline.
+
+#### UX notes
+On a Magic Keyboard the iPad becomes a laptop; Sane Notes should feel native to that — pointer, hover, shortcuts, right-click — while staying identical in look (ux-principles.md §10 "consistency across surfaces"). Reference gestures-and-shortcuts.md.
+
+#### Test plan
+Integration `app/integration_test/hardware_input_test.dart`: simulate pointer-present/absent and a runtime keyboard attach; assert space reclaimed, hover/cursor/right-click available, state preserved. Golden with hover state on/off. Keyboard-focus traversal test.
+
+#### Dependencies
+Depends on SN-DS-026 and SN-GPHN-002 (keyboard-inset handling it toggles off). Parent SN-DIM-001.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/ipad.md, android.md, web.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-037
+
+<a id="sn-dim-037"></a>
+
+**Restore editor state after process death at a different window size**
+
+| Field | Value |
+|---|---|
+| GitHub | #1140 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, ios-phone, android-phone |
+| Areas | compat, storage, editor |
+| Size | L |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-PHN-017](compat.md#sn-phn-017), [SN-DS-026](design-system.md#sn-ds-026), [SN-CORE-001](storage.md#sn-core-001) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+The OS can kill a backgrounded app to reclaim memory, then relaunch it later — often at a different window size or orientation than when it was backgrounded (the user rotated, folded, or changed Split View while the app was dead). State restoration must rebuild the editor at the NEW size, not the old one, with no crash and no lost work. This is distinct from live continuity (SN-PHN-017/027) because the process actually died.
+
+#### Scope
+**In:**
+- Persist enough editor state to restore after process death: open notebook + page, scroll, zoom, tool/colour/width, and a pointer to the last-saved document version (in-flight edits are already committed to the local store).
+- Restore correctly when the window size/orientation/fold posture at relaunch differs from when backgrounded (re-derive layout from live metrics, re-anchor scroll/zoom to the new viewport).
+- No crash, no blank editor, no wrong-size layout.
+
+**Out:**
+- Live fold/rotation continuity (SN-PHN-017/027).
+- The document persistence engine itself (SN-CORE-001) — this issue restores the view state on top of it.
+
+#### Acceptance criteria
+- [ ] Backgrounding the app on an Android phone in portrait, having the OS kill it, rotating to landscape, and relaunching restores the same notebook/page with scroll/zoom re-anchored to the landscape viewport and the correct tool selected — no crash.
+- [ ] Backgrounding folded (Compact) and relaunching unfolded (Expanded) on a Pixel 9 Pro Fold restores the editor in the Expanded layout (not a stretched Compact one) with state intact.
+- [ ] The last committed strokes/edits are present after restoration (in-flight edits were committed to the local store; nothing since the last commit is expected to survive, and this boundary is documented).
+- [ ] Restoration completes to an interactive editor within the cold-start budget for the surface (< 2 s mid Android, < 1.5 s iPad) — it does not eagerly deserialize the whole notebook (open to first page interactive per B7).
+- [ ] A biometric-locked notebook restores to the locked state and requires auth again (never restores decrypted content directly).
+- [ ] If the previously open notebook was deleted while the app was dead, restoration lands on the Library with an honest toast, not a crash or a blank editor.
+
+#### Technical notes
+Use Flutter `RestorationMixin` + `RestorationBucket` (restorationScopeId on `MaterialApp`) to persist the small view-state (notebook id, page index, scroll offset, zoom, tool). Android: back it with `onSaveInstanceState` via the embedding; iOS: state restoration activity (`NSUserActivity`/scene `stateRestorationActivity`). On relaunch, read live metrics (`MediaQuery.sizeOf`, displayFeatures, orientation) and build the layout for the CURRENT size (SN-DS-026), then re-anchor scroll/zoom by re-projecting the saved offset through the current viewport. Document restore does the lazy open (B7, overview.md; storage isolate). Do not restore decrypted content for locked notebooks — restore the lock state.
+
+#### Security & privacy
+Real risk: restored state must not leak a locked note. Persist only ids and view-state, never decrypted content; a locked notebook restores locked (MASVS-STORAGE-2: no sensitive data in restoration state; MASVS-AUTH re-challenge). The app-switcher snapshot taken at background must obscure a locked note.
+
+#### UX notes
+Coming back to a killed app should feel like it never left — same page, right size. No "reopen your notebook" friction. Honest recovery if the notebook is gone (ux-principles.md §4, "no dead ends").
+
+#### Test plan
+Integration `app/integration_test/process_death_restore_test.dart` using the framework's restoration test harness: set state, simulate restoration at a changed size/orientation, assert correct layout + state. Add an Android instrumentation path that actually kills the process (patrol) and relaunches rotated. Test the locked-notebook and deleted-notebook branches.
+
+#### Dependencies
+Depends on SN-PHN-017 (state across size-class changes), SN-DS-026 (size classes) and SN-CORE-001 (store). Parent SN-DIM-001. Security aligns with [SN-GCMP-001](security.md#sn-gcmp-001).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Perf budgets B4/B5 re-checked on the affected transition; no regression on Tier 1 slots (see docs/platform/performance-budgets.md)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/ipad.md, android.md, web.md, docs/design/ux-principles.md §8)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+
+---
+
+### SN-DIM-041
+
+<a id="sn-dim-041"></a>
+
+**Verify every screen holds at platform-max text scale on the smallest viewport**
+
+| Field | Value |
+|---|---|
+| GitHub | #1142 |
+| Type | test |
+| Priority | p1 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | ipad, android-tablet, web, ios-phone, android-phone |
+| Areas | compat, a11y, qa |
+| Size | L |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-A11Y-005](a11y.md#sn-a11y-005), [SN-GA11-007](a11y.md#sn-ga11-007), [SN-DS-026](design-system.md#sn-ds-026), [SN-DS-010](design-system.md#sn-ds-010), [SN-QA-006](qa.md#sn-qa-006), [SN-DIM-012](qa.md#sn-dim-012) |
+| Security controls | `ASVS-14` |
+| Extra labels | agent-ready |
+
+#### Context
+The maintainer requires every screen to stay usable at each platform's maximum text scale on the smallest supported window at once — the intersection of `docs/design/ux-principles.md` §8 (reflow at 320 CSS px) and `docs/design/accessibility.md` (Dynamic Type, 200% Android, 400% browser zoom per WCAG 2.2 1.4.4 / 1.4.10). [SN-A11Y-005](a11y.md#sn-a11y-005) implements OS text-scale support and [SN-GA11-007](a11y.md#sn-ga11-007) implements 400% zoom; this issue does not re-implement them — it is the device-matrix **gate** that proves the scale × dimension corner holds on every screen, so a shrunk viewport with giant text never clips or truncates essential text.
+
+#### Scope
+**In:** an automated golden + integration gate that renders all six screens (Login, Profiles, Library, Editor, Search, Settings) and all five overlays (Onboarding, Templates, Import, Share, Upgrade) at the smallest supported viewport in each family, at that platform's maximum text scale; failure conditions (clipping, essential-text truncation, horizontal body scroll) wired into CI.
+**Out:** the underlying scaling support ([SN-A11Y-005](a11y.md#sn-a11y-005)), 400% zoom on web ([SN-GA11-007](a11y.md#sn-ga11-007)), the component reflow contract ([SN-DIM-042](design-system.md#sn-dim-042)), the viewport registry itself ([SN-DIM-002](compat.md#sn-dim-002)).
+
+#### Acceptance criteria
+- [ ] At iPhone SE (375×667 pt @2x) with iOS Dynamic Type **AX5 (~310%)**, no screen or overlay clips or truncates essential text and the page body never scrolls horizontally.
+- [ ] At Android compact (360×640 dp) with **fontScale 2.0**, the fixed component heights (chrome 42, tool 44, chip 34, toggle 46×28) are preserved while labels wrap or move to a bottom sheet; no essential label is ellipsised to unreadability.
+- [ ] On web at **320 CSS px width and 400% zoom**, all content and function remain available with no 2-D scroll, except tables/diagrams/code inside their own `overflow-x:auto` containers (WCAG 1.4.10).
+- [ ] Numeric read-outs (page `X / N`, `mm:ss`, slider values) may shrink via `FittedBox` but never below 12 logical px; essential body/label text is never shrunk below AA by `FittedBox`.
+- [ ] The palette dock collapses to a single row plus a `⋯` overflow sheet when tool labels at max scale exceed the axis width; no dock control is pushed off-screen.
+- [ ] The gate runs over the [SN-DIM-002](compat.md#sn-dim-002) viewport registry and **fails CI** on any clip, essential-text truncation, or horizontal body scroll.
+- [ ] The WCAG 1.4.12 text-spacing overrides (line-height 1.5×, paragraph 2×, letter 0.12×, word 0.16×) applied to a text-heavy screen cause no clipping or overlap.
+- [ ] The scale sweep includes 85%, 100%, 130%, 200% and the platform maximum, run as an added axis on the [SN-DIM-012](qa.md#sn-dim-012) golden matrix harness and gated by [SN-DIM-013](qa.md#sn-dim-013).
+
+#### Technical notes
+Drive scale with `MediaQuery.textScalerOf(context)` and override via `MediaQueryData.textScaler` in tests; `TextScaler.clamp(maxScaleFactor:)` is permitted only for decorative/numeric text, never essential text. Read size with `MediaQuery.sizeOf`. Screens in `app/` must express reflow with `Wrap`/`Flexible`/`Expanded` and never a hardcoded width. Verify iOS via `UITraitCollection.preferredContentSizeCategory`, Android via `Configuration.fontScale`, web via `matchMedia` + `visualViewport` + `@container` on the DOM text overlays. Goldens in `app/test/golden/text_scale_matrix_test.dart`; integration flow in `app/integration_test/text_scale_reflow_test.dart` built on the [SN-QA-006](qa.md#sn-qa-006) harness.
+
+#### Security & privacy
+None beyond baseline: no note content or PII in logs or golden fixtures; fixtures use synthetic strings.
+
+#### UX notes
+Essential text (titles, actions, limits copy, error toasts) must always remain fully legible; only chrome density adapts. Follow `docs/design/ux-principles.md` §5 (never hide a limit) and §8; a control that cannot fit its label at max scale reflows to an icon + accessible name, never a silently clipped label.
+
+#### Test plan
+Golden `app/test/golden/text_scale_matrix_test.dart` (screens × smallest viewport × max scale); integration `app/integration_test/text_scale_reflow_test.dart`; web axe/reflow check reused from [SN-A11Y-016](a11y.md#sn-a11y-016). Device list: iPhone SE, iPhone 15, Pixel 8a, base iPad, Chrome desktop at 320 CSS px / 400% zoom.
+
+#### Dependencies
+[SN-A11Y-005](a11y.md#sn-a11y-005), [SN-GA11-007](a11y.md#sn-ga11-007), [SN-DS-026](design-system.md#sn-ds-026), [SN-DS-010](design-system.md#sn-ds-010), [SN-QA-006](qa.md#sn-qa-006).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
+### SN-DIM-055
+
+<a id="sn-dim-055"></a>
+
+**Prove a new unreleased device or viewport is added to the matrix in under an hour**
+
+| Field | Value |
+|---|---|
+| GitHub | #1153 |
+| Type | docs |
+| Priority | p2 |
+| Milestone | M5 Phones & Platform Parity |
+| Platforms | all |
+| Areas | compat, qa, docs |
+| Size | S |
+| SDLC | verification |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-002](compat.md#sn-dim-002), [SN-DIM-012](qa.md#sn-dim-012) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+The maintainer wants the next iPhone, the next foldable, and dimensions that do not exist yet to be a **data change, not a code change**. That is only real if there is a documented, timed, tested procedure for adding a viewport to the registry ([SN-DIM-002](compat.md#sn-dim-002)) and having it flow through the whole matrix ([SN-DIM-012](qa.md#sn-dim-012)) with zero code edits. This issue writes that runbook and proves it with a synthetic future-device row (e.g. a hypothetical iPhone 18 and a novel trifold), demonstrating the sub-one-hour path end to end.
+
+#### Scope
+**In:** a runbook in `docs/platform/` for adding a viewport profile; a proof test that adds a synthetic future-device descriptor and shows it appears in the golden matrix and farm plan with no code change; a time/steps budget.
+**Out:** the registry ([SN-DIM-002](compat.md#sn-dim-002)), the matrix ([SN-DIM-012](qa.md#sn-dim-012)), the farm job ([SN-DIM-053](qa.md#sn-dim-053)), real device onboarding to Tier 1 (release/QA process).
+
+#### Acceptance criteria
+- [ ] `docs/platform/adding-a-viewport.md` gives a step-by-step procedure (add descriptor → run schema check → run matrix → approve goldens) with an explicit **≤ 1 hour** budget and the exact commands.
+- [ ] A test adds a synthetic "future" descriptor (e.g. iPhone-18-class 402×874 pt @3x, and a trifold 2100×1900 with two hinge insets) purely as data and asserts the layout matrix ([SN-DIM-012](qa.md#sn-dim-012)) now generates cells for it with no code edit.
+- [ ] The proof demonstrates the new viewport also appears in the [SN-DIM-053](qa.md#sn-dim-053) farm plan (virtual-device slot) automatically.
+- [ ] The runbook covers choosing insets/DPR/hinge for a device before hardware exists (using published specs or conservative estimates) and marking it Tier 3 until verified.
+- [ ] Adding the descriptor requires touching only the registry file and (optionally) golden references — never test code or widget code.
+- [ ] The procedure is linked from `docs/platform/compatibility-matrix.md` and `CLAUDE.md` §14 pointers.
+
+#### Technical notes
+The proof test loads the [SN-DIM-002](compat.md#sn-dim-002) registry, injects a synthetic descriptor, and asserts matrix cell generation and farm-plan inclusion — verifying the data-driven contract holds. Keep future-device descriptors flagged (`status: future`, tier 3) so they render/report but do not block release until validated on hardware. This closes the forward-compatibility loop the maintainer requires.
+
+#### Security & privacy
+None beyond baseline (documentation + test data).
+
+#### UX notes
+No direct UX; institutionalises the promise that a brand-new device shape is supported on day one by adding one data row.
+
+#### Test plan
+`tools/device_lab/test/future_viewport_dataflow_test.mjs` (synthetic descriptor → matrix + farm inclusion, zero code change); a doc-lint that the runbook commands exist; a timed dry-run recorded in the PR.
+
+#### Dependencies
+[SN-DIM-002](compat.md#sn-dim-002), [SN-DIM-012](qa.md#sn-dim-012).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
+
 ### SN-GAND-003
 
 <a id="sn-gand-003"></a>
@@ -525,7 +1836,7 @@ SN-FND-002 (build scaffold), SN-AND-022 (Android build config / NDK).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #563 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -583,7 +1894,7 @@ Widget tests using `tester.restartAndRestore()` for each restorable property. `i
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #564 |
 | Type | spike |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -640,7 +1951,7 @@ No production tests. Deliverables: a measurement table (memory/start/fps per con
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #565 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -698,7 +2009,7 @@ Manual matrix on a Galaxy Tab in DeX and a Galaxy phone docked to a monitor (Tie
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #570 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -756,7 +2067,7 @@ Instrumented: kill-and-recover matrix (`am kill`, `am force-stop`, screen-off + 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #572 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -814,7 +2125,7 @@ Automated: unit tests for each degradation branch with the probe faked to unavai
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #995 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -872,7 +2183,7 @@ Instrumented: revoke persisted URI permission via adb, relaunch, assert the reco
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #983 |
 | Type | spike |
 | Priority | p3 |
 | Milestone | Backlog |
@@ -929,7 +2240,7 @@ Not applicable to a spike beyond the verification steps above; the decision must
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1021 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -993,7 +2304,7 @@ Source: docs/platform/phones.md §7, ux-principles.md §8. The condensed mode mu
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1078 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1051,7 +2362,7 @@ Manual per-release checklist executed on the 32-bit target, recorded under `tool
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1080 |
 | Type | test |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1109,7 +2420,7 @@ Automated: nightly functional + golden matrix entry for the x86_64 image; a unit
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1081 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1168,7 +2479,7 @@ Integration (`integration_test` + patrol on the A16 slot): one test per behaviou
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1082 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -1227,7 +2538,7 @@ Unit: loader tests (known row, unknown row, malformed row). Schema test rejectin
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1083 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1286,7 +2597,7 @@ Unit: version-comparison and tier-resolution tests driven by registry fixtures, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1094 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -1345,7 +2656,7 @@ Process verification: the dry-run report is the evidence. Automation: a schedule
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1002 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1585,7 +2896,7 @@ Widget/unit: `app/test/windowing/additive_window_state_test.dart` (shared model 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #810 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1643,7 +2954,7 @@ Unit: `app/test/platform/os_capabilities_test.dart` (faked OS levels ⇒ expecte
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #812 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1702,7 +3013,7 @@ Manual: `tools/device_lab/ipad_tier2_checklist.md` executed per release candidat
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #473 |
 | Type | epic |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1783,7 +3094,7 @@ Each child names its own tests. Epic-level gates: `app/integration_test/phone_ca
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #846 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1846,7 +3157,7 @@ The class map is the contract behind every screen in docs/design/screens-and-flo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #861 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1914,7 +3225,7 @@ The two layouts are already specified: Compact is single-pane with the palette d
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #478 |
 | Type | epic |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2006,7 +3317,7 @@ Epic-level verification: `app/integration_test/web/` suites owned by the childre
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #815 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2067,7 +3378,7 @@ There is no new chrome, but rendering **must** be pixel-identical between Canvas
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #823 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -2130,7 +3441,7 @@ Follows the onboarding voice in `docs/design/screens-and-flows.md` §5 and §16 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #824 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |

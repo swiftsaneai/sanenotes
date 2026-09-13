@@ -146,7 +146,7 @@ SN-FND-002 (app scaffold + navigation), SN-CORE-005 (.sanenote reader for import
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #561 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -204,7 +204,7 @@ Settings → Handwriting & stylus gets a "Default notes app" row ([SN-SET-007](s
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #984 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | Backlog |
@@ -546,7 +546,7 @@ Unit: `app/test/audio/recording_activity_test.dart` (start/update/end lifecycle,
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #471 |
 | Type | epic |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -628,7 +628,7 @@ Children name their own files. Epic-level gates: `app/test/system/` unit and wid
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #950 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -699,7 +699,7 @@ Unit: `app/test/system/notifications/notification_content_test.dart` (template-o
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #951 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -770,7 +770,7 @@ Unit (headless, injected fake clock and fake facade): `app/test/system/notificat
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #952 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -841,7 +841,7 @@ Unit: `app/test/system/links/link_router_test.dart` (both URL forms, canonicalis
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #953 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -913,7 +913,7 @@ Unit: `app/test/system/intake/intake_validator_test.dart` (MIME/magic mismatch, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #954 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -984,7 +984,7 @@ Unit: `app/test/system/intake/opened_file_router_test.dart` (type mapping, unsup
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #955 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1055,7 +1055,7 @@ Unit: `app/test/system/actions/quick_action_catalogue_test.dart` (ids stable, ev
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #956 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1127,7 +1127,7 @@ Unit: `app/test/system/widgets/widget_snapshot_test.dart` (schema, size cap, ver
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #957 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -1199,7 +1199,7 @@ Unit: `app/test/system/tasks/active_task_controller_test.dart` (single task per 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #958 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -1271,7 +1271,7 @@ Unit: `app/test/system/notifications/activity_notifier_test.dart` (own-edit supp
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #959 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1342,7 +1342,7 @@ Unit: `app/test/system/entry_point_gate_test.dart` with an exhaustive matrix (de
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #960 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1412,7 +1412,7 @@ This issue is the test plan; its own verification is meta: `app/test/system/_har
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #857 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1481,7 +1481,7 @@ Widgets are the only Sane Notes surface that cannot use the 17 looks — they mu
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #858 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |

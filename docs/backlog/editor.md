@@ -1,6 +1,6 @@
 # Backlog — area: editor
 
-43 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+47 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -42,6 +42,245 @@
 ---
 
 ## Issues
+
+### SN-BTY-010
+
+<a id="sn-bty-010"></a>
+
+**Beautify a lasso selection or a whole page with progress and cancel**
+
+| Field | Value |
+|---|---|
+| GitHub | #1163 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | all |
+| Areas | editor, ocr-hwr, ink |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-ED-004](editor.md#sn-ed-004), [SN-BTY-007](ocr-hwr.md#sn-bty-007), [SN-BTY-008](ink.md#sn-bty-008) |
+| Security controls | `MASVS-PRIVACY-1`, `CWE-400`, `CWE-532` |
+| Extra labels | agent-ready |
+
+#### Context
+Real-time refinement helps from now on; most users' first encounter with the feature will be "I already wrote three messy pages — fix them". This is the retroactive mode: lasso a selection, or pick Beautify page / Beautify notebook, and the engine runs over existing ink. It is the direct analogue of Samsung's one-tap Straighten and Apple's Refine-on-selection (docs/research/sources/samsung-notes-nebo-other.md §Samsung; docs/research/sources/apple-notes-freeform.md §2), and it is also the fallback sink for words that real-time mode dropped under load ([SN-BTY-009](ink.md#sn-bty-009)).
+
+PRD-LB-361 is binding here: every long-running operation runs off the UI isolate, shows progress, is cancellable, and fails into a clear retryable error state.
+
+#### Scope
+**In:** the Beautify command on the selection action bar ([SN-ED-011](editor.md#sn-ed-011)) and in the page/notebook menus; scope resolution from a lasso selection to whole words and lines (never half a word); chunked execution with streaming partial results; a progress indicator with a cancel control; cancellation semantics (nothing committed); a single undo step per invocation; the error/retry state; skipping non-text ink (shapes, drawings, highlighter, signatures) and reporting what was skipped; and the confirm dialog when reflow would overflow the page ([SN-BTY-007](ocr-hwr.md#sn-bty-007)).
+**Out:** the estimators; real-time mode ([SN-BTY-009](ink.md#sn-bty-009)); the preview UI ([SN-BTY-013](editor.md#sn-bty-013)), which wraps this command when preview is enabled.
+
+#### Acceptance criteria
+- [ ] A lasso selection is expanded to whole words and whole lines before beautification; beautifying half a word is impossible (test with a lasso cutting through a word).
+- [ ] Beautifying a 1,000-stroke page completes in <= 2.5 s p95 on the Tier-2 reference Android tablet and <= 1.2 s p95 on the iPad reference device, with results streaming line by line so the page is never frozen.
+- [ ] Progress is shown for any job estimated over 400 ms, with a live percentage and a Cancel control; cancel is acknowledged within 16 ms and commits nothing (the page is exactly as before).
+- [ ] The whole invocation is one undo step and one overlay scope, so a single Undo or one "Restore my original writing" reverts it entirely ([SN-BTY-012](editor.md#sn-bty-012)).
+- [ ] Drawings, diagrams, shapes, highlighter strokes and signature-like strokes are skipped, and the result summary names what was skipped ("2 drawings left as they are").
+- [ ] A failure mid-job leaves the document unchanged and shows a retryable error; a test injects a planner failure and asserts atomicity.
+- [ ] The command is disabled with an explanatory tooltip when the notebook intensity is Off ([SN-BTY-011](settings.md#sn-bty-011)), and never appears for a selection containing no ink.
+- [ ] Beautify notebook is behind a confirm dialog naming the page count and is itself one revertible operation per page.
+
+#### Technical notes
+`app/lib/features/editor/beautify/beautify_command.dart` plus `packages/sane_ml/lib/src/beautify/job/page_job.dart`. Scope expansion uses [SN-BTY-003](ocr-hwr.md#sn-bty-003)'s segmentation and the lasso polygon test from `sane_ink/lib/src/geometry/polygon.dart` (ink-engine §8.2, `contains` policy by default). The job runs on the long-lived beautify isolate ([SN-BTY-014](perf.md#sn-bty-014)) chunked per line, yielding after each chunk so cancellation lands promptly; partial results are buffered and committed as one op batch at the end so cancel is trivially atomic — streaming affects **rendering** (a preview overlay updates as lines complete), not commitment. Non-text classification reuses object kind (`Stroke.kind`, docs/design/pen-and-brush-spec.md §1.1: pen/highlighter/shape/pattern) plus a heuristic for drawings (a word-sized cluster whose recognition confidence from [SN-HWR-006](ocr-hwr.md#sn-hwr-006) is below 0.3 and whose stroke count/aspect looks pictorial). Progress and cancel use the shared long-operation UI from PRD-LB-361 ([SN-ED-027](editor.md#sn-ed-027) toasts and the standard progress affordance). Selection action bar wiring follows [SN-ED-011](editor.md#sn-ed-011).
+
+#### Security & privacy
+Local-only over note content (MASVS-PRIVACY-1, MASVS-NETWORK-1). No content in logs or progress strings (CWE-532, TM-I-05). Resource bounds: cap the job to a page at a time, cap memory, and abort with a retryable failure on an adversarial or corrupted page rather than exhausting the isolate (CWE-400, TM-D-01, TM-D-04). Atomic commit prevents a half-beautified page from becoming an unrevertible mess.
+
+#### UX notes
+Entry points: selection action bar "Beautify" (with Refine / Straighten / Reflow as sub-actions per PRD-ED-187), page menu "Beautify page", notebook menu "Beautify notebook" (confirm). Progress is a slim determinate bar in the toast area, never a modal blocker — the user can keep writing on another part of the page. Empty state: nothing selected → the action is hidden. Error state: "Couldn't beautify this page. Your writing is unchanged." with Retry. All in `sane_ui` tokens, 17 looks, light and dark, phone width down to 400 px. A11y: the command is keyboard-reachable ([SN-A11Y-008](a11y.md#sn-a11y-008)), progress is announced politely, and cancel is a real focusable button ([SN-A11Y-009](a11y.md#sn-a11y-009)).
+
+#### Test plan
+`app/test/features/editor/beautify/beautify_command_test.dart` (scope expansion, disabled states, skip reporting, one-undo-step), `app/test/features/editor/beautify/beautify_cancel_test.dart` (cancel atomicity and timing), `app/test/widget/editor/beautify_progress_test.dart` (progress, error, retry), `app/integration_test/beautify_test.dart` (lasso → beautify → undo → redo → revert), and the `beautify_page` perf scenario in `tools/perf_harness`.
+
+#### Dependencies
+SN-ED-004 (lasso selection), SN-BTY-007 (spacing/reflow planner), SN-BTY-008 (stroke regularisation). Selection bar [SN-ED-011](editor.md#sn-ed-011), isolate [SN-BTY-014](perf.md#sn-bty-014).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md PRD-ED-187)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text or note content in logs (TM-I-05)
+
+---
+
+### SN-BTY-012
+
+<a id="sn-bty-012"></a>
+
+**Wire beautification into undo/redo with a restore-my-writing revert**
+
+| Field | Value |
+|---|---|
+| GitHub | #1165 |
+| Type | feature |
+| Priority | p0 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | all |
+| Areas | editor, ocr-hwr, a11y |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-002](ink.md#sn-bty-002), [SN-ED-003](editor.md#sn-ed-003) |
+| Security controls | `MASVS-PRIVACY-1`, `MASVS-STORAGE-1`, `CWE-532` |
+| Extra labels | agent-ready |
+
+#### Context
+"Your handwriting is kept" is only true if the user can get it back, always, obviously, and long after the session in which it changed. Undo alone is not enough: our undo stack is 60 steps per page and dies with the app ([SN-ED-003](editor.md#sn-ed-003)), while a beautified page might be revisited weeks later on another device. So beautification needs two layers — normal undo/redo for the moment, and a durable, discoverable **"Restore my original writing"** that works at word, line, selection, page and notebook granularity forever, backed by the immutable originals in [SN-BTY-002](ink.md#sn-bty-002).
+
+#### Scope
+**In:** op-log integration so every apply and revert is an undoable op with an exact inverse; coalescing of real-time per-word refinements so undo is not a word-by-word slog; the revert affordance in the selection action bar, the page menu, the notebook menu and a long-press on a beautified word; a subtle "beautified" indicator shown only in the relevant context; revert-after-restart and revert-after-sync-merge; re-solving the line when a single word is reverted so spacing stays sane; and the redo path.
+**Out:** the preview ([SN-BTY-013](editor.md#sn-bty-013)); the intensity control ([SN-BTY-011](settings.md#sn-bty-011)); version history, which is a separate feature (the [SN-LIB-001](library.md#sn-lib-001) version-history work) though it must not conflict with it.
+
+#### Acceptance criteria
+- [ ] Every beautify action is a single undoable op with an inverse; Undo restores the original strokes **byte-identically** and Redo re-applies the same overlay (round-trip asserted at the serialisation layer).
+- [ ] Real-time refinements coalesce into one undo entry per 2-second window, while each word remains individually revertible from the revert affordance; a test writes ten words and asserts one undo entry per window and ten independent revert targets.
+- [ ] "Restore my original writing" works after an app restart, after the undo stack has been exhausted, and after a CRDT merge from another device, at word / line / selection / page / notebook granularity.
+- [ ] Reverting one word re-solves that line's spacing ([SN-BTY-007](ocr-hwr.md#sn-bty-007)) so the restored word does not overlap or leave a hole; the re-solve is part of the same undo step.
+- [ ] Notebook-wide revert is behind a confirm dialog naming the page count and is itself undoable.
+- [ ] The "beautified" indicator (a subtle dotted underline in the ink colour at 40% alpha) is shown **only** while the Beautify menu or a selection containing beautified ink is active, never as a permanent mark on the page, and never in exports.
+- [ ] A revert never deletes the beautify overlay history in a way that breaks sync: revert is a tombstoning op that merges (add-wins membership, [SN-CORE-003](sync.md#sn-core-003)), not a local mutation.
+- [ ] A11y: the revert action is keyboard reachable, exposed as a custom action on the word in the accessible canvas tree ([SN-A11Y-003](a11y.md#sn-a11y-003)), and announced as "beautified, double tap to restore original writing"; the indicator is never the only cue.
+
+#### Technical notes
+`app/lib/features/editor/beautify/revert_controller.dart` plus the `beautify.apply` / `beautify.revert` op types from [SN-BTY-002](ink.md#sn-bty-002) registered in the op-type registry ([SN-CORE-010](sync.md#sn-core-010)). Undo/redo uses the existing per-page 60-step stack ([SN-ED-003](editor.md#sn-ed-003)); coalescing is implemented as a time-windowed merge of consecutive `beautify.apply` ops with the same scope granularity, mirroring how typing coalesces in the text editor. The durable revert path does not consult the undo stack at all: it reads the overlay set for the requested scope and emits tombstoning `beautify.revert` ops, after which `effectiveGeometry()` returns the originals. Long-press on a word uses the existing context-menu infrastructure ([SN-ED-023](editor.md#sn-ed-023)). The indicator is drawn in the overlay chrome layer (ink-engine §5.1 layer 5) so it is never flattened into the committed ink and never appears in PDF/PNG export.
+
+#### Security & privacy
+Reverting is an integrity control, not just UX: it is the mechanism that makes automatic modification of note content acceptable at all. Original strokes remain in the encrypted local store and are E2E-encrypted on sync (MASVS-STORAGE-1, MASVS-PRIVACY-1). No content in logs, including in op descriptions surfaced to the undo UI (CWE-532, TM-I-05). Revert is expressed as CRDT ops so a merge cannot resurrect an overlay the user removed on another device (TM-T-02 replay/rollback semantics apply to the same op-log protections).
+
+#### UX notes
+Copy matters: the action is "Restore my original writing", never "Undo beautify" — it describes the user's intent, not the system's operation. It appears in the selection action bar whenever the selection contains beautified ink, in the page menu, and in the notebook menu behind a confirm. A toast after a page beautify offers "Restore my writing" for 8 seconds as an immediate escape hatch ([SN-ED-027](editor.md#sn-ed-027)). Reduce Motion turns the restore animation into an instant swap ([SN-A11Y-006](a11y.md#sn-a11y-006)). All chrome in `sane_ui` tokens across 17 looks, light and dark, down to 400 px.
+
+#### Test plan
+`app/test/features/editor/beautify/undo_redo_test.dart` (single op, inverse, coalescing windows, redo), `app/test/features/editor/beautify/revert_test.dart` (all five granularities, after-restart, after-merge, line re-solve, notebook confirm), `packages/sane_core/test/crdt/beautify_revert_merge_test.dart` (tombstone merge, no resurrection), `app/test/a11y/beautify_revert_semantics_test.dart`, golden `app/test/golden/beautify/beautified_indicator_*.png`, plus the revert leg of `app/integration_test/beautify_test.dart`.
+
+#### Dependencies
+SN-BTY-002 (overlay + ops), SN-ED-003 (undo/redo stacks). Context menu [SN-ED-023](editor.md#sn-ed-023), toasts [SN-ED-027](editor.md#sn-ed-027), canvas semantics [SN-A11Y-003](a11y.md#sn-a11y-003).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md PRD-ED-187)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text or note content in logs (TM-I-05)
+
+---
+
+### SN-BTY-013
+
+<a id="sn-bty-013"></a>
+
+**Show a before/after preview of beautification before committing**
+
+| Field | Value |
+|---|---|
+| GitHub | #1166 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | all |
+| Areas | editor, ocr-hwr, a11y |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-010](editor.md#sn-bty-010), [SN-BTY-012](editor.md#sn-bty-012) |
+| Security controls | `MASVS-PRIVACY-1`, `CWE-532` |
+| Extra labels | agent-ready, innovation |
+
+#### Context
+The fastest way to make an automatic change to someone's notes trustworthy is to show them exactly what it will do before it does it. No competitor offers this for handwriting refinement — Apple, Samsung and Goodnotes all apply and rely on undo. A preview turns "the app changed my notes" into "I approved these changes", and it doubles as the honesty mechanism for the epic's promise that meaning never changes silently: every alteration is enumerated, in words, before it lands.
+
+#### Scope
+**In:** a preview mode for the retroactive command ([SN-BTY-010](editor.md#sn-bty-010)) that renders the proposed geometry over a ghost of the original; a hold-to-compare gesture with a non-gesture toggle alternative; a per-word change list naming what changed (straightened / slant / size / spacing / smoother / moved to next line / spelling); per-word accept and reject so a partial commit is possible; Apply / Cancel; keeping the preview entirely in the overlay layer; and the preference to skip preview once a user trusts the feature (with a way back).
+**Out:** the estimators; the durable revert ([SN-BTY-012](editor.md#sn-bty-012)); a diff view for typed text.
+
+#### Acceptance criteria
+- [ ] Preview renders the original ink at 35% alpha beneath the proposed geometry; hold-to-compare shows the original at full alpha while held, and an equivalent focusable "Show original" toggle exists for users who cannot hold ([SN-A11Y-009](a11y.md#sn-a11y-009)).
+- [ ] Every changed word appears in the change list with a plain-language reason; a word with no change is not listed; the list is scrollable, and tapping an entry scrolls and highlights that word on the canvas.
+- [ ] Per-word reject removes that word from the commit, and the line's spacing is re-solved so the committed result is still consistent ([SN-BTY-007](ocr-hwr.md#sn-bty-007)); Apply commits only the accepted words as one op and one undo step.
+- [ ] Cancel leaves the document byte-identically unchanged; a test asserts no op is emitted.
+- [ ] Preview costs <= 2 ms additional paint time per frame at 120 Hz on the iPad reference device and adds no dropped frames; it is drawn in the overlay chrome layer and never flattened into committed ink or exports.
+- [ ] A "spelling" entry can never be auto-accepted: spelling changes ([SN-HWR-017](ocr-hwr.md#sn-hwr-017)) start rejected and require an explicit tap, and Apply-all does not include them (a test asserts this).
+- [ ] The change list is fully screen-reader navigable: each entry announces the word's recognised text (when available), the change, and accept/reject as custom actions; nothing is conveyed by colour alone.
+- [ ] "Always show preview" is on by default for the first five uses per profile and can be turned off and back on in settings.
+
+#### Technical notes
+`app/lib/features/editor/beautify/preview/` — `preview_controller.dart`, `preview_painter.dart`, `change_list_panel.dart`. The planner already produces a `BeautifyPlan` (list of per-word transforms with a `BeautifyKind` bitset from [SN-BTY-002](ink.md#sn-bty-002)); the change list is a direct rendering of that plan, so no separate diff computation is needed — the plan is the diff. Ghost rendering draws the original stroke geometry with a reduced alpha in the overlay chrome layer (ink-engine §5.1 layer 5) inside its own `RepaintBoundary`; the proposed geometry paints from the in-memory plan without committing overlays, so Cancel is a no-op by construction. Per-word reject mutates the in-memory plan and asks the spacing solver for a re-solve of the affected line only. Panel layout follows the adaptive rules in `docs/design/screens-and-flows.md`: a side panel on tablet/desktop widths and a bottom sheet under the 900 px narrow breakpoint.
+
+#### Security & privacy
+Preview state is in-memory note content; never persisted, never logged, no network (MASVS-PRIVACY-1, CWE-532, TM-I-05). Recognised text shown in the change list is note content and must not leak into accessibility logs or crash reports. Requiring explicit acceptance for spelling changes is the concrete control behind "never silently change the meaning of what someone wrote".
+
+#### UX notes
+The preview should feel like tracing paper laid over the page, not a modal diff tool: the canvas stays live, the panel is dismissible, and hold-to-compare is the primary interaction because it answers "what did it actually do?" in one gesture. Empty state (nothing to change): "This page already looks tidy." Loading state while the plan computes: the same progress affordance as [SN-BTY-010](editor.md#sn-bty-010). Error state: "Couldn't prepare a preview. Your writing is unchanged." with Retry. Tokens from `sane_ui`, all 17 looks, light and dark, adaptive to 400 px, Reduce Motion honoured ([SN-A11Y-006](a11y.md#sn-a11y-006)).
+
+#### Test plan
+`app/test/widget/editor/beautify/preview_panel_test.dart` (change list contents, tap-to-locate, per-word reject, apply/cancel semantics, empty/loading/error states), `app/test/features/editor/beautify/preview_commit_test.dart` (partial commit + line re-solve, spelling never auto-accepted, cancel emits no op), `app/test/a11y/beautify_preview_semantics_test.dart`, golden `app/test/golden/beautify/preview_ghost_*.png` across looks, and a perf check that preview adds <= 2 ms per frame in the `beautify_page` scenario.
+
+#### Dependencies
+SN-BTY-010 (the retroactive command this wraps), SN-BTY-012 (commit/undo semantics). Spelling entries come from [SN-HWR-017](ocr-hwr.md#sn-hwr-017).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/adr/0016-on-device-ml-and-ai.md, docs/architecture/ink-engine.md, docs/product/prd-01-editor-ink-brushes.md PRD-ED-187)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no ink coordinates, recognised text or note content in logs (TM-I-05)
+
+---
+
+### SN-DIM-006
+
+<a id="sn-dim-006"></a>
+
+**Keep the editor canvas and palette dock clear of cutouts and rounded corners**
+
+| Field | Value |
+|---|---|
+| GitHub | #1196 |
+| Type | feature |
+| Priority | p1 |
+| Milestone | M1 Ink Editor Alpha |
+| Platforms | all |
+| Areas | editor, design-system, compat |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-DIM-001](compat.md#sn-dim-001) |
+| Depends on | [SN-DIM-005](design-system.md#sn-dim-005), [SN-ED-001](editor.md#sn-ed-001) |
+| Security controls | — |
+| Extra labels | agent-ready |
+
+#### Context
+The editor is full-bleed and the tool palette floats and docks to any edge (`docs/design/screens-and-flows.md` §7.3, `component-inventory.md` §5). A floating dock on the trailing edge of an iPhone in landscape, or on the bottom of a device with a home indicator, will collide with the Dynamic Island, a punch-hole, a rounded corner, or the gesture bar unless it is inset-aware. The canvas may bleed to the glass edge, but every *control* must stay reachable and unoccluded on every dimension. This applies the [SN-DIM-005](design-system.md#sn-dim-005) inset contract to the two most latency- and reach-critical surfaces.
+
+#### Scope
+**In:** make `SaneCanvas` bleed under safe-area/cutout regions for pixels only (paper/ink render edge-to-edge) while the interactive hit-area and all chrome respect the keep-out rects; make `SaneToolPalette` dock inside the safe area on every edge, reflowing to the trailing edge / shifting inboard when its default edge intersects a cutout, island, corner, or the home indicator; keep the toast above the palette and inside the bottom inset; keep the page rail and focus-exit pill clear of cutouts.
+**Out:** the inset primitive ([SN-DIM-005](design-system.md#sn-dim-005)); hinge/fold reflow ([SN-DIM-022](compat.md#sn-dim-022)); the aspect-fit of the page itself ([SN-DIM-008](pages-canvas.md#sn-dim-008)); dock drag-to-dock behaviour (editor epic [SN-ED-001](editor.md#sn-ed-001)).
+
+#### Acceptance criteria
+- [ ] On an iPhone 15 in landscape with the palette docked to the leading edge, the dock and its grip sit entirely inside the 59 pt Dynamic Island inset — no tool button is under the island; the canvas pixels still fill to the edge.
+- [ ] On any device with a bottom home indicator (34 pt), a bottom-docked palette and the toast both clear the 34 pt inset; nothing sits in the gesture-bar strip.
+- [ ] On an iPad Pro 11" the palette and page rail stay ≥ the rounded-corner allowance (~24 pt) from each rounded corner; no control is clipped by a corner radius.
+- [ ] On an Android device with a top-centre punch-hole, top chrome (toolbar) reflows below the cutout in `SHORT_EDGES` mode and no title/control is occluded.
+- [ ] When the default dock edge intersects a keep-out region, the dock reflows to the nearest unobstructed edge/offset automatically and the choice is announced-safe (no silent overlap), verified in the golden matrix ([SN-DIM-013](qa.md#sn-dim-013)).
+
+#### Technical notes
+`app/` editor composition + `sane_ui` palette. Consume `saneInsetsOf`/keep-out rects from [SN-DIM-005](design-system.md#sn-dim-005); the canvas uses a `SafeArea`-exempt paint layer with an inset `Listener` hit region so bleed pixels are non-interactive. Dock placement uses `LayoutBuilder` + keep-out intersection tests, not device checks (enforced by [SN-DIM-004](design-system.md#sn-dim-004)). Exclude system gesture regions while inking per [SN-GAND-002](ink.md#sn-gand-002). Reference `docs/platform/android.md` §3 (front-buffer is for small updates; edge-to-edge insets) and `ipad.md` §5.
+
+#### Security & privacy
+Real case: in multi-window / Stage Manager / DeX and screen-share, the palette or a preview must not overlap so that the "data leaves device" indicator or a locked-note veil is hidden — the occlusion gate ([SN-DIM-013](qa.md#sn-dim-013)) asserts privacy chrome is never covered. App-switcher snapshot redaction is handled where the platform surfaces it; layout must not place sensitive chrome only in a bleed region.
+
+#### UX notes
+Latency is the UX (`ux-principles.md` §1): the wet-ink area may extend to the glass, but the writing hand must never lose a tool to a cutout. Left-handed mode mirrors the dock and page rail; the mirror still respects insets. Reduce-motion applies to the reflow.
+
+#### Test plan
+Golden: `app/test/goldens/editor/editor_insets_matrix_test.dart` — Editor with the dock at all four edges across the cutout devices in [SN-DIM-002](compat.md#sn-dim-002). Widget: `app/test/editor/palette_keepout_test.dart` — dock never intersects a keep-out rect; canvas bleed area rejects pointer input. Integration: rotate mid-stroke and confirm the dock reflows without dropping the stroke.
+
+#### Dependencies
+[SN-DIM-005](design-system.md#sn-dim-005), [SN-ED-001](editor.md#sn-ed-001)
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)
+- [ ] Docs/ADR updated if behaviour or architecture changed
+- [ ] Reviewed against docs/security/secure-coding-checklist.md
+
+---
 
 ### SN-ED-001
 
@@ -427,7 +666,7 @@ Surface: design/Sane Notes.dc.html Editor top toolbar (screens section 7.1; `San
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #639 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -485,7 +724,7 @@ Surface: dock colour/width rows (screens section 7.3; `SaneColorRow`/`SaneWidthR
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #640 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -601,7 +840,7 @@ Surface: Editor eraser tool (screens section 7.3 tool table). The 'cell' cursor 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #645 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -659,7 +898,7 @@ Surface: Editor selection transform overlay (screens section 7.3-7.4; `SaneSelec
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #641 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -717,7 +956,7 @@ Surface: Editor selection bar (screens section 7.4; `SaneSelectionBar`). Pro act
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #642 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -949,7 +1188,7 @@ Surface: Editor page rail (screens section 7.7; `SanePageThumb`). The rail resty
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #643 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1007,7 +1246,7 @@ Surface: dock page nav + rail + Page button (screens section 7.3, 7.7; `SanePage
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #644 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1819,7 +2058,7 @@ Surface: Editor adaptive layout across phone/tablet/web/foldable (ux-principles 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1057 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1876,7 +2115,7 @@ Unit: strip object model, reveal-state toggling (test/editor/tape_tool_test.dart
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1060 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -1933,7 +2172,7 @@ Unit: closure/area heuristic, false-positive on open strokes and words (test/edi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1058 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1990,7 +2229,7 @@ Unit: slot config persistence + adaptive count (test/editor/radial_quickmenu_tes
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1073 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -2047,7 +2286,7 @@ Unit: reference model, propagation, tombstone handling (test/editor/transclusion
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1075 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | Backlog |
@@ -2104,7 +2343,7 @@ Unit: op-replay ordering + keyframe seek (test/editor/note_replay_test.dart). Wi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1076 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | Backlog |
@@ -2161,7 +2400,7 @@ Unit: nudge geometry op, slice split, mask attribute + merge (test/editor/nudge_
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #985 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2220,7 +2459,7 @@ Unit: `packages/sane_app/test/document_session_registry_test.dart` (ref counting
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1014 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2286,7 +2525,7 @@ Source: docs/design/screens-and-flows.md §7.1 (top toolbar) and §7.8 (focus mo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1015 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2349,7 +2588,7 @@ Surfaces: the editor text-edit bar (docs/design/screens-and-flows.md §7.5), the
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1016 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2413,7 +2652,7 @@ Source: docs/design/screens-and-flows.md §7.3 (palette dock), §7.4 (selection 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #811 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2471,7 +2710,7 @@ Unit: `app/test/platform/scene_restoration_record_test.dart` (serialise/deserial
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #848 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2539,7 +2778,7 @@ Source: design/Sane Notes.dc.html Editor screen, palette dock (screens §7.3) an
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #851 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |

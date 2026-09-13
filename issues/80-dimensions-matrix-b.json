@@ -1,0 +1,129 @@
+[
+  {
+    "key": "SN-DIM-011",
+    "title": "Keep the editor usable at the minimum supported viewport of 320x480",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "editor",
+      "a11y"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-DIM-005",
+      "SN-DS-026"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe floor of the matrix is a 4-inch budget phone (~320×533 dp), a small split-view window, and the WCAG 1.4.10 reflow requirement at 320 CSS px. `docs/design/ux-principles.md` §8 makes 320 px a hard target: every layout must reflow with no 2-D scroll and no loss of function. At this size the editor must still let a user open a note, pick a tool, write, and navigate pages — with touch targets at the platform floor. This is the smallest-dimension correctness case.\n\n## Scope\n**In:** guarantee the Library, Editor, Search, Settings and every overlay are fully operable at 320×480 CSS px: single-pane, palette collapsed to essentials (pen, highlighter, eraser, colour, undo) with an overflow bottom-sheet for the rest per `docs/platform/phones.md` §3, page rail hidden, sidebar as drawer/bottom-nav; touch targets ≥ 44 pt / 48 dp / 24 CSS px; the fixed page fits width ({{SN-DIM-008}}); dialogs stack. Verify at 320×480 in both portrait and a 480×320 landscape sliver.\n**Out:** the phone compact shell build ({{SN-PHN-001}} owns the full phone UX); the size-class primitive ({{SN-DS-026}}); text-scale at 320 px ({{SN-DIM-041}}); occlusion ({{SN-DIM-006}}).\n\n## Acceptance criteria\n- [ ] At exactly 320×480 CSS px every screen shows no horizontal scrollbar and no clipped control (WCAG 1.4.10); a user can open a note, select pen, draw, switch page and reach undo without opening a hidden menu beyond the collapsed palette + overflow sheet.\n- [ ] All interactive targets meet ≥ 44 pt (iOS) / 48 dp (Android) / 24 CSS px (web) with adequate spacing at this width.\n- [ ] At a 480×320 landscape sliver the chrome shortens (uses the height class from {{SN-PHN-002}}) instead of clipping; the toolbar and palette remain reachable.\n- [ ] Every overlay (Templates, Import, Share, Upgrade, Onboarding) fits and scrolls within 320×480 with its primary action reachable without horizontal scroll.\n- [ ] The 320×480 and 480×320 rows pass the overflow/clip/occlusion gate ({{SN-DIM-013}}).\n\n## Technical notes\nReuse `SaneAdaptive`/size classes ({{SN-DS-026}}) and `saneInsetsOf` ({{SN-DIM-005}}); collapse the palette per `phones.md` §3; overlays become scrollable bottom sheets. No fixed heights that clip scaled text (compose with {{SN-DIM-041}}). Enforce targets via the component sizes in `tokens.json` `componentSizes`. Reference `accessibility.md` §2 (1.4.10, 2.5.8) and `phones.md` §7 (thumb zone).\n\n## Security & privacy\nNone beyond baseline. At the smallest size, gated/PRO and consent chrome must still be visible and not pushed off-screen (the \"every limit has a door\" rule, `ux-principles.md` §10) — asserted by {{SN-DIM-013}}.\n\n## UX notes\nEven on the smallest phone the app is calm and complete: essentials in the thumb zone, depth one tap away. No dead ends, no clipped buttons. This is the concrete proof of \"no issue in the design\" at the floor of the range.\n\n## Test plan\nGolden: `app/test/goldens/min_viewport/min_320x480_test.dart` — all screens/overlays at 320×480 and 480×320. Widget: `app/test/layout/min_viewport_targets_test.dart` — target sizes and no-overflow assertions. Manual: operate the full open→draw→navigate flow at 320×480.\n\n## Dependencies\n{{SN-DIM-005}}, {{SN-DS-026}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-012",
+    "title": "Build the layout golden harness that renders screens across the whole matrix",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "qa",
+      "compat"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "L",
+    "sdlc": "verification",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-QA-005",
+      "SN-DIM-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n{{SN-QA-005}} builds the golden harness across the 17 looks × light/dark at a canonical size; {{SN-GUX-015}} covers composed screens at two frames × five looks. Neither iterates the **device/viewport matrix**. To prove \"reliable for all the types of dimensions,\" the golden harness must render key screens across every row of {{SN-DIM-002}} (size, DPR, insets, fold state, orientation) crossed with light/dark, so a dimensional regression is caught by pixel diff on every PR.\n\n## Scope\n**In:** a `layoutMatrix(builder, {name})` helper that wraps {{SN-QA-005}}'s `goldenMatrix` and loops the {{SN-DIM-002}} rows (and the synthetic sweep from {{SN-DIM-003}} on the nightly job), applying each row's `MediaQueryData` (size, devicePixelRatio, viewPadding/padding, displayFeatures, orientation) via a test wrapper; render the key surfaces — Library, Editor (dock at each edge, audio bar states), Search, Settings, and each overlay — at a representative look-per-family × light/dark; write goldens under `app/test/goldens/dimensions/<screen>/<device>-<orientation>-<mode>.png`; a PR gate on a curated core subset and a nightly job over the full matrix with a diff artifact.\n**Out:** the pass/fail overflow/clip/occlusion *assertions* ({{SN-DIM-013}}); overflow-assertion promotion ({{SN-DIM-014}}); the look-only matrix ({{SN-QA-005}}); text-scale ({{SN-DIM-041}}) and DPR-crispness ({{SN-DIM-016}}) which extend this harness.\n\n## Acceptance criteria\n- [ ] `layoutMatrix` renders any registered screen across all shipped rows of {{SN-DIM-002}} in both orientations × light/dark, deterministically (fonts preloaded, animations off, clock/DPR pinned) — two runs are byte-identical.\n- [ ] The core PR subset (Editor, Library at ~6 representative rows incl. iPhone 15, iPad Pro 11\", a 320×480 sliver, a Z Fold unfolded, an ultrawide, a low-DPI Android) runs within the PR time budget; the full matrix runs nightly and publishes diffs on failure.\n- [ ] Adding a device row in {{SN-DIM-002}} (or a projected row in {{SN-DIM-003}}) produces new goldens with no harness code change.\n- [ ] The Z Fold unfolded row applies a 24 pt hinge display feature to the `MediaQueryData`, and the iPhone 15 row applies the 59/34 pt insets, so goldens exercise real insets/features.\n- [ ] Fixtures are synthetic (pinned seed, no real PII) per {{SN-GUX-015}}'s fixture rule.\n- [ ] The matrix treats size class × orientation × inset/cutout/hinge profile × text scale as independent axes drawn from {{SN-DIM-002}}, and the same data-driven set feeds the per-release device-farm run ({{SN-DIM-053}}).\n\n## Technical notes\nBuild on {{SN-QA-005}} (`goldenMatrix`, `FontLoader`, pinned CI image) and {{SN-QA-004}} `pumpApp`; drive screens through their real routes with Riverpod overrides. Construct `MediaQueryData(size, devicePixelRatio, padding, viewPadding, displayFeatures, textScaler)` per row; `displayFeatures` carries the hinge/cutout. Keep run time bounded via the one-look-per-family heuristic (`ux-principles.md` §9.3) on the PR subset. Run on the pinned Linux CI image to avoid AA drift.\n\n## Security & privacy\nGoldens are committed UI images: fixtures must be synthetic only — no real names/emails/phones/notebook content/share links/tokens (use the `sane.app/n/…` placeholder); a DoD check rejects a dev-bypass watermark in a golden (LINDDUN disclosure, MASVS-PRIVACY-1), mirroring {{SN-GUX-015}}.\n\n## UX notes\nThis harness is the visual contract for \"no issue in the design on every dimension.\" Diff artifacts are side-by-side and easy to read. It pairs with the look matrix ({{SN-QA-005}}) so both theme and dimension regressions are caught.\n\n## Test plan\n`app/test/support/layout_matrix.dart` + `layout_matrix_test.dart` (determinism, row application, hinge/inset injection); exemplar suites for Editor and Library; a `goldens-dimensions-nightly` CI job over the full matrix. Consumed by {{SN-DIM-013}}, {{SN-DIM-041}}, {{SN-DIM-016}}.\n\n## Dependencies\n{{SN-QA-005}}, {{SN-DIM-002}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-013",
+    "title": "Fail CI on overflow, clipping or occlusion across the layout matrix",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "qa",
+      "compat",
+      "ci-cd"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "verification",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-DIM-012",
+      "SN-DIM-006"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nRendering the matrix ({{SN-DIM-012}}) is not enough; CI must **fail** when a dimension causes a control to overflow its bounds, be clipped off-screen, or be occluded by a cutout, hinge, or another surface. A golden pixel-diff catches visual change but not semantic \"this button is now half off-screen.\" This issue adds automated structural assertions over every matrix cell so a real dimensional break blocks merge — the enforcement half of the epic.\n\n## Scope\n**In:** per matrix cell ({{SN-DIM-012}}), assert: no `RenderFlex`/render overflow; every interactive element's rect lies fully inside the viewport minus the keep-out rects from {{SN-DIM-005}} (no control under a cutout/island/home-indicator/hinge/rounded corner); no element is clipped by an ancestor to zero size; and a defined set of **must-be-visible** elements (primary action, the \"data leaves device\" indicator, PRO/consent chrome, a locked-note veil, the focus-exit pill) are present, hit-testable, and unoccluded. A CI job runs this over the PR subset and nightly over the full matrix, emitting a readable per-cell report.\n**Out:** the rendering harness ({{SN-DIM-012}}); runtime overflow-assertion promotion for all tests ({{SN-DIM-014}}); text-scale-specific overflow ({{SN-DIM-041}}).\n\n## Acceptance criteria\n- [ ] A seeded regression (a toolbar button placed under the Dynamic Island, or a dock overlapping the home indicator) fails the gate with a message naming the screen, device row, and the occluded element.\n- [ ] Any `RenderFlex` overflow in any matrix cell fails the gate (not just a golden diff).\n- [ ] Every interactive element's global rect is asserted inside viewport-minus-keepout for all shipped rows; a control landing under a cutout/hinge fails.\n- [ ] The must-be-visible set (primary action, data-leaves-device indicator, consent/PRO gate chrome, lock veil, focus-exit pill) is asserted present and unoccluded on every relevant screen/row; hiding one fails the gate.\n- [ ] The gate runs in the verification workflow on the PR subset and nightly on the full matrix, with a per-cell pass/fail artifact.\n- [ ] With the on-screen keyboard up (`viewInsets` bottom > 0), the active field and its action controls remain fully visible and unoccluded; a failure names the control key, the viewport, and the region (inset/cutout/hinge) that occluded it.\n\n## Technical notes\nUse `tester` element/rect introspection (`tester.getRect`, `RenderBox` bounds, `hitTest`) over the widgets rendered by {{SN-DIM-012}}; capture Flutter overflow via the mechanism from {{SN-DIM-014}}. Keep-out rects come from {{SN-DIM-005}}; must-be-visible tags are semantic keys on the widgets (privacy chrome tagged for this assertion). No device checks (enforced by {{SN-DIM-004}}). Reference `docs/security/secure-coding-checklist.md` for the privacy-chrome list.\n\n## Security & privacy\nDirectly privacy-relevant: this gate is what guarantees the \"data leaves device\" indicator, consent/opt-in prompts, and a locked-note veil can never be pushed off-screen or hidden behind a cutout/hinge/other surface by any dimension or posture — a LINDDUN disclosure / consent-integrity control (privacy-by-design). Fixtures synthetic only.\n\n## UX notes\nThis is the objective definition of \"no issue in the design\": if any control on any dimension is off-screen, clipped, or hidden, the build is red. It turns the maintainer's requirement into an enforceable gate rather than a hope.\n\n## Test plan\n`app/test/goldens/dimensions/occlusion_gate_test.dart` — rect-in-keepout and must-be-visible assertions per cell; negative fixtures (occluded button, RenderFlex overflow, hidden indicator) fail; a `dimensions-gate` CI job (PR subset + nightly full). Builds on {{SN-DIM-012}}.\n\n## Dependencies\n{{SN-DIM-012}}, {{SN-DIM-006}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-014",
+    "title": "Promote Flutter overflow and layout assertions to hard test failures",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "qa",
+      "ci-cd"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "S",
+    "sdlc": "verification",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-QA-004"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nFlutter reports layout overflow (the yellow-and-black stripe / \"A RenderFlex overflowed by N pixels\") as a `FlutterError` that, in tests, is often swallowed or only printed. For a product that must be correct on every dimension, any overflow anywhere — not just in the layout matrix — should fail the test that produced it. This issue wires overflow and other layout assertions to hard failures across the whole widget/golden suite, so dimensional bugs cannot slip through a test that \"passed.\"\n\n## Scope\n**In:** a shared test harness hook (extending {{SN-QA-004}} `pumpApp`) that installs a `FlutterError.onError`/`FlutterExceptionHandler` which converts `RenderFlex` overflow, `RenderConstrainedOverflowBox`, and \"cannot be negative\"/unbounded-constraint layout errors into test failures; an opt-out annotation for the rare intentional overflow (documented, reviewed); a lint/CI note so new widget tests inherit the hook by default. Applies to `app/` and `packages/*` widget + golden tests.\n**Out:** the matrix rect/occlusion assertions ({{SN-DIM-013}}); the golden harness ({{SN-DIM-012}}); runtime (non-debug) overflow behaviour.\n\n## Acceptance criteria\n- [ ] A widget test that produces a `RenderFlex` overflow fails, with the failure message including the overflow amount and widget, when run through the shared harness.\n- [ ] Unbounded-constraint and negative-size layout errors also fail the test rather than only printing.\n- [ ] The hook is on by default for `pumpApp`-based tests; a documented `allowOverflow(reason:)` escape hatch suppresses a single expected case and is reported.\n- [ ] Existing suites are migrated to the hook; the verification CI job treats a captured layout error as a failure.\n- [ ] A negative fixture proves the hook catches a deliberate 10 px overflow.\n\n## Technical notes\nIn the test binding, set `FlutterError.onError` to record and rethrow overflow/layout errors; `RenderFlex` overflow surfaces via `FlutterError` with a specific message prefix — match on the error's `RenderObject`/diagnostics rather than string-only where possible. Integrate into `app/test/support/pump_app.dart` ({{SN-QA-004}}). Document in `docs/qa/test-strategy.md`. This complements {{SN-DIM-013}}: 014 catches overflow in *every* test; 013 adds occlusion/visibility across the *matrix*.\n\n## Security & privacy\nNone beyond baseline: test-infrastructure only; no content or PII involved.\n\n## UX notes\nNo user surface. It is a guardrail ensuring the \"no issue in the design\" bar is enforced everywhere a widget is tested, not only in the dedicated dimension suite.\n\n## Test plan\n`app/test/support/overflow_guard_test.dart` — a deliberate overflow fails; an `allowOverflow` case passes and is reported; a clean layout passes. Wired into `pumpApp` and the CI verification job.\n\n## Dependencies\n{{SN-QA-004}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-016",
+    "title": "Ensure crisp rendering and hairline borders across device pixel ratios 1 to 4",
+    "type": "test",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "perf",
+      "compat"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "verification",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-DIM-012",
+      "SN-DS-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nDensity is part of \"all the types of dimensions.\" The matrix spans DPR 1.0 (some Chromebooks / low-DPI Android) through 2.0 (older iPad), 2.625 (many Android), 3.0 (iPhone Pro) to 4.0 (high-density Android). Hairline borders (`--bw` 1 px), 4 px page radius, focus rings, and 1-device-pixel dividers must stay crisp and not vanish or blur across DPRs, and raster assets must be provided at sufficient resolution. This issue proves density correctness across the matrix.\n\n## Scope\n**In:** verify across DPR 1.0–4.0 that: hairline borders/dividers render at ≥ 1 physical pixel and do not disappear at DPR 1.0 or blur at DPR 3–4; the page 4 px radius and drop shadow render crisply; focus rings (2 px, offset 2) stay ≥ 3:1 and visible; raster assets (mascot placeholder, any bitmap) are supplied/scaled for high DPR without softness; text AA is acceptable. Add a DPR axis to the golden harness ({{SN-DIM-012}}) and a crispness check for 1-physical-pixel lines.\n**Out:** colour/contrast per look ({{SN-QA-005}}, `accessibility.md` §4); wide-colour-gamut ink matching (Android is a separate concern); the harness ({{SN-DIM-012}}).\n\n## Acceptance criteria\n- [ ] A 1 px hairline divider is present and ≥ 1 physical pixel at DPR 1.0 and not blurred beyond one device pixel at DPR 4.0 (verified by sampling rendered pixels).\n- [ ] The page 4 px radius and drop shadow render without stair-stepping at DPR 1.0, 2.0, 3.0 and 4.0 (golden per DPR).\n- [ ] Focus rings remain visible and ≥ 3:1 at every DPR; a 2 px ring does not collapse at DPR 1.0.\n- [ ] Any raster asset used in chrome is provided at (or generated to) the physical resolution needed at DPR 3–4 with no visible softness in the golden.\n- [ ] The DPR axis is added to {{SN-DIM-012}} so future screens inherit density coverage; two runs are deterministic.\n\n## Technical notes\nApply `MediaQueryData.devicePixelRatio` per matrix row; for 1-physical-pixel lines use `BorderSide(width: 1 / devicePixelRatio)` or a device-pixel-aware divider in `sane_ui` rather than a fixed logical px that vanishes at DPR 1.0. Prefer vector (icons via {{SN-DS-002}} token/glyph system) over raster. Reference `tokens.json` (`bw`, page radius) and `design-system.md`. Keep raster sizes within the app-size budget.\n\n## Security & privacy\nNone beyond baseline: rendering only; no PII. Golden fixtures synthetic.\n\n## UX notes\nCrispness is part of \"no issue in the design\": a divider that disappears on a low-DPI Chromebook or a blurry mascot on a high-DPI phone both read as broken. The page must look like a clean physical sheet at every density.\n\n## Test plan\nGolden: `app/test/goldens/density/dpr_matrix_test.dart` — chrome + a page across DPR 1.0/2.0/3.0/4.0. Unit: `packages/sane_ui/test/layout/hairline_test.dart` — device-pixel line width computation; a pixel-sampling assertion for line presence at DPR 1.0.\n\n## Dependencies\n{{SN-DIM-012}}, {{SN-DS-002}}\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

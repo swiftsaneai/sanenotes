@@ -1128,7 +1128,7 @@ No direct UI; the felt guarantee is that a bad cloud sync, a corrupt file, or a 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1000 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1199,7 +1199,7 @@ Three states on the Editor chrome per `docs/design/screens-and-flows.md` §7.1: 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1001 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1270,7 +1270,7 @@ Silent on the happy path. On relaunch after a discard, a single non-modal card o
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1013 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1343,7 +1343,7 @@ One persistent, quiet chip in the Editor/Library chrome rather than a repeated m
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #821 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1406,7 +1406,7 @@ Invisible when healthy, decisive when not. The Library and Editor screens (`docs
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #822 |
 | Type | feature |
 | Priority | p0 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1469,7 +1469,7 @@ Surfaces: a banner above the Library list and inside the Editor (`design/Sane No
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #845 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |

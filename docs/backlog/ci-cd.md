@@ -1,6 +1,6 @@
 # Backlog — area: ci-cd
 
-30 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+31 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -85,6 +85,68 @@ SN-FND-002 (monorepo/app scaffold), SN-FND-005 (build flavours & --dart-define m
 - [ ] CodeQL runs over the Kotlin/native layer with no new high findings
 - [ ] Docs/ADR updated if behaviour or architecture changed (docs/platform/android.md kept in sync)
 - [ ] Reviewed against docs/security/secure-coding-checklist.md; Security & privacy section IDs filled
+
+---
+
+### SN-BTY-046
+
+<a id="sn-bty-046"></a>
+
+**Gate beautification quality in CI so a model change cannot make output worse**
+
+| Field | Value |
+|---|---|
+| GitHub | #1190 |
+| Type | infra |
+| Priority | p1 |
+| Milestone | M3 Audio & Recognition |
+| Platforms | all |
+| Areas | ci-cd, qa, ocr-hwr |
+| Size | M |
+| SDLC | verification |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-BTY-045](qa.md#sn-bty-045), [SN-PERF-003](perf.md#sn-perf-003) |
+| Security controls | `SLSA-L3` |
+| Extra labels | agent-ready |
+
+#### Context
+Beautification quality is the kind of property that degrades invisibly: someone swaps a model version, retunes a smoothing constant to fix one complaint, or changes a preset ladder, and handwriting quietly gets worse for thousands of users with nothing failing. The metrics of [SN-BTY-045](qa.md#sn-bty-045) and the adversarial budget of [SN-BTY-038](ocr-hwr.md#sn-bty-038) only protect us if a machine enforces them on every change, with committed baselines that cannot move without a human saying why.
+
+This mirrors the perf-gate discipline already established in [SN-PERF-003](perf.md#sn-perf-003) (baselines, regression alerts, three cadences) — same shape, different axis.
+
+#### Scope
+**In:** the `beautify-quality` CI job; path triggers; the committed baseline file and its tolerance bands; failure thresholds; the baseline-update review rule; artifacts and the job summary; flakiness control.
+**Out:** the metrics ([SN-BTY-045](qa.md#sn-bty-045)); the corpora ([SN-BTY-044](qa.md#sn-bty-044), [SN-BTY-038](ocr-hwr.md#sn-bty-038)); model distribution ([SN-BTY-048](ocr-hwr.md#sn-bty-048)).
+
+#### Acceptance criteria
+- [ ] A `beautify-quality` job runs on **every PR** touching `packages/sane_ml/**/beautify/**`, `packages/sane_ink/**/beautify/**`, the preset/profile files, the metric code, or any model or parameter manifest; it runs the PR-scope corpus subset in **≤ 8 minutes**.
+- [ ] A nightly job runs the full corpus plus the real on-device adapters in the device lab ([SN-QA-009](qa.md#sn-qa-009)/[SN-PERF-004](perf.md#sn-perf-004)), and a release-candidate job runs it across the Tier 1 device set.
+- [ ] The job **fails** when any of: WER-after regresses > 0.5 points on any band; composite legibility drops > 2 % versus baseline; ink preservation (M6) drops > 1 %; style similarity ([SN-BTY-047](ocr-hwr.md#sn-bty-047)) falls below its floor; once [SN-BTY-038](ocr-hwr.md#sn-bty-038) has landed, the do-not-correct false-positive rate exceeds its budget; or per-word cost exceeds the documented budget by > 20 %.
+- [ ] Baselines live in a committed, machine-readable file with per-metric, per-band values, the corpus version, the metric-composite version and the model version; a baseline change is a **separate, explicitly labelled commit** requiring CODEOWNERS review and a written justification in the PR body.
+- [ ] Determinism: three consecutive runs on the same commit produce byte-identical reports; the job is seeded and hermetic (no network in the PR-scope run) and is not permitted in the flaky-test quarantine ([SN-QA-008](qa.md#sn-qa-008)).
+- [ ] Artifacts uploaded on every run: `beautify_quality_report.json`, the Markdown summary, and PNG before/after renders of the 10 worst regressions, so a reviewer can see the damage rather than read a number.
+- [ ] The job summary shows a per-metric delta table with pass/fail and links to the worst cases.
+- [ ] A documented local command reproduces the PR-scope run exactly (`dart run tools/eval/bin/beautify_quality.dart --scope=pr`).
+
+#### Technical notes
+Add the job to `.github/workflows/devsecops.yml` (or a sibling `quality.yml` if runtime warrants), following the existing gate conventions and the budget-registry pattern of [SN-PERF-018](perf.md#sn-perf-018) — put thresholds in the registry, not in YAML. Runner entrypoint `tools/eval/bin/beautify_quality.dart` reuses the loader from [SN-BTY-044](qa.md#sn-bty-044) and the metrics from [SN-BTY-045](qa.md#sn-bty-045). Cache the corpus by content hash to keep the 8-minute budget. Report comparison uses the committed baseline file; on failure, exit non-zero with a table on stderr naming the metric, band, baseline, actual and delta.
+
+#### Security & privacy
+Supply-chain hygiene: pin action versions by SHA, verify corpus hashes before use, and forbid network egress in the PR-scope job so a fixture fetch cannot become an exfiltration path (SLSA L3 target, decision 8). Artifacts contain corpus-derived images only — never user content. No secrets are needed; the job must fail if one is configured.
+
+#### UX notes
+None beyond baseline (CI). Indirect user impact: this gate is what lets us promise in the accessibility statement ([SN-A11Y-018](a11y.md#sn-a11y-018)) that beautification quality is measured and cannot silently regress.
+
+#### Test plan
+A self-test of the runner (`tools/eval/test/beautify_quality_cli_test.dart`) covering: pass, fail-on-regression, fail-on-missing-baseline, deterministic output, and correct exit codes; a workflow-lint check that the job is wired to the documented paths; a deliberate canary commit in CI docs describing how to verify the gate actually fails (injected regression).
+
+#### Dependencies
+SN-BTY-045 (metrics and report), SN-PERF-003 (CI gate conventions and baseline tooling). The do-not-correct budget of [SN-BTY-038](ocr-hwr.md#sn-bty-038) plugs into the same gate when the spelling path lands in M6.
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner, dependency-review)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/security/devsecops-pipeline.md, docs/platform/performance-budgets.md)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, recognised text, style features or ink coordinates in logs
 
 ---
 
@@ -1086,7 +1148,7 @@ Unit-test `scripts/security-dashboard.mjs` rendering with a sample alerts+Scorec
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #584 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1143,7 +1205,7 @@ Dry-run to an internal test track with a sandbox service account: confirm the AA
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #585 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1257,7 +1319,7 @@ SN-FND-002, SN-FND-004, SN-FND-008.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #580 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -1314,7 +1376,7 @@ SN-FND-003, SN-FND-005.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #581 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -1371,7 +1433,7 @@ SN-FND-003.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #582 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -1485,7 +1547,7 @@ SN-FND-003.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1104 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -1544,7 +1606,7 @@ Manual/drill: set a temporary low budget on one provider and confirm the alert r
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1105 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1661,7 +1723,7 @@ CI dry-run on a branch: `.github/workflows/testflight.yml` builds + signs a beta
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #814 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -1720,7 +1782,7 @@ CI: `tools/scripts/check_ios_deployment_target.mjs` (all podspecs pinned at 17.0
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #830 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |

@@ -1763,7 +1763,7 @@ This issue IS the test plan: integration (sync, multipage, replay), security (co
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #552 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1830,7 +1830,7 @@ Recorder bar shows the language as a compact chip ('HI'), expanding to a picker;
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #571 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1888,7 +1888,7 @@ Unit tests with a fake engine for streaming/partial/cancel/error mapping. Instru
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #975 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -1946,7 +1946,7 @@ Unit: `plugins/sane_ml_native/test/transcribe_availability_test.dart` (availabil
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #856 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -2016,7 +2016,7 @@ Surface: a phone-shaped variant of the audio recorder bar states in docs/design/
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #839 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -2080,7 +2080,7 @@ The audio recorder bar and its states are specified in `docs/design/screens-and-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #840 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M3 Audio & Recognition |

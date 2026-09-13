@@ -272,7 +272,7 @@ SN-FND-002.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #573 |
 | Type | infra |
 | Priority | p0 |
 | Milestone | M0 Foundations |
@@ -329,7 +329,7 @@ SN-FND-002.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #574 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -386,7 +386,7 @@ SN-FND-002.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #575 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -444,7 +444,7 @@ SN-FND-006, SN-FND-007.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #576 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -500,7 +500,7 @@ SN-FND-002.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #577 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -557,7 +557,7 @@ SN-FND-004.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #578 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -614,7 +614,7 @@ SN-FND-006.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #579 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M0 Foundations |
@@ -785,7 +785,7 @@ SN-FND-002, SN-FND-010.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #583 |
 | Type | infra |
 | Priority | p3 |
 | Milestone | M0 Foundations |
@@ -956,7 +956,7 @@ SN-FND-004.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1107 |
 | Type | chore |
 | Priority | p1 |
 | Milestone | M7 Beta Hardening & Security Audit |

@@ -284,7 +284,7 @@ No direct UI; exposes the entitlement stream the paywall ([SN-BILL-011](billing.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #778 |
 | Type | task |
 | Priority | p0 |
 | Milestone | M8 Launch & Growth |
@@ -455,7 +455,7 @@ Purchase starts from the Upgrade overlay (docs/design/screens-and-flows.md §13)
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #779 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -740,7 +740,7 @@ Routing and toasts follow docs/design/screens-and-flows.md §8 (lasso Convert-to
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #780 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -968,7 +968,7 @@ Managed from the Account & plan tab ([SN-BILL-014](billing.md#sn-bill-014)): "Fa
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #781 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1139,7 +1139,7 @@ This issue *is* the test plan: `app/integration_test/billing_sandbox_test.dart` 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1048 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |

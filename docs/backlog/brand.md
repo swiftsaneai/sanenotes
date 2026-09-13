@@ -720,7 +720,7 @@ Unit test for the script with fixtures: (a) a manifest referencing a placeholder
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1053 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |

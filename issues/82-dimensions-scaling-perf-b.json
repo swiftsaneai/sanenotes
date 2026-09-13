@@ -1,0 +1,115 @@
+[
+  {
+    "key": "SN-DIM-050",
+    "title": "Define the reduced-effects look-degradation profile for the low-end layout tier",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "perf",
+      "compat"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-PERF-023",
+      "SN-DS-002",
+      "SN-DS-011"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n`docs/platform/performance-budgets.md` §5 and `docs/platform/android.md` (P4/L5) require that on low-end hardware the app **reduces blur/shadow/glass effects before it drops frames**. The 17 looks carry expensive feel tokens — Glassmorphism `blur(18px) saturate(1.3)`, Cyberpunk neon glows, Neumorphism dual shadows, Y2K `blur(12px)`, gradient/pattern grounds. This issue defines a documented, testable **effect-degradation profile**: a deterministic mapping from each look's costly tokens to cheaper equivalents that preserves the look's identity, driven by the {{SN-PERF-023}} adaptive quality ladder. It is the design-system half of the ladder; {{SN-PERF-023}} owns the tier-detection/ladder mechanism.\n\n## Scope\n**In:** a per-look degradation map (which of `glass`, `btnSh`, `cardSh`, `sh`, `bgi`, `inset`, `hst` degrade to what) at each ladder tier; a `SaneLookScope` degradation flag consumed by `SaneSurface`/components; the rule that layout, sizes and semantics never change — only effects.\n**Out:** ladder/tier detection and thermal/low-power triggers ({{SN-PERF-023}}, {{SN-PERF-015}}, {{SN-GPRF-019}}), the golden verification of degraded looks ({{SN-DIM-051}}).\n\n## Acceptance criteria\n- [ ] Each of the 17 looks defines an explicit reduced-effects variant: backdrop blur is dropped or reduced (e.g. Glass 18 px → 0, opaque `sf`), multi-layer/dual shadows collapse to a single 1 px hairline or none, neon glows become a solid accent border, gradient/pattern grounds fall back to the flat `bg`.\n- [ ] Component *heights, radii, spacing, and semantics are unchanged* between full and reduced profiles — only paint effects differ.\n- [ ] The reduced profile is selectable via a `SaneLookScope` flag set by the {{SN-PERF-023}} ladder, not by look id or platform check.\n- [ ] Each look's reduced variant still passes WCAG AA contrast in light and dark (per `docs/design/accessibility.md`).\n- [ ] `BackdropFilter` and `ImageFilter` usage is fully removed (not merely hidden) in the reduced profile so no GPU cost is paid.\n- [ ] Wallpaper mode's 22 px frosted blur degrades to a solid veil at the lowest tier while keeping text legible.\n\n## Technical notes\nExtend the `SaneLook` ThemeExtension from {{SN-DS-002}} with a `reduced` boolean and pre-computed degraded token set; `SaneSurface` reads it and omits `BackdropFilter`/`ColorFilter.matrix` when set. Ladder wiring comes from {{SN-PERF-023}}. Keep it token-driven in `packages/sane_ui` (no per-component look branching, per `docs/design/ux-principles.md` §9). Document the map in `docs/design/design-system.md` and `docs/platform/performance-budgets.md` §5.\n\n## Security & privacy\nNone beyond baseline (visual effects only).\n\n## UX notes\nA Paper look must still read as Paper on a 4 GB phone — degraded, not broken. Effects are the first thing to go, frames are never the thing to go (`docs/design/ux-principles.md` §1). The transition between full and reduced should cross-fade, respecting Reduce Motion.\n\n## Test plan\nGolden `packages/sane_ui/test/golden/reduced_effects_profile_test.dart` (all 17 looks × light/dark, full vs reduced) — full verification matrix is {{SN-DIM-051}}; contrast unit tests reused from accessibility; an assertion that no `BackdropFilter` is built when `reduced` is set.\n\n## Dependencies\n{{SN-PERF-023}}, {{SN-DS-002}}, {{SN-DS-011}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-051",
+    "title": "Golden-test the degraded looks on the low-end tier across 17 looks and dark mode",
+    "type": "test",
+    "priority": "p2",
+    "platforms": [
+      "android-tablet",
+      "android-phone",
+      "web"
+    ],
+    "areas": [
+      "qa",
+      "design-system",
+      "perf"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "S",
+    "sdlc": "verification",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-DIM-050",
+      "SN-QA-005",
+      "SN-AND-027"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe reduced-effects degradation profile ({{SN-DIM-050}}) is only trustworthy if it is pixel-verified and proven to hit the frame budget on the actual low-end reference. This issue adds the golden coverage for every look's reduced variant and ties it to a frame-budget check on the 4 GB Snapdragon 680-class device ({{SN-AND-027}}), so a change that reintroduces an expensive effect on the low tier fails CI. It extends the {{SN-QA-005}} 17-looks golden harness with the reduced profile as an additional axis.\n\n## Scope\n**In:** golden diffs for all 17 looks × light/dark in the reduced profile; a low-end frame-budget assertion that the reduced profile sustains 60 fps where the full profile would not; regression coverage.\n**Out:** the profile definition ({{SN-DIM-050}}), the ladder mechanism ({{SN-PERF-023}}), the general looks harness ({{SN-QA-005}}).\n\n## Acceptance criteria\n- [ ] A golden exists for each of the 17 looks × {light, dark} in the reduced profile; diffs are stable and reviewed.\n- [ ] On Android-lowend, a scripted scroll/write workload in the reduced profile sustains **≥ 60 fps** with zero frames > 16.7 ms, where the same workload in the full profile is allowed to miss.\n- [ ] The test asserts no `BackdropFilter`/glow effect is present in the reduced golden (visual + widget-tree check).\n- [ ] Contrast is re-verified AA on each reduced golden.\n- [ ] A regression that raises effect cost on the low tier (e.g. re-adds a blur) fails the golden or the fps assertion.\n- [ ] Reduced-profile goldens are wired into the nightly device-lab run.\n\n## Technical notes\nReuse the {{SN-QA-005}} golden harness and pump with `reduced: true` on `SaneLookScope`. Frame-budget check via `flutter drive --profile` + `FrameTiming` on Android-lowend from {{SN-AND-027}}; emulators run the golden diffs only, not the fps gate (`docs/platform/performance-budgets.md` §3). Store goldens under `app/test/golden/reduced_looks/`.\n\n## Security & privacy\nNone beyond baseline; goldens use synthetic content.\n\n## UX notes\nConfirms each look stays recognisable and legible when degraded — no look becomes an unstyled grey box on a cheap phone.\n\n## Test plan\n`app/test/golden/reduced_looks_matrix_test.dart` (17 × 2); `tools/perf_harness` low-end fps job in the reduced profile; nightly integration into the {{SN-PERF-019}} dashboard.\n\n## Dependencies\n{{SN-DIM-050}}, {{SN-QA-005}}, {{SN-AND-027}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, golden, perf gate, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-053",
+    "title": "Add a per-release device-farm job that runs the layout matrix on real and virtual devices",
+    "type": "infra",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "web",
+      "ios-phone",
+      "android-phone"
+    ],
+    "areas": [
+      "qa",
+      "compat",
+      "ci-cd"
+    ],
+    "milestone": "M7 Beta Hardening & Security Audit",
+    "size": "L",
+    "sdlc": "verification",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-QA-009",
+      "SN-PERF-004",
+      "SN-DIM-012"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nGolden tests catch layout defects in a headless renderer, but real devices expose real safe-area insets, real fold postures, real font renderers, and real browser reflow that a simulated `MediaQuery` cannot. This issue adds a per-release job on the {{SN-QA-009}} device farm plus emulators/simulators that runs the {{SN-DIM-012}} layout matrix on actual and virtual hardware, so a new OS or a real cutout that breaks a screen is caught before release. It reuses the {{SN-PERF-004}} device-lab definitions.\n\n## Scope\n**In:** a scheduled per-release-candidate device-farm run of the layout matrix across the Tier 1/2 device set (real) and a virtual-device set (emulators/simulators for coverage); screenshot capture and diff/triage; a release gate hook.\n**Out:** the farm setup itself ({{SN-QA-009}}), the matrix definition ({{SN-DIM-012}}), latency/fps gates (owned by perf issues), the viewport registry ({{SN-DIM-002}}).\n\n## Acceptance criteria\n- [ ] The job runs the layout matrix on real Tier 1 devices (iPad-Pro-ProMotion, iPad-Air, Android-tablet-stylus, Android-lowend, iPhone-ref, a foldable, Web-Chrome-desktop) and a virtual-device set each release candidate.\n- [ ] Real-device runs use each device's *actual* safe-area/cutout/hinge insets, not simulated ones, and flag any control that lands under a real inset.\n- [ ] Screenshots are captured per device × screen and diffed against approved references with a triage workflow.\n- [ ] Emulators/simulators are used for breadth (extra viewports/OS versions) but are explicitly excluded from any latency/fps assertion (`docs/platform/performance-budgets.md` §3).\n- [ ] A layout regression on any Tier 1 real device is a **release blocker** wired into the go/no-go gate ({{SN-QA-016}}).\n- [ ] The device/viewport set consumed by the job is the {{SN-DIM-002}} registry, so it extends by data.\n\n## Technical notes\nExtend the {{SN-QA-009}} cloud/self-hosted farm and {{SN-PERF-004}} device-lab configs; drive via `integration_test`/`patrol` screenshot capture on device and `flutter test` goldens on emulators; foldable postures via the emulator/real-device hinge sensor. Store references and diffs as CI artifacts feeding the {{SN-PERF-019}} dashboard pattern. Web runs across the {{SN-WEB-023}} cross-browser matrix.\n\n## Security & privacy\nDevice-farm artifacts (screenshots) use synthetic fixtures only — never real user notes; scrub any device identifiers from logs.\n\n## UX notes\nThe last line of defence before release: a human sees every screen on every reference device and a diff flags anything off, so the shipped build has no dimension surprises.\n\n## Test plan\nThe job itself is the test asset (`tools/device_lab/jobs/layout_matrix_farm.yaml` + `app/integration_test/layout_matrix_capture_test.dart`); a dry-run on one real device and one emulator validates the pipeline; gate integration verified against {{SN-QA-016}}.\n\n## Dependencies\n{{SN-QA-009}}, {{SN-PERF-004}}, {{SN-DIM-012}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, integration, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-055",
+    "title": "Prove a new unreleased device or viewport is added to the matrix in under an hour",
+    "type": "docs",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "compat",
+      "qa",
+      "docs"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "S",
+    "sdlc": "verification",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-DIM-002",
+      "SN-DIM-012"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe maintainer wants the next iPhone, the next foldable, and dimensions that do not exist yet to be a **data change, not a code change**. That is only real if there is a documented, timed, tested procedure for adding a viewport to the registry ({{SN-DIM-002}}) and having it flow through the whole matrix ({{SN-DIM-012}}) with zero code edits. This issue writes that runbook and proves it with a synthetic future-device row (e.g. a hypothetical iPhone 18 and a novel trifold), demonstrating the sub-one-hour path end to end.\n\n## Scope\n**In:** a runbook in `docs/platform/` for adding a viewport profile; a proof test that adds a synthetic future-device descriptor and shows it appears in the golden matrix and farm plan with no code change; a time/steps budget.\n**Out:** the registry ({{SN-DIM-002}}), the matrix ({{SN-DIM-012}}), the farm job ({{SN-DIM-053}}), real device onboarding to Tier 1 (release/QA process).\n\n## Acceptance criteria\n- [ ] `docs/platform/adding-a-viewport.md` gives a step-by-step procedure (add descriptor → run schema check → run matrix → approve goldens) with an explicit **≤ 1 hour** budget and the exact commands.\n- [ ] A test adds a synthetic \"future\" descriptor (e.g. iPhone-18-class 402×874 pt @3x, and a trifold 2100×1900 with two hinge insets) purely as data and asserts the layout matrix ({{SN-DIM-012}}) now generates cells for it with no code edit.\n- [ ] The proof demonstrates the new viewport also appears in the {{SN-DIM-053}} farm plan (virtual-device slot) automatically.\n- [ ] The runbook covers choosing insets/DPR/hinge for a device before hardware exists (using published specs or conservative estimates) and marking it Tier 3 until verified.\n- [ ] Adding the descriptor requires touching only the registry file and (optionally) golden references — never test code or widget code.\n- [ ] The procedure is linked from `docs/platform/compatibility-matrix.md` and `CLAUDE.md` §14 pointers.\n\n## Technical notes\nThe proof test loads the {{SN-DIM-002}} registry, injects a synthetic descriptor, and asserts matrix cell generation and farm-plan inclusion — verifying the data-driven contract holds. Keep future-device descriptors flagged (`status: future`, tier 3) so they render/report but do not block release until validated on hardware. This closes the forward-compatibility loop the maintainer requires.\n\n## Security & privacy\nNone beyond baseline (documentation + test data).\n\n## UX notes\nNo direct UX; institutionalises the promise that a brand-new device shape is supported on day one by adding one data row.\n\n## Test plan\n`tools/device_lab/test/future_viewport_dataflow_test.mjs` (synthetic descriptor → matrix + farm inclusion, zero code change); a doc-lint that the runbook commands exist; a timed dry-run recorded in the PR.\n\n## Dependencies\n{{SN-DIM-002}}, {{SN-DIM-012}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

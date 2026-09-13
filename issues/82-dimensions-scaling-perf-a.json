@@ -1,0 +1,264 @@
+[
+  {
+    "key": "SN-DIM-041",
+    "title": "Verify every screen holds at platform-max text scale on the smallest viewport",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "web",
+      "ios-phone",
+      "android-phone"
+    ],
+    "areas": [
+      "compat",
+      "a11y",
+      "qa"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "L",
+    "sdlc": "verification",
+    "security": [
+      "ASVS-14"
+    ],
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-A11Y-005",
+      "SN-GA11-007",
+      "SN-DS-026",
+      "SN-DS-010",
+      "SN-QA-006",
+      "SN-DIM-012"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nThe maintainer requires every screen to stay usable at each platform's maximum text scale on the smallest supported window at once — the intersection of `docs/design/ux-principles.md` §8 (reflow at 320 CSS px) and `docs/design/accessibility.md` (Dynamic Type, 200% Android, 400% browser zoom per WCAG 2.2 1.4.4 / 1.4.10). {{SN-A11Y-005}} implements OS text-scale support and {{SN-GA11-007}} implements 400% zoom; this issue does not re-implement them — it is the device-matrix **gate** that proves the scale × dimension corner holds on every screen, so a shrunk viewport with giant text never clips or truncates essential text.\n\n## Scope\n**In:** an automated golden + integration gate that renders all six screens (Login, Profiles, Library, Editor, Search, Settings) and all five overlays (Onboarding, Templates, Import, Share, Upgrade) at the smallest supported viewport in each family, at that platform's maximum text scale; failure conditions (clipping, essential-text truncation, horizontal body scroll) wired into CI.\n**Out:** the underlying scaling support ({{SN-A11Y-005}}), 400% zoom on web ({{SN-GA11-007}}), the component reflow contract ({{SN-DIM-042}}), the viewport registry itself ({{SN-DIM-002}}).\n\n## Acceptance criteria\n- [ ] At iPhone SE (375×667 pt @2x) with iOS Dynamic Type **AX5 (~310%)**, no screen or overlay clips or truncates essential text and the page body never scrolls horizontally.\n- [ ] At Android compact (360×640 dp) with **fontScale 2.0**, the fixed component heights (chrome 42, tool 44, chip 34, toggle 46×28) are preserved while labels wrap or move to a bottom sheet; no essential label is ellipsised to unreadability.\n- [ ] On web at **320 CSS px width and 400% zoom**, all content and function remain available with no 2-D scroll, except tables/diagrams/code inside their own `overflow-x:auto` containers (WCAG 1.4.10).\n- [ ] Numeric read-outs (page `X / N`, `mm:ss`, slider values) may shrink via `FittedBox` but never below 12 logical px; essential body/label text is never shrunk below AA by `FittedBox`.\n- [ ] The palette dock collapses to a single row plus a `⋯` overflow sheet when tool labels at max scale exceed the axis width; no dock control is pushed off-screen.\n- [ ] The gate runs over the {{SN-DIM-002}} viewport registry and **fails CI** on any clip, essential-text truncation, or horizontal body scroll.\n- [ ] The WCAG 1.4.12 text-spacing overrides (line-height 1.5×, paragraph 2×, letter 0.12×, word 0.16×) applied to a text-heavy screen cause no clipping or overlap.\n- [ ] The scale sweep includes 85%, 100%, 130%, 200% and the platform maximum, run as an added axis on the {{SN-DIM-012}} golden matrix harness and gated by {{SN-DIM-013}}.\n\n## Technical notes\nDrive scale with `MediaQuery.textScalerOf(context)` and override via `MediaQueryData.textScaler` in tests; `TextScaler.clamp(maxScaleFactor:)` is permitted only for decorative/numeric text, never essential text. Read size with `MediaQuery.sizeOf`. Screens in `app/` must express reflow with `Wrap`/`Flexible`/`Expanded` and never a hardcoded width. Verify iOS via `UITraitCollection.preferredContentSizeCategory`, Android via `Configuration.fontScale`, web via `matchMedia` + `visualViewport` + `@container` on the DOM text overlays. Goldens in `app/test/golden/text_scale_matrix_test.dart`; integration flow in `app/integration_test/text_scale_reflow_test.dart` built on the {{SN-QA-006}} harness.\n\n## Security & privacy\nNone beyond baseline: no note content or PII in logs or golden fixtures; fixtures use synthetic strings.\n\n## UX notes\nEssential text (titles, actions, limits copy, error toasts) must always remain fully legible; only chrome density adapts. Follow `docs/design/ux-principles.md` §5 (never hide a limit) and §8; a control that cannot fit its label at max scale reflows to an icon + accessible name, never a silently clipped label.\n\n## Test plan\nGolden `app/test/golden/text_scale_matrix_test.dart` (screens × smallest viewport × max scale); integration `app/integration_test/text_scale_reflow_test.dart`; web axe/reflow check reused from {{SN-A11Y-016}}. Device list: iPhone SE, iPhone 15, Pixel 8a, base iPad, Chrome desktop at 320 CSS px / 400% zoom.\n\n## Dependencies\n{{SN-A11Y-005}}, {{SN-GA11-007}}, {{SN-DS-026}}, {{SN-DS-010}}, {{SN-QA-006}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, integration, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-042",
+    "title": "Make sane_ui chrome reflow under text growth without truncating labels",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "design-system",
+      "a11y",
+      "compat"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-DS-026",
+      "SN-A11Y-005",
+      "SN-DS-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n`docs/design/component-inventory.md` fixes component *heights* (chrome 42, tool 44, chip 34, toggle 46×28) but leaves *width* behaviour under large text unspecified. When OS text scale grows, a fixed-height row of buttons with fixed-width labels either clips or overflows. This issue defines the width-axis reflow contract for `sane_ui` so components grow, wrap, or collapse to an overflow affordance instead of truncating — the implementation half that {{SN-DIM-041}} verifies. It extends {{SN-DS-026}} (window size classes) from the viewport axis to the text-growth axis.\n\n## Scope\n**In:** width-axis reflow rules for `SaneChipBar`, `SaneSegmented`, `SaneTabNav`, `SaneToolPalette`, `SaneEditorToolbar`, `SaneButton` rows; a shared `SaneReflowRow`/`SaneOverflowBar` primitive in `packages/sane_ui`; the rule that essential labels never ellipsise.\n**Out:** the scale-matrix gate ({{SN-DIM-041}}), OS scale wiring ({{SN-A11Y-005}}), the low-end effect degradation ({{SN-DIM-050}}).\n\n## Acceptance criteria\n- [ ] Every listed component wraps to additional lines (`Wrap`) or collapses trailing items into a `⋯` overflow sheet when the sum of intrinsic child widths at the current `textScaler` exceeds the available width from `LayoutBuilder`.\n- [ ] Fixed heights are preserved; only the width axis and line count change.\n- [ ] Essential labels use `softWrap`/wrap, never `TextOverflow.ellipsis`; only decorative/numeric text may use `FittedBox` (floor 12 logical px).\n- [ ] At `fontScale 2.0` on a 360 dp width, `SaneSegmented` with three segments stacks vertically rather than clipping the third label.\n- [ ] Overflowed items remain keyboard- and screen-reader-reachable via the overflow sheet (name/role/state preserved).\n- [ ] The primitive is used by all listed components (no per-component ad-hoc overflow logic).\n\n## Technical notes\nImplement `SaneOverflowBar` in `packages/sane_ui/lib/src/layout/` using `LayoutBuilder` + a measuring pass (`Flow`/`CustomMultiChildLayout` or a two-phase `Wrap` with an overflow button); read scale via `MediaQuery.textScalerOf`. Do not branch on look id — reflow is layout, not theme. Compose feature widgets in `app/`, not `sane_ui` (per `docs/architecture/overview.md` §5). Respect `EdgeInsetsDirectional` so reflow composes with RTL and left-handed mode ({{SN-A11Y-012}}).\n\n## Security & privacy\nNone beyond baseline (pure UI layout).\n\n## UX notes\nCollapse order is least-to-most essential (page nav collapses before pen/colour). The overflow sheet reuses `SaneOverlay` bottom-sheet styling; the dock's `⋯` sits at the trailing edge. Follows `docs/design/ux-principles.md` §3 (progressive disclosure) and §9 (invariants across 17 looks).\n\n## Test plan\nWidget tests `packages/sane_ui/test/layout/overflow_bar_test.dart` (wrap vs collapse thresholds); golden `app/test/golden/chrome_reflow_test.dart` across three looks × scale 1.0/1.5/2.0; semantics test that overflowed items stay reachable.\n\n## Dependencies\n{{SN-DS-026}}, {{SN-A11Y-005}}, {{SN-DS-003}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, widget, golden, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-043",
+    "title": "Author ink and hairline geometry in logical units, rasterise at devicePixelRatio",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "perf",
+      "ink",
+      "compat"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-INK-004",
+      "SN-INK-005",
+      "SN-DS-002"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nA note must look identically crisp on a 1x web canvas, a 2x iPad, a 3x phone, and a fractional Windows/ChromeOS scale (1.25/1.5/1.75). If widths, hairlines, paper grain and PDF tiles are authored in device pixels, a 1 px hairline blurs or disappears at fractional DPR and paper grain moires. This issue makes `sane_render`/`sane_ink` author everything in **logical units** and rasterise at the live `devicePixelRatio`, so geometry is resolution-independent and hairlines stay crisp everywhere. It is the rendering-crispness half; cross-device *physical-size* fidelity of a stored stroke is {{SN-DIM-044}}.\n\n## Scope\n**In:** logical-unit authoring for stroke widths, page hairlines (paper lines/grid/dots), tint washes, selection rects, and PDF tile raster requests; DPR-aware raster sizing and re-raster on DPR change; snapping hairlines to the device-pixel grid.\n**Out:** stroke document-model portability ({{SN-DIM-044}}), incremental cache invalidation on resize ({{SN-DIM-048}}), effect degradation on low-end ({{SN-DIM-050}}).\n\n## Acceptance criteria\n- [ ] A nominal 1 logical px hairline renders as a crisp, non-blurred line at DPR **1.0, 1.25, 1.5, 1.75, 2.0, 2.6 and 3.0** (device-pixel-grid snapped), verified by golden pixel diff.\n- [ ] Paper grain (7 px Paper dot pattern) and grid/dotted templates show no moire at fractional DPR.\n- [ ] PDF tiles are requested at `logicalTileSize × devicePixelRatio` and never upscaled beyond 1.0 blur.\n- [ ] On a runtime DPR change (external display, browser zoom, OS display-scale change) the active page re-rasterises at the new DPR within one frame budget and stays crisp.\n- [ ] Stroke width is stored and computed in logical units; the painter multiplies by DPR only at raster time.\n- [ ] No raster is allocated larger than `ceil(logicalSize × dpr)`; memory does not scale with an accidental double-DPR bug.\n\n## Technical notes\nRead DPR with `MediaQuery.devicePixelRatioOf(context)` / `ui.FlutterView.devicePixelRatio`; drive `ui.PictureRecorder`/`Canvas` and `ui.Image` raster sizes from it in `packages/sane_render`. Snap hairlines with `(logical * dpr).round() / dpr`. Feed the ThemeExtension pixel constants from {{SN-DS-002}} in logical units. PDF tiles: pass the DPR-scaled size to `pdfrx`/pdfium in `packages/sane_pdf`. Listen for DPR change via `WidgetsBindingObserver.didChangeMetrics`. Keep this off the hot draw path — re-raster of finished layers only.\n\n## Security & privacy\nNone beyond baseline; no content leaves the device, rasters are in-memory only.\n\n## UX notes\nInk must read as the same physical stroke regardless of screen density (`docs/design/ux-principles.md` §2: the page renders pixel-identically across looks; density must not change it). Hairlines never vanish on high-DPR phones nor bloat on low-DPR web.\n\n## Test plan\nGolden `packages/sane_render/test/golden/hairline_dpr_test.dart` (hairline at 7 DPRs); golden `paper_grain_dpr_test.dart`; widget test for re-raster on `didChangeMetrics`; a memory assertion that raster bytes == `ceil(w*dpr)*ceil(h*dpr)*4`.\n\n## Dependencies\n{{SN-INK-004}}, {{SN-INK-005}}, {{SN-DS-002}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-044",
+    "title": "Store stroke geometry DPR-independently so ink imports at identical physical size",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "ink",
+      "compat",
+      "storage"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-DIM-043",
+      "SN-INK-004",
+      "SN-CORE-013"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nA notebook written on a 3x phone and opened on a 1x web build must show strokes at the **same physical size and the same place on the page**, and a `.sanenote` bundle synced between devices must round-trip identically. This requires the document model to store stroke points and widths in DPR-independent page-logical units (the 800×1040 page space), never in the capturing device's pixels. This issue locks the on-wire/on-disk geometry to logical page units so import/sync is resolution-agnostic; {{SN-DIM-043}} handles crisp rasterisation of that geometry at each device's DPR.\n\n## Scope\n**In:** define stroke point/width units as page-logical in `sane_core`; conversion at capture time (device px → page logical) and at paint time (page logical → device px); a `.sanenote` format assertion + migration; a cross-DPR round-trip test.\n**Out:** rasterisation crispness ({{SN-DIM-043}}), CRDT merge mechanics (owned by sync epic), export sizing to PDF/PNG (sharing epic).\n\n## Acceptance criteria\n- [ ] Stroke `pts`, bounding box `bb`, and width `w` are persisted in page-logical units; the serialiser rejects any stroke carrying device-pixel coordinates.\n- [ ] A stroke captured at DPR 3.0 and re-opened at DPR 1.0 occupies the identical page-logical rectangle (±0.5 logical px) and the same visual position.\n- [ ] A `.sanenote` written on one device and read on another (different DPR, different logical screen size) reproduces every stroke's page-logical geometry byte-for-byte after decode.\n- [ ] Capture converts incoming `PointerEvent` logical coordinates to page-logical via the current page transform, independent of `devicePixelRatio`.\n- [ ] A format migration upgrades any pre-existing device-pixel strokes to logical units and is covered by a fixture test.\n- [ ] Width is DPR-independent: a `WIDTHS[1]` (2.6) stroke measures the same physical width on 1x and 3x once {{SN-DIM-043}} rasterises it.\n\n## Technical notes\nPage-logical space is the 800×1040 paged geometry / 2400×2400 freeform from `docs/design/screens-and-flows.md` §7.2. In `packages/sane_core` the `Stroke` value object holds logical points; the editor maps client → page coords using the page `Matrix4` (already used for `ptr`), never DPR. Confirm the serialisation choice from {{SN-CORE-013}}. Keep pure Dart (no `package:flutter` in `sane_core`). Add a migration entry in the `.sanenote` version table.\n\n## Security & privacy\nStroke geometry is note content: it is only ever written as ciphertext to the user's cloud (encrypt in `sane_crypto` before write); no coordinates in logs (`docs/architecture/overview.md` §8.2). Validate decoded geometry bounds before use (fail closed on out-of-range).\n\n## UX notes\nUsers moving between phone, tablet and web must never see their notes shift, rescale, or drift — a core promise of the cross-surface product (`docs/product` local-first). No visible seam on open.\n\n## Test plan\nUnit `packages/sane_core/test/stroke_logical_units_test.dart` (capture conversion, bounds); round-trip `sanenote_cross_dpr_roundtrip_test.dart`; migration fixture `stroke_pixel_to_logical_migration_test.dart`; golden cross-DPR visual-equality check in `sane_render`.\n\n## Dependencies\n{{SN-DIM-043}}, {{SN-INK-004}}, {{SN-CORE-013}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-045",
+    "title": "Make chrome animation and layout refresh-rate independent across 60/90/120Hz",
+    "type": "feature",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "perf",
+      "design-system",
+      "compat"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-DS-025",
+      "SN-A11Y-006"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nSane Notes runs on 60 Hz, 90 Hz, 120 Hz ProMotion, and adaptive/LTPO panels that vary refresh at runtime. Any animation whose progress is driven by frame count (e.g. `value += 0.05` per frame) runs at double speed on 120 Hz and stutters on adaptive refresh. This issue enforces **time-based** animation and layout across all non-ink chrome so motion looks identical at every refresh rate. It complements {{SN-INK-023}} (adaptive refresh on the *draw* path) and {{SN-PERF-014}} (the frame-pacing *gate*); this one covers chrome transitions, the toast, the palette dock snap, and layout transitions.\n\n## Scope\n**In:** convert all chrome/overlay/toast/dock animations to `AnimationController(vsync:)` with wall-clock `Duration`s from the {{SN-DS-025}} motion tokens; ban frame-count-based progression; verify correctness at 60/90/120/adaptive.\n**Out:** the ink draw path ({{SN-INK-023}}), the frame-pacing measurement gate ({{SN-PERF-014}}), reduce-motion behaviour (owned by {{SN-A11Y-006}}, only consumed here).\n\n## Acceptance criteria\n- [ ] Every chrome animation uses `AnimationController` with an explicit `Duration` (toast 2.4 s, toggle 18 px in 200 ms, overlay 200–300 ms per `docs/design/ux-principles.md` §6); none advances by a per-frame constant.\n- [ ] A CI/lint check flags any `Ticker`/`Timer` callback that mutates animation state by a fixed increment rather than by `elapsed`.\n- [ ] The same transition measured on 60 Hz and 120 Hz completes within ±1 frame of the same wall-clock duration.\n- [ ] On an adaptive-refresh panel that shifts 120→60 Hz mid-transition, the animation neither jumps nor changes perceived speed.\n- [ ] The toggle knob travels exactly 18 logical px in 200 ms regardless of refresh rate.\n- [ ] Reduce Motion ({{SN-A11Y-006}}) still cross-fades correctly under this time-based model.\n\n## Technical notes\nUse `AnimationController(vsync: this, duration: token)` + `CurvedAnimation`; never derive progress from `SchedulerBinding` frame count. Where a custom ticker is needed, integrate against `Duration elapsed` (`Ticker` callback arg), not tick count. Read the display's reported refresh where available (`ui.FlutterView`/`display.refreshRate`) only for diagnostics, never to scale durations. Motion tokens live in {{SN-DS-025}}; consume them in `sane_ui`. Do not force 120 Hz when idle (`docs/platform/performance-budgets.md` §5.6 battery).\n\n## Security & privacy\nNone beyond baseline (UI motion only).\n\n## UX notes\nMotion must feel identical on a 60 Hz base iPad and a 120 Hz iPad Pro; nothing speeds up or janks by device. Follow `docs/design/ux-principles.md` §6 (calm, interruptible, reduce-motion-respecting).\n\n## Test plan\nWidget tests `packages/sane_ui/test/motion/time_based_animation_test.dart` pumping at simulated 60/90/120 Hz frame intervals and asserting equal wall-clock completion; a custom-lint/analyzer rule test for frame-count progression; manual check on a ProMotion iPad and a 90 Hz Android.\n\n## Dependencies\n{{SN-DS-025}}, {{SN-A11Y-006}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, widget, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-046",
+    "title": "Gate the reflow transition frame budget for rotate, resize, fold and keyboard",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "web",
+      "ios-phone",
+      "android-phone"
+    ],
+    "areas": [
+      "perf",
+      "compat",
+      "qa"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-PERF-003",
+      "SN-PERF-007",
+      "SN-AND-013",
+      "SN-IPAD-010",
+      "SN-PHN-017"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nExisting issues preserve editor *state* across window-size-class changes ({{SN-AND-013}}, {{SN-IPAD-010}}, {{SN-PHN-017}}) but nothing measures the *cost* of the reflow itself. `docs/platform/performance-budgets.md` B5 says no frame may exceed 16.7 ms while writing; the maintainer extends the no-lag promise to the moment of rotation, window resize, fold/unfold and keyboard show/hide. This issue adds an automated transition-frame-budget gate wired into the {{SN-PERF-003}} CI perf gates, reusing the {{SN-PERF-007}} frame-timing harness.\n\n## Scope\n**In:** scripted transitions (portrait↔landscape, Split View/Stage Manager resize, fold↔unfold, IME show/hide) with `FrameTiming` capture and a per-transition jank gate; wiring into the three perf cadences.\n**Out:** correctness/state preservation of the transitions (their own issues), the layout-cost algorithm ({{SN-DIM-047}}), incremental cache invalidation ({{SN-DIM-048}}).\n\n## Acceptance criteria\n- [ ] During a scripted portrait↔landscape rotation on iPad-Pro-ProMotion, **no frame exceeds 16.7 ms** (and ≤ 8.3 ms target at 120 Hz) measured by `FrameTiming` build+raster.\n- [ ] During a Split View / Stage Manager resize drag on iPad, p95 frame time ≤ the display frame budget with zero frames > 16.7 ms after the first settling frame.\n- [ ] During a fold↔unfold on a Galaxy Z Fold / Pixel Fold (compact ↔ ~674×841 logical), the relayout produces no frame > 16.7 ms and no dropped-to-blank editor.\n- [ ] During IME show/hide on a phone, the editor and active field reflow with no frame > 16.7 ms (uses `MediaQuery.viewInsetsOf`).\n- [ ] The gate is registered in the {{SN-PERF-003}} per-commit and nightly cadences with per-device baselines and a regression threshold.\n- [ ] A regression that pushes any transition over budget fails the PR check.\n\n## Technical notes\nDrive transitions in `integration_test` via `tester.view.physicalSize`/`devicePixelRatio` overrides and `tester.view.viewInsets` for the IME; on real devices use `flutter drive --profile` and `adb shell` rotation / a foldable emulator posture. Capture with `SchedulerBinding.addTimingsCallback` (`buildDuration` + `rasterDuration`). Emulators may run functional checks only — the latency/fps numbers come from Tier 1 devices per `docs/platform/performance-budgets.md` §3. Harness lives in `tools/perf_harness`; reuse {{SN-PERF-007}}.\n\n## Security & privacy\nNone beyond baseline; perf traces carry timing only, no note content.\n\n## UX notes\nRotating, resizing, folding or raising the keyboard must feel instant — no visible reflow stutter, no flash of blank canvas (`docs/design/ux-principles.md` §1: latency is the UX). State is preserved by the referenced issues; this guarantees it happens smoothly.\n\n## Test plan\n`app/integration_test/resize_continuity_test.dart` (rotation, resize, fold, IME) with `FrameTiming` assertions; `tools/perf_harness` device-lab job; baselines stored per device in the {{SN-PERF-018}} budget registry.\n\n## Dependencies\n{{SN-PERF-003}}, {{SN-PERF-007}}, {{SN-AND-013}}, {{SN-IPAD-010}}, {{SN-PHN-017}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, integration, perf gate, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-047",
+    "title": "Bound relayout cost so resize never does an O(n) pass over all pages or strokes",
+    "type": "task",
+    "priority": "p1",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "perf",
+      "pages-canvas",
+      "editor"
+    ],
+    "milestone": "M1 Ink Editor Alpha",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-PERF-021",
+      "SN-ED-030",
+      "SN-PG-003"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nA window resize or rotation must reflow chrome and the visible page only — it must not walk every page of a 1,000-page notebook or every stroke of a dense page. If relayout is O(pages) or O(strokes), a resize on a large notebook janks badly, breaking the no-lag promise. This issue makes relayout cost O(visible), independent of document size, so the {{SN-DIM-046}} transition budget is achievable structurally rather than by luck. It builds on the repaint-scope discipline in {{SN-PERF-021}} and the adaptive editor layout in {{SN-ED-030}}.\n\n## Scope\n**In:** ensure resize/rotation/fold relayout touches only visible-viewport widgets and the current page; lazy page geometry; memoised size-class resolution; no per-stroke work on resize.\n**Out:** the transition frame-budget gate ({{SN-DIM-046}}), cache invalidation of rasters/thumbnails ({{SN-DIM-048}}), the draw-loop per-sample allocation rules ({{SN-PERF-021}}, consumed here).\n\n## Acceptance criteria\n- [ ] Relayout after a size change performs work proportional to on-screen widgets + the current page, **not** to total page count or total stroke count (asserted by a counter/instrumentation test).\n- [ ] Opening a generated 1,000-page notebook and rotating produces the same per-frame cost as rotating a 3-page notebook (within 10%).\n- [ ] The page rail / library grid use lazy builders (`ListView.builder`/`SliverGrid`) so off-screen pages/cards are not laid out on resize.\n- [ ] Window-size-class resolution is memoised and recomputed only when the class boundary is crossed, not every layout pass.\n- [ ] No stroke geometry is re-tessellated purely because the window resized (only DPR change triggers re-raster, per {{SN-DIM-043}}).\n- [ ] A dense 5,000-stroke page reflows on resize with no per-stroke iteration in the layout phase.\n\n## Technical notes\nDrive size class from a memoised provider keyed on `MediaQuery.sizeOf` bucket boundaries (`docs/design/ux-principles.md` §8 breakpoints). Use `LayoutBuilder` only where needed; avoid rebuilding subtrees that do not depend on size. Keep finished strokes as cached `Picture`/tiles ({{SN-INK-022}}) untouched by resize. Instrument with a debug layout-count probe. Coordinate with {{SN-ED-030}} (adaptive editor layout) and {{SN-PG-003}} (page geometry). Enforce as part of the {{SN-PERF-021}} lag-proof checklist.\n\n## Security & privacy\nNone beyond baseline.\n\n## UX notes\nResizing must feel free — the same whether the notebook has 3 or 1,000 pages. Users with huge notebooks are exactly the power users the app targets; they must not be punished for it.\n\n## Test plan\n`app/test/perf/relayout_cost_test.dart` (layout-count invariance across 3 vs 1,000 pages); widget test that off-screen rail items are not built; integration cross-check with {{SN-DIM-046}}; a stress golden at 5,000 strokes.\n\n## Dependencies\n{{SN-PERF-021}}, {{SN-ED-030}}, {{SN-PG-003}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, widget, perf, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-048",
+    "title": "Invalidate thumbnails, tiles and page rasters incrementally on resize and DPR change",
+    "type": "feature",
+    "priority": "p2",
+    "platforms": [
+      "all"
+    ],
+    "areas": [
+      "perf",
+      "pages-canvas",
+      "pdf"
+    ],
+    "milestone": "M2 Library & Documents",
+    "size": "M",
+    "sdlc": "implementation",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-INK-022",
+      "SN-PDF-004",
+      "SN-PG-010",
+      "SN-DIM-043"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\nWhen the window resizes or the effective DPR changes (external display, browser zoom, OS scale), the naive response is to drop and rebuild every cached raster — thumbnails, page tiles, PDF tiles — which spikes CPU and memory and janks. The caches from {{SN-INK-022}} (page raster tiles), {{SN-PDF-004}} (PDF tiles) and {{SN-PG-010}} (page thumbnails) must be invalidated **incrementally**: keep entries whose logical content is unchanged, re-raster only what the new DPR/zoom actually needs, and re-raster off the UI isolate. This makes resize cheap and keeps the {{SN-DIM-049}} memory budget intact.\n\n## Scope\n**In:** DPR/size-keyed cache entries; incremental invalidation that preserves DPR-valid entries; off-isolate re-raster of only the visible region on change; debounced re-raster during a continuous resize drag.\n**Out:** the caches themselves ({{SN-INK-022}}, {{SN-PDF-004}}, {{SN-PG-010}}), logical-unit authoring ({{SN-DIM-043}}), the memory-ceiling gate ({{SN-DIM-049}}).\n\n## Acceptance criteria\n- [ ] Cache keys include the DPR/zoom bucket; a resize that does **not** change the DPR bucket reuses existing tiles/thumbnails with zero re-raster.\n- [ ] A DPR/zoom change re-rasterises only the currently visible tiles/thumbnails; off-screen entries are re-rasterised lazily on demand.\n- [ ] Re-raster runs on a one-shot/background isolate (`Isolate.run`/compute), never on the UI isolate, so it adds no frame over 16.7 ms.\n- [ ] During a continuous resize drag, re-raster is debounced (single trailing raster at the settled size), not one-per-frame.\n- [ ] Thumbnails on the page rail and library grid do not flicker to blank on resize when the DPR bucket is unchanged.\n- [ ] Total raster memory does not transiently double during invalidation (old entry evicted only after the new one is ready, under the LRU cap).\n- [ ] Heavy recomputes (thumbnail regeneration, PDF re-raster, and search re-indexing) never run on the UI isolate during a resize or divider drag; they are debounced to run after the drag settles (≥ 150 ms).\n\n## Technical notes\nExtend the LRU caches in `packages/sane_render` and `packages/sane_pdf` with a `(logicalKey, dprBucket)` composite key; on `didChangeMetrics` compute the new bucket and diff. Re-raster requests go to the one-shot compute isolate (`docs/architecture/overview.md` §6). Debounce with a short timer keyed to resize-end. Respect the tile LRU memory cap so incremental refill stays under budget. Coordinate with {{SN-PG-010}} (disk-cached thumbnails — reuse disk entries across sessions where DPR matches).\n\n## Security & privacy\nCached rasters are derived note content held in memory/disk cache only; the disk thumbnail cache must live in app-private storage and never sync as plaintext (`docs/architecture/overview.md` §7 crypto boundary). No content in logs.\n\n## UX notes\nMoving a window between a laptop screen and a 4K display, or zooming the browser, must not blank the notebook or stutter — pages stay visible and sharpen in place.\n\n## Test plan\n`packages/sane_render/test/cache/incremental_invalidation_test.dart` (same-bucket reuse, cross-bucket partial re-raster); isolate-offload assertion; debounce test; memory test that peak stays under the LRU cap during invalidation.\n\n## Dependencies\n{{SN-INK-022}}, {{SN-PDF-004}}, {{SN-PG-010}}, {{SN-DIM-043}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, golden, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  },
+  {
+    "key": "SN-DIM-049",
+    "title": "Hold the memory budget at the largest viewport and highest DPR with a 600-page PDF",
+    "type": "test",
+    "priority": "p1",
+    "platforms": [
+      "ipad",
+      "android-tablet",
+      "android-phone"
+    ],
+    "areas": [
+      "perf",
+      "pdf",
+      "compat"
+    ],
+    "milestone": "M5 Phones & Platform Parity",
+    "size": "M",
+    "sdlc": "verification",
+    "parent": "SN-DIM-001",
+    "depends_on": [
+      "SN-PERF-009",
+      "SN-PERF-011",
+      "SN-GPRF-010",
+      "SN-DIM-048"
+    ],
+    "labels_extra": [
+      "agent-ready"
+    ],
+    "body": "## Context\n`docs/platform/performance-budgets.md` B9 caps memory at < 300 MB on the 4 GB Android reference. The worst case for a layout/raster system is the **largest logical viewport at the highest raster scale with a huge document open** — the maintainer's 13-inch tablet at 3x with a 600-page PDF. Tile/raster caches sized by pixel count blow the budget as viewport×DPR grows. This issue proves memory stays bounded in that corner by making cache budgets a function of *logical* visible area (capped), not raster pixel count, so a bigger/denser screen does not multiply memory. It extends the {{SN-PERF-009}} sampler and {{SN-PERF-011}} PDF-scroll fixture into the max-viewport×DPR case and consumes {{SN-DIM-048}} incremental invalidation.\n\n## Scope\n**In:** a memory gate at the largest supported logical viewport × highest effective raster scale with the 600-page PDF fixture open and scrolled; a cache-budget policy sized by logical visible area with a hard cap; eviction proof.\n**Out:** the sampler/fixture themselves ({{SN-PERF-009}}, {{SN-PERF-011}}), OS memory-pressure response ({{SN-GPRF-010}}), incremental invalidation ({{SN-DIM-048}}).\n\n## Acceptance criteria\n- [ ] With a 13-inch-class tablet logical viewport (e.g. 1032×1376 pt) at up to **3x effective raster scale** (native 2x plus a 1.5x display-zoom, or a hypothetical 3x panel) and the 600-page PDF open, peak PSS stays **< 300 MB** on the 4 GB Android reference during a scripted scroll.\n- [ ] Tile/raster cache memory is bounded by a cap proportional to *logical* visible area, not by `pixels = logical × dpr²`; doubling DPR does not double steady-state cache memory.\n- [ ] Off-screen PDF tiles and page rasters are evicted (LRU) so open-page count does not accumulate unbounded memory.\n- [ ] No OOM or low-memory kill occurs during the scripted session (an automatic fail per B9).\n- [ ] The same session on iPad-Air (2x) and a mid Android tablet stays within its per-device baseline.\n- [ ] The gate runs nightly on the device lab and opens a release-blocking issue on regression.\n\n## Technical notes\nSize the `sane_render`/`sane_pdf` LRU caps by logical visible area with a DPR-independent byte ceiling; render tiles at DPR but bound the number of resident tiles by viewport coverage, not resolution. Sample PSS via `adb shell dumpsys meminfo` and Dart heap via `dart:developer`, per `docs/platform/performance-budgets.md` §2 B9. Reuse the 600-page fixture from {{SN-PERF-011}} and the sampler from {{SN-PERF-009}}. Emulators are not a memory gate; use the low-end reference device.\n\n## Security & privacy\nDecoded PDF pages are note-adjacent content held only in memory/private cache; nothing is logged and nothing leaves the device. Cap decode resources before parse (decompression-bomb defence, `docs/architecture/overview.md` §7.8).\n\n## UX notes\nThe app must not slow, thrash, or crash when a student opens a 600-page textbook on a big screen — the exact heavy-use scenario the product courts (`research/user-pain-points-and-market-gaps.md`).\n\n## Test plan\n`tools/perf_harness` memory job `pdf_large_viewport_memory` on Android-lowend + iPad; `app/integration_test/large_pdf_memory_test.dart` asserting cache-cap invariance across DPR; nightly device-lab run feeding the {{SN-PERF-019}} trend dashboard.\n\n## Dependencies\n{{SN-PERF-009}}, {{SN-PERF-011}}, {{SN-GPRF-010}}, {{SN-DIM-048}}.\n\n## Definition of done\n- [ ] Code + tests merged, CI green (lint, analyze, unit, integration, perf gate, security scans)\n- [ ] Docs/ADR updated if behaviour or architecture changed\n- [ ] Reviewed against docs/security/secure-coding-checklist.md"
+  }
+]

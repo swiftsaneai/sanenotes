@@ -47,7 +47,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1061 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -104,7 +104,7 @@ Unit: attachment query + type grouping + isolation (test/library/media_browser_t
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1050 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -408,7 +408,7 @@ SN-CORE-002 (entities), SN-CORE-004 (drift persistence + blob store).
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #686 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -612,7 +612,7 @@ Widget: `app/test/features/library/recents_rail_test.dart` (top-3 ordering; visi
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #687 |
 | Type | task |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -1020,7 +1020,7 @@ Unit: `packages/sane_core/test/library/tag_test.dart` (many-to-many; add-wins co
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #688 |
 | Type | task |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -2107,7 +2107,7 @@ This issue *is* the test plan: golden (`notebook_card_looks`, `sidebar_looks`, `
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #854 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M5 Phones & Platform Parity |

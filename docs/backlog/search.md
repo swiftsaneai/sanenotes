@@ -37,7 +37,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #978 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -95,7 +95,7 @@ Unit: `packages/sane_sync/test/background_queue_test.dart`, `packages/sane_ml/te
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #979 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -153,7 +153,7 @@ Unit: `plugins/sane_spotlight/test/allow_list_test.dart`, `exclusion_rules_test.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1017 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M5 Phones & Platform Parity |
@@ -217,7 +217,7 @@ Source: docs/design/screens-and-flows.md §11. The phone layout keeps the calm, 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1051 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -368,7 +368,7 @@ SN-CORE-002 (document model), SN-CORE-004 (drift/SQLite + blob store), SN-LIB-00
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #707 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -431,7 +431,7 @@ SN-CORE-004 (drift/SQLite + blob store), SN-FND-002 (monorepo scaffold). Blocks 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #708 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -493,7 +493,7 @@ Unit: `packages/sane_search/test/ranking_test.dart` (weight order, tie-break det
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #709 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -555,7 +555,7 @@ Unit: `packages/sane_search/test/indexer/dirty_tracker_test.dart`, `.../debounce
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #710 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -617,7 +617,7 @@ Unit: `packages/sane_search/test/extractors/text_extractor_test.dart` (rich-text
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #711 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -679,7 +679,7 @@ Widget: `app/test/search/search_screen_test.dart` (debounce, filter toggles, emp
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #712 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -740,7 +740,7 @@ Widget: `app/test/search/launcher_shortcut_test.dart` (tap opens + focuses; Cmd/
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #713 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
@@ -802,7 +802,7 @@ Widget: `app/test/editor/find_bar_test.dart` (open/close, counter, next/prev wra
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #714 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -864,7 +864,7 @@ Widget: `app/test/search/open_result_test.dart` (routes to correct page; highlig
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #715 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -926,7 +926,7 @@ Unit: `packages/sane_search/test/extractors/handwriting_extractor_test.dart` (wo
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #716 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -988,7 +988,7 @@ Unit: `packages/sane_search/test/extractors/pdf_extractor_test.dart` (text+quads
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #717 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M3 Audio & Recognition |
@@ -1050,7 +1050,7 @@ Unit: `packages/sane_search/test/extractors/transcript_extractor_test.dart` (wor
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #718 |
 | Type | design |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1111,7 +1111,7 @@ Golden: `app/test/search/goldens/scribble_preview_<look>_<mode>.png` across all 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #719 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1173,7 +1173,7 @@ Unit: `packages/sane_core/test/smart_collection_test.dart` (CRDT merge, dangling
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #720 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -1235,7 +1235,7 @@ Security tests: `app/test/security/search_index_encryption_test.dart` (raw DB ha
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #721 |
 | Type | test |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1297,7 +1297,7 @@ The harness *is* the test: `tools/perf_harness/search/query_latency_bench.dart`,
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #722 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M3 Audio & Recognition |
@@ -1359,7 +1359,7 @@ Widget/a11y: `app/test/search/search_a11y_test.dart` (Semantics labels, focus or
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #723 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |

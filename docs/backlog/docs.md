@@ -34,7 +34,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #469 |
 | Type | epic |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -109,7 +109,7 @@ Per child; at epic level: `scripts/test/` node:test suites for every docs script
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #520 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -170,7 +170,7 @@ Rendered pages follow the table style of `docs/README.md` and `docs/roadmap.md` 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #521 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -231,7 +231,7 @@ Developer-experience surface only; the design system is not involved. Failure ou
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #522 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -293,7 +293,7 @@ Developer-experience surface; no app UI. The output is the UX — a table of `as
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #523 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -361,7 +361,7 @@ The site is the first impression for contributors and auditors. Use the **Paper*
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #524 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -424,7 +424,7 @@ Developer surface. The generated site inherits the docs-site theme from [SN-DOC-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #525 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -485,7 +485,7 @@ Developer-experience surface; no app UI and no design tokens. Readability rules 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #527 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -548,7 +548,7 @@ The plan is written against the real design: screen names come from `design/Sane
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #528 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -614,7 +614,7 @@ Published on the docs site with the Paper look tokens ([SN-DOC-005](docs.md#sn-d
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #529 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -681,7 +681,7 @@ Entry points per `docs/design/screens-and-flows.md`: **Settings → Account & pl
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #530 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M8 Launch & Growth |
@@ -747,7 +747,7 @@ What's new is a bottom sheet on phones and a centred modal on tablet/web, using 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #531 |
 | Type | infra |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -811,7 +811,7 @@ Two audiences, two voices. The developer-facing `CHANGELOG.md` follows the house
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #532 |
 | Type | chore |
 | Priority | p3 |
 | Milestone | M7 Beta Hardening & Security Audit |
@@ -874,7 +874,7 @@ Developer-experience surface. The report is the UX: a markdown table in the job 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #533 |
 | Type | task |
 | Priority | p3 |
 | Milestone | M8 Launch & Growth |
@@ -1052,7 +1052,7 @@ None.
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1098 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M0 Foundations |
@@ -1111,7 +1111,7 @@ Validator fixtures: an issue labelled `needs-decision` with no `DEC-` reference 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1101 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -1170,7 +1170,7 @@ CI: a PR without the required contribution-terms artefact fails; with it, passes
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1102 |
 | Type | docs |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -1229,7 +1229,7 @@ Dry run the loop end to end before launch: send a support mail from a test devic
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1114 |
 | Type | docs |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |

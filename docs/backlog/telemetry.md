@@ -1,6 +1,6 @@
 # Backlog — area: telemetry
 
-15 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
+16 issues. Generated from `issues/*.json` by `scripts/render-issues.mjs`; do not edit by hand.
 
 ## Tree
 
@@ -24,6 +24,69 @@
 
 ## Issues
 
+### SN-BTY-052
+
+<a id="sn-bty-052"></a>
+
+**Measure beautification acceptance and reverts with opt-in, content-free telemetry**
+
+| Field | Value |
+|---|---|
+| GitHub | #1195 |
+| Type | feature |
+| Priority | p2 |
+| Milestone | M4 Identity, Sync & Privacy |
+| Platforms | all |
+| Areas | telemetry, privacy, ocr-hwr |
+| Size | M |
+| SDLC | implementation |
+| Parent | [SN-BTY-001](ocr-hwr.md#sn-bty-001) |
+| Depends on | [SN-TEL-002](telemetry.md#sn-tel-002), [SN-TEL-003](telemetry.md#sn-tel-003), [SN-TEL-006](telemetry.md#sn-tel-006), [SN-PRV-009](privacy.md#sn-prv-009) |
+| Security controls | `MASVS-PRIVACY-1`, `MASVS-PRIVACY-2`, `CWE-117`, `GDPR-Art6` |
+| Extra labels | agent-ready |
+
+#### Context
+The default beautification strength is a guess until real people use it. The single most informative signal is behavioural and tiny: **how often a beautify pass is accepted, and how often it is reverted within seconds**. A high revert rate at "Balanced" means the default is too strong; a high revert rate only on Class C spelling edits means the corrector is wrong too often; near-zero usage after the offer means discovery ([SN-BTY-051](onboarding.md#sn-bty-051)) is failing.
+
+None of that requires a single character of note content. This issue adds a handful of coarse, bucketed, opt-in events to the existing telemetry framework ([SN-TEL-001](telemetry.md#sn-tel-001)) — which is deny-by-default, allow-listed, and proven to send nothing before consent ([SN-TEL-010](telemetry.md#sn-tel-010)) — and the analysis question each event exists to answer.
+
+#### Scope
+**In:** the beautification event set and its field allow-list entries; on-device bucketing; the documented question per event; the local "what would be sent" debug view; the privacy-review gate entry.
+**Out:** the telemetry transport, consent surface, kill switch and redaction engine ([SN-TEL-003](telemetry.md#sn-tel-003), [SN-TEL-007](telemetry.md#sn-tel-007), [SN-TEL-012](telemetry.md#sn-tel-012), [SN-PRV-009](privacy.md#sn-prv-009)) — all reused, none restated.
+
+#### Acceptance criteria
+- [ ] Events are limited to: `beautify_offer_shown`, `beautify_offer_dismissed`, `beautify_applied{tier, strengthBucket, editClassBucket, wordCountBucket}`, `beautify_reverted{withinSecondsBucket, scopeBucket}`, `beautify_word_rejected{countBucket}`, `beautify_disabled{scopeBucket}`, `beautify_style_guard_rejected{countBucket}` — and nothing else without a new privacy review.
+- [ ] **No content, ever:** no text, no recognised words, no stroke coordinates, no notebook/page/object ids, no exact counts, no timestamps finer than the hour, no free-form strings. Every value is an enum or a coarse bucket produced on-device ([SN-TEL-006](telemetry.md#sn-tel-006)).
+- [ ] Bucket boundaries are chosen so no combination of fields can single out a writer (k-anonymity target k ≥ 50 at expected volumes); the rationale is recorded beside the allow-list.
+- [ ] Every event carries a documented **question it answers** in the catalogue ([SN-TEL-002](telemetry.md#sn-tel-002)) — e.g. "is the default strength too strong?" → revert rate by `strengthBucket`; an event without a documented question is rejected by the privacy-review gate ([SN-TEL-015](telemetry.md#sn-tel-015)).
+- [ ] Nothing is queued, stored or sent before opt-in; the zero-egress-before-consent gate ([SN-TEL-010](telemetry.md#sn-tel-010)) still passes with these events present, and a test asserts it specifically for the beautify path.
+- [ ] The redaction fuzz test ([SN-TEL-003](telemetry.md#sn-tel-003)) covers the new fields and fails if any field can carry a free-form value.
+- [ ] A local, opt-in-independent debug view (Settings → Privacy → "See what would be sent") shows the exact serialised payload for the beautify events from this device — extending [SN-TEL-008](telemetry.md#sn-tel-008)'s diagnostics pattern.
+- [ ] Turning telemetry off purges any queued beautify events immediately ([SN-TEL-007](telemetry.md#sn-tel-007)) and the feature keeps working identically.
+- [ ] Store declarations stay accurate: these events are opt-in diagnostics, reflected in [SN-PRV-015](privacy.md#sn-prv-015) and cross-checked by [SN-PRV-016](privacy.md#sn-prv-016).
+
+#### Technical notes
+Add entries to the telemetry event catalogue and field allow-list ([SN-TEL-002](telemetry.md#sn-tel-002)); emit through the existing deny-by-default serialiser ([SN-TEL-003](telemetry.md#sn-tel-003)) — never a bespoke logger. Bucketing helpers live with the on-device aggregation of [SN-TEL-006](telemetry.md#sn-tel-006); emit call sites sit in `app/lib/features/editor/beautify/` and go through a Riverpod-provided reporter interface so tests can assert emissions without a transport. Revert detection reuses the edit audit record and undo path of [SN-BTY-037](ocr-hwr.md#sn-bty-037) (revert within N seconds of apply), so there is no second source of truth. Feature analysis is done on aggregates; no per-device joins.
+
+#### Security & privacy
+Telemetry is the classic path by which a privacy-first app leaks content, and beautification events are dangerously close to content (word counts, correction counts). Controls: deny-by-default allow-list, coarse buckets only, no identifiers beyond the rotating install token ([SN-TEL-009](telemetry.md#sn-tel-009)), opt-in with a kill switch ([SN-TEL-007](telemetry.md#sn-tel-007)), redaction fuzzing, and a privacy review on every new field ([SN-TEL-015](telemetry.md#sn-tel-015)). MASVS-PRIVACY-1/2; CWE-117 for any log path; GDPR/DPDP consent as lawful basis, recorded in the DPIA ([SN-PRV-013](privacy.md#sn-prv-013)). Explicitly forbidden and asserted by test: emitting the corrected word, the original word, the writer's style similarity score at full precision, or any per-notebook identifier.
+
+#### UX notes
+No new consent surface — this rides on the existing telemetry consent screen ([SN-PRV-009](privacy.md#sn-prv-009)), whose "what we collect" copy gains one plain line: "whether you kept or undid a handwriting tidy-up (never the writing itself)". The debug view is plain monospace JSON, copyable, screen-reader readable, and reachable in ≤ 3 taps from Settings → Privacy. All 17 looks + dark.
+
+#### Test plan
+`packages/sane_core/test/telemetry/beautify_events_test.dart` (allow-list conformance, bucket boundaries, no free-form fields), `app/test/security/beautify_telemetry_no_content_test.dart` (negative/abuse: attempt to emit a word and assert refusal), extension of `app/test/security/telemetry_zero_egress_test.dart` for the beautify path, `app/test/widget/telemetry_debug_view_test.dart`, and a catalogue-completeness test asserting every emitted event has a documented question.
+
+#### Dependencies
+SN-TEL-002 (event catalogue and allow-list), SN-TEL-003 (deny-by-default serialiser), SN-TEL-006 (on-device bucketing), SN-PRV-009 (consent surface). Revert signal from [SN-BTY-037](ocr-hwr.md#sn-bty-037); offer signal from [SN-BTY-051](onboarding.md#sn-bty-051).
+
+#### Definition of done
+- [ ] Code + tests merged, CI green (dart format, dart analyze --fatal-infos, arch-lint, unit/widget/golden, Semgrep, mobsfscan, gitleaks/trufflehog, OSV-Scanner, dependency-review)
+- [ ] Docs/ADR updated if behaviour or architecture changed (docs/security/threat-model.md, docs/adr/0011-telemetry-and-crash-reporting.md)
+- [ ] Reviewed against docs/security/secure-coding-checklist.md; no note content, recognised text, style features or ink coordinates in logs
+
+---
+
 ### SN-TEL-001
 
 <a id="sn-tel-001"></a>
@@ -32,7 +95,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #477 |
 | Type | epic |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -100,7 +163,7 @@ Tracked across children: `packages/sane_core/test/telemetry/` (catalogue, serial
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #936 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -161,7 +224,7 @@ No UI in this issue, but the user-facing sentence column *is* the copy rendered 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #937 |
 | Type | security |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -225,7 +288,7 @@ No direct UI. The behaviour is visible indirectly in the 'what we collect' scree
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #938 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -287,7 +350,7 @@ No direct UI; it feeds Settings > Privacy & export > Export diagnostics ([SN-TEL
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #939 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -350,7 +413,7 @@ Crash reporting is invisible until the user opts in ([SN-PRV-009](privacy.md#sn-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #940 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -413,7 +476,7 @@ No direct UI. The aggregate categories are exactly what the 'what we collect' sc
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #941 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -476,7 +539,7 @@ The visible control is the telemetry toggle in Settings > Privacy & export ([SN-
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #942 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -540,7 +603,7 @@ Design: Settings screen, **Privacy & export** tab (design/Sane Notes.dc.html; do
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #943 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -603,7 +666,7 @@ One visible control: a 'Reset the diagnostics id' action on the 'what we collect
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #944 |
 | Type | test |
 | Priority | p0 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -665,7 +728,7 @@ No UI. It protects the truthfulness of the copy on Settings > Privacy & export a
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #945 |
 | Type | spike |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |
@@ -727,7 +790,7 @@ No UI. The decision constrains the copy on the 'what we collect' screen ([SN-PRV
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #946 |
 | Type | feature |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -790,7 +853,7 @@ The only user-visible effects are the states rendered by [SN-PRV-009](privacy.md
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #947 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M8 Launch & Growth |
@@ -853,7 +916,7 @@ No new UI. The metric list is surfaced verbatim on the 'what we collect' screen 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #948 |
 | Type | infra |
 | Priority | p1 |
 | Milestone | M8 Launch & Growth |
@@ -916,7 +979,7 @@ No user-facing surface. Indirect user benefit: crashes that users opted into rep
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #949 |
 | Type | security |
 | Priority | p1 |
 | Milestone | M4 Identity, Sync & Privacy |

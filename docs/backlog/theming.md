@@ -143,7 +143,7 @@ Widget: `packages/sane_ui/test/theme/sane_look_scope_test.dart` — pump a probe
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #605 |
 | Type | task |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -210,7 +210,7 @@ Golden: `packages/sane_ui/test/goldens/glass_surface_test.dart` renders a glass 
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #603 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M0 Foundations |
@@ -277,7 +277,7 @@ Golden: `packages/sane_ui/test/goldens/ground_looks_test.dart` renders the app g
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #606 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M1 Ink Editor Alpha |
@@ -412,7 +412,7 @@ Widget: `packages/sane_ui/test/theming/sane_theme_grid_test.dart` (radio semanti
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #998 |
 | Type | task |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -470,7 +470,7 @@ Measurement: photograph or screen-capture a reference swatch page on the iPad an
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1045 |
 | Type | design |
 | Priority | p1 |
 | Milestone | M1 Ink Editor Alpha |
@@ -539,7 +539,7 @@ The user-facing promise at stake is "switching looks must never change your note
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1011 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M1 Ink Editor Alpha |

@@ -47,7 +47,7 @@
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1062 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M6 Collaboration, Sharing & Sage AI |
@@ -104,7 +104,7 @@ Unit: excerpt block + backlink creation + anchor stability (test/pdf/excerpt_to_
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #1063 |
 | Type | feature |
 | Priority | p3 |
 | Milestone | M2 Library & Documents |
@@ -359,7 +359,7 @@ Surface: Editor with a PDF facsimile (screens §7.2). Scroll must feel native; t
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #703 |
 | Type | task |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1500,7 +1500,7 @@ Rejections surface a single user-safe message ('This PDF could not be imported -
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #704 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1616,7 +1616,7 @@ None beyond baseline: a password-required PDF prompts once (handled by the viewe
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #705 |
 | Type | test |
 | Priority | p1 |
 | Milestone | M2 Library & Documents |
@@ -1732,7 +1732,7 @@ Surface: a per-document display option near the PDF reading controls (screens §
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #706 |
 | Type | task |
 | Priority | p3 |
 | Milestone | M5 Phones & Platform Parity |
@@ -1790,7 +1790,7 @@ None beyond baseline: the accelerator is invisible to the user; behaviour and re
 
 | Field | Value |
 |---|---|
-| GitHub | not published yet |
+| GitHub | #841 |
 | Type | feature |
 | Priority | p2 |
 | Milestone | M2 Library & Documents |
