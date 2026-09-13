@@ -52,7 +52,17 @@ List<String> checkArchitecture(Directory root, Map<String, Set<String>> edges) {
           '$file: $name imports Flutter; pure-Dart boundary (rule 2).',
         );
       }
-      if (!dependency.startsWith('sane_') || dependency == name || isApp) {
+      if (!dependency.startsWith('sane_') || dependency == name) {
+        return;
+      }
+      if (isApp) {
+        if (!edges.containsKey(dependency) &&
+            !dependency.endsWith('_platform_interface')) {
+          failures.add(
+            '$file: $name -> $dependency violates consumer rule 7; '
+            'depend on the platform-interface contract instead.',
+          );
+        }
         return;
       }
       if (isPlugin) {
@@ -64,15 +74,22 @@ List<String> checkArchitecture(Directory root, Map<String, Set<String>> edges) {
       } else if (!(edges[name]?.contains(dependency) ?? false) &&
           !dependency.endsWith('_platform_interface')) {
         failures.add(
-          '$file: forbidden edge $name -> $dependency (overview section 5).',
+          '$file: forbidden edge $name -> $dependency (overview rule '
+          '${_domainRule(name)}); move cross-feature wiring to app/.',
         );
       }
     }
 
-    final dependencies = yaml['dependencies'];
-    if (dependencies is YamlMap) {
-      for (final dependency in dependencies.keys.cast<String>()) {
-        edge(dependency, relative);
+    for (final section in [
+      'dependencies',
+      'dev_dependencies',
+      'dependency_overrides',
+    ]) {
+      final dependencies = yaml[section];
+      if (dependencies is YamlMap) {
+        for (final dependency in dependencies.keys.cast<String>()) {
+          edge(dependency, relative);
+        }
       }
     }
     final library = Directory(p.join(manifest.parent.path, 'lib'));
@@ -81,26 +98,33 @@ List<String> checkArchitecture(Directory root, Map<String, Set<String>> edges) {
         in library
             .listSync(recursive: true, followLinks: false)
             .whereType<File>()
-            .where(
-              (file) =>
-                  file.path.endsWith('.dart') && !file.path.endsWith('.g.dart'),
-            )) {
+            .where((file) => file.path.endsWith('.dart'))) {
       final path = p.relative(file.path, from: root.path);
       final unit = parseString(
         content: file.readAsStringSync(),
         path: file.path,
       ).unit;
       for (final directive in unit.directives.whereType<UriBasedDirective>()) {
-        final uri = directive.uri.stringValue;
-        if (uri == null) continue;
-        if (uri.startsWith('package:')) {
-          edge(uri.substring(8).split('/').first, path);
-        } else if (!uri.contains(':')) {
-          final target = p.normalize(p.join(file.parent.path, uri));
-          if (!p.isWithin(manifest.parent.path, target)) {
+        final uris = [
+          directive.uri.stringValue,
+          if (directive is NamespaceDirective)
+            ...directive.configurations.map((config) => config.uri.stringValue),
+        ];
+        for (final uri in uris) {
+          if (uri == null) continue;
+          if (uri.startsWith('package:')) {
+            edge(uri.substring(8).split('/').first, path);
+          } else if (uri.startsWith('file:')) {
             failures.add(
-              '$path: relative import escapes its package (rule 1).',
+              '$path: file URI escapes package resolution (rule 1); use a package import.',
             );
+          } else if (!uri.contains(':')) {
+            final target = p.normalize(p.join(file.parent.path, uri));
+            if (!p.isWithin(manifest.parent.path, target)) {
+              failures.add(
+                '$path: relative import escapes its package (rule 1).',
+              );
+            }
           }
         }
       }
@@ -109,6 +133,14 @@ List<String> checkArchitecture(Directory root, Map<String, Set<String>> edges) {
   }
   return failures;
 }
+
+int _domainRule(String name) => switch (name) {
+  'sane_core' => 2,
+  'sane_crypto' => 3,
+  'sane_ink' || 'sane_brushes' || 'sane_render' => 4,
+  'sane_ui' => 6,
+  _ => 5,
+};
 
 class _LoggingVisitor extends RecursiveAstVisitor<void> {
   new(this.path, this.failures);

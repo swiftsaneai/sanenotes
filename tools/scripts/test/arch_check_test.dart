@@ -68,4 +68,42 @@ void main() {
       contains('print() is banned'),
     );
   });
+  test('conditional exports cannot hide a forbidden edge', () {
+    fixture(
+      'packages/sane_crypto',
+      'sane_crypto',
+      'meta',
+      "export 'local.dart' if (dart.library.ui) "
+          "'package:sane_render/sane_render.dart';",
+    );
+    expect(checkArchitecture(root, policy).join(), contains('rule 3'));
+  });
+  test('development dependencies cannot bring Flutter into pure Dart', () {
+    fixture('packages/sane_core', 'sane_core', 'meta', '');
+    File(
+      '${root.path}/packages/sane_core/pubspec.yaml',
+    ).writeAsStringSync('name: sane_core\ndev_dependencies:\n  flutter: any\n');
+    expect(checkArchitecture(root, policy).join(), contains('pure-Dart'));
+  });
+  test('app consumes native contracts instead of concrete implementations', () {
+    fixture('app', 'sane_notes', 'sane_ink_surface_ios', '');
+    expect(checkArchitecture(root, policy).join(), contains('consumer rule 7'));
+    fixture('app', 'sane_notes', 'sane_ink_surface_platform_interface', '');
+    expect(checkArchitecture(root, policy), isEmpty);
+  });
+  test('generated libraries remain subject to logging policy', () {
+    fixture('app', 'sane_notes', 'sane_core', '');
+    File('${root.path}/app/lib/generated.g.dart')
+        .writeAsStringSync("void generated() { debugPrint('value'); }");
+    expect(checkArchitecture(root, policy).join(), contains('debugPrint()'));
+  });
+  test('relative and file imports cannot escape a package', () {
+    for (final uri in [
+      '../../../app/lib/main.dart',
+      'file:///tmp/other.dart',
+    ]) {
+      fixture('packages/sane_core', 'sane_core', 'meta', "import '$uri';");
+      expect(checkArchitecture(root, policy).join(), contains('rule 1'));
+    }
+  });
 }

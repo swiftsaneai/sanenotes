@@ -69,7 +69,7 @@ Every control ID → mechanism → verification → owning package. Target **L2 
 |---|---|---|---|---|
 | **CODE-1** Targets current platform versions | iPadOS/iOS 17+, Android 10+ minimums; current `compileSdk`/`targetSdk`; keep SDKs updated | Build config check; CI matrix | `app/` | Designed |
 | **CODE-2** Deps current & CVE-free | Lockfiles pinned; Dependabot weekly; OSV-Scanner + dependency-review gate (pub/Gradle/npm/SPM) | OSV-Scanner CI; dependency-review PR gate | CI, all packages | Partial |
-| **CODE-3** Code-quality/injection flaws prevented | `very_good_analysis` + `dart analyze --fatal-infos`; Semgrep/mobsfscan; parameterised drift SQL; input validation (checklist §1) | Analyze + Semgrep CI; injection tests | all packages | Partial |
+| **CODE-3** Code-quality/injection flaws prevented | `very_good_analysis` + `dart analyze --fatal-infos`; Semgrep/mobsfscan; parameterised drift SQL; input validation (checklist §1); AST architecture gate (`tools/scripts/arch_check.dart`) over dependency sections, normal/conditional/generated imports, plugin-consumer boundaries and banned logging | Analyze + Semgrep CI; injection tests | all packages | Partial |
 | **CODE-4** No unsafe dynamic loading/deserialization | No OTA code, no `dart:mirrors`, no arbitrary deserialize; explicit validated models (TM-T-04) | Semgrep ban rule; design review | `sane_core`, `app/` | Designed |
 
 ### MASVS-RESILIENCE (the "+R" profile — E2EE + paid tiers)
