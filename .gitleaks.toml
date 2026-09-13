@@ -1,0 +1,9 @@
+# Keep the default detectors. The generic API-key heuristic mistakes OWASP
+# control identifiers following the word "AUTH" for a credential in the backlog.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Exact public OWASP MASVS control identifiers, never credentials"
+regexTarget = "secret"
+regexes = ['''^MASVS-CRYPTO-[12]$''']
