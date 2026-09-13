@@ -6,6 +6,7 @@ environment:
   sdk: ^3.13.0
 resolution: workspace
 dependencies:
+  cupertino_icons: ^1.0.8
   drift: ^2.32.0
   drift_flutter: ^0.3.0
   flutter:

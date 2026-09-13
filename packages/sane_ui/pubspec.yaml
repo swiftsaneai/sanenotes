@@ -3,7 +3,7 @@ description: Sane Notes theme tokens and reusable presentation primitives.
 publish_to: none
 version: 0.1.0
 environment:
-  sdk: ^3.11.0
+  sdk: ^3.13.0
 resolution: workspace
 dependencies:
   flutter:
@@ -11,3 +11,12 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+flutter:
+  fonts:
+    - family: Karla
+      fonts:
+        - asset: fonts/Karla.ttf
+    - family: Newsreader
+      fonts:
+        - asset: fonts/Newsreader.ttf

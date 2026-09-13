@@ -1,0 +1,14 @@
+{
+  "sane_crypto": [],
+  "sane_core": ["sane_crypto"],
+  "sane_ink": ["sane_core"],
+  "sane_brushes": ["sane_ink"],
+  "sane_render": ["sane_brushes", "sane_ink", "sane_core"],
+  "sane_sync": ["sane_core", "sane_crypto"],
+  "sane_pdf": ["sane_core"],
+  "sane_audio": ["sane_core"],
+  "sane_search": ["sane_core"],
+  "sane_ml": ["sane_core"],
+  "sane_billing": ["sane_core"],
+  "sane_ui": []
+}

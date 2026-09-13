@@ -6,7 +6,7 @@
 
 *Best-in-class handwriting UX. Your notes never touch our servers.*
 
-Status: **pre-alpha — planning complete, implementation starting** ·
+Status: **local Markdown preview implemented; broader roadmap in progress** ·
 Repo: `swiftsaneai/sanenotes` · Made for students first, then professionals.
 
 </div>
@@ -93,28 +93,61 @@ scripts/    Issue validate/publish/render tooling (Node 22)
 
 ## Running it
 
-> `app/` and `packages/` are **not built yet** (pre-alpha). Once the M0 scaffold lands, the commands
-> will be roughly:
+The runnable application is in `app/`. This first slice supports creating/editing/deleting notes,
+Markdown preview, title/body search, autosave with explicit failure recovery, 17 palette choices,
+light/dark mode, and copying a readable library backup. SQLite stores drafts locally. It does not
+implement the planned handwriting, PDF, CRDT, sync, encryption, AI or billing features described above.
+See [the implementation review](docs/implementation/session-review.md) and
+[ADR-0017](docs/adr/0017-local-markdown-first-slice.md) for the exact scope.
+
+Prerequisites: **Flutter 3.47.4 / Dart 3.13.3** (`.fvmrc`), Xcode for iPad/iOS, Android Studio for
+Android, and Python 3.11+ for the local verification helpers. Node 22 runs the existing backlog tooling.
 
 ```bash
-# Prerequisites: Flutter (latest stable, Dart 3), Xcode (Apple targets), Android Studio (Android),
-# Node 22 (issue scripts).
-flutter pub get                              # resolve the workspace
-flutter run --dart-define=SANE_FLAVOR=dev \
-            --dart-define=SANE_AUTH_BYPASS=true   # dev flavour (bypass is inert in release)
-flutter run -d chrome --dart-define=SANE_FLAVOR=dev   # web/PWA
-dart format . && dart analyze --fatal-infos  # local gate
-flutter test                                 # unit / widget / golden
+python3 tools/scripts/check_toolchain.py
+flutter pub get                    # from the repository root; one workspace lockfile
+cd app
+flutter run -d chrome --web-port=5173 --no-web-resources-cdn
+# Or use an ID from `flutter devices`:
+flutter run -d <ipad-simulator-id>
+flutter run -d <android-device-id>
 ```
 
-Configuration is read from `--dart-define` — never hardcoded. See the flavour + define matrix in
-[`docs/architecture/overview.md`](docs/architecture/overview.md) §7.
-
-The backlog tooling works today:
+The web origin determines which browser database opens: keep the same host and port to see the
+same notes. Local SQLite is plaintext, protected by the device/browser profile rather than an
+application password. Clearing site data, uninstalling the app or losing the device can lose notes.
+Use **Library options → Copy library backup** for a readable JSON copy; backup import is not yet
+implemented. Markdown images remain inert, and links do not launch automatically.
 
 ```bash
-node scripts/validate-issues.mjs --stats     # validate issues/*.json against the schema
-./scripts/publish.sh                          # push + create labels/milestones/issues on GitHub (needs gh)
+./tools/scripts/verify.sh           # formatting, strict analysis, domain/UI/storage tests
+cd app
+flutter build web --release --no-web-resources-cdn
+flutter build ios --simulator --debug
+flutter test integration_test/local_notes_test.dart -d <ipad-simulator-id>
+```
+
+The static web artifact is `app/build/web/`. Serve `sqlite3.wasm` as `application/wasm`. For broad
+browser support use `Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: require-corp`. The app rejects nonpersistent or unsafe storage
+fallbacks instead of claiming notes are saved. No hosting or App Store/Play distribution is configured.
+
+Generated artifacts:
+
+```bash
+python3 tools/scripts/generate_tokens.py
+cd app && dart run build_runner build
+# Back at the root, when upgrading Drift:
+dart compile js -O2 app/tool/drift_worker.dart -o app/web/drift_worker.dart.js
+```
+
+`app/web/storage-assets.json` records the SQLite WASM source and checksum. The worker is compiled
+from the locked Drift dependency. Fonts are bundled locally with their OFL licenses.
+
+Backlog tools:
+
+```bash
+node scripts/validate-issues.mjs --stats
 ```
 
 ## Contributing

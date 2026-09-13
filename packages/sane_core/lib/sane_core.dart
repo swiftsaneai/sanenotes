@@ -4,13 +4,13 @@ library;
 /// Recoverable operation result. Errors never contain note content.
 sealed class Result<T> {
   /// Creates a result.
-  const Result();
+  const new();
 }
 
 /// Successful operation.
 final class Ok<T> extends Result<T> {
   /// Creates a successful result.
-  const Ok(this.value);
+  const new(this.value);
 
   /// Operation value.
   final T value;
@@ -19,7 +19,7 @@ final class Ok<T> extends Result<T> {
 /// Failed operation with a user-safe description.
 final class Err<T> extends Result<T> {
   /// Creates a recoverable failure.
-  const Err(this.message);
+  const new(this.message);
 
   /// Safe description, never a raw exception.
   final String message;
@@ -28,7 +28,7 @@ final class Err<T> extends Result<T> {
 /// An immutable local Markdown note. This is not a CRDT document bundle.
 final class Note {
   /// Creates a note value.
-  const Note({
+  const new({
     required this.id,
     required this.title,
     required this.body,

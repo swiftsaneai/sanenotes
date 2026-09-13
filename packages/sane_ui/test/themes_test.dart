@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sane_ui/sane_ui.dart';
 
 void main() {
+  setUpAll(() async {
+    for (final family in ['Karla', 'Newsreader']) {
+      final loader = FontLoader('packages/sane_ui/$family')
+        ..addFont(rootBundle.load('packages/sane_ui/fonts/$family.ttf'));
+      await loader.load();
+    }
+  });
   test('all palettes provide readable body text and button contrast', () {
     expect(saneLooks, hasLength(17));
     for (final look in saneLooks) {
@@ -56,9 +64,9 @@ void main() {
                                 children: [
                                   Text(
                                     look.name,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleLarge,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge,
                                   ),
                                   const SizedBox(height: SaneSpace.medium),
                                   const Text(

@@ -1,0 +1,5 @@
+# Flutter's canonical version is .fvmrc; check_toolchain.py rejects drift here.
+# The Flutter SDK provides Dart. Do not install a separate Dart SDK.
+[tools]
+flutter = "3.47.4"
+node = "22.23.2"

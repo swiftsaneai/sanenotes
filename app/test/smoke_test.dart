@@ -31,8 +31,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(repository.notes.values.single.title, 'Physics');
-    await tester.tap(find.text('Preview'));
-    await tester.pumpAndSettle();
+    // Wide screens keep the live preview beside the editable source.
+    expect(find.byKey(const Key('note-body')), findsOneWidget);
     expect(find.byKey(const Key('markdown-preview')), findsOneWidget);
     await tester.enterText(find.byKey(const Key('search')), 'unmatched');
     await tester.pumpAndSettle();

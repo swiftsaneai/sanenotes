@@ -8,7 +8,7 @@ part 'src/look_data.dart';
 /// A paired palette from the committed design source.
 final class SaneLook {
   /// Creates a look.
-  const SaneLook({
+  const new({
     required this.id,
     required this.name,
     required this.radius,
@@ -47,6 +47,7 @@ final class SaneLook {
     // Generated on-primary pairing preserves readable button contrast.
     return ThemeData(
       useMaterial3: true,
+      fontFamily: 'packages/sane_ui/Karla',
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: color(0),
@@ -56,13 +57,13 @@ final class SaneLook {
           fontSize: 38,
           fontWeight: FontWeight.w600,
           color: color(3),
-          fontFamily: 'Georgia',
+          fontFamily: 'packages/sane_ui/Newsreader',
         ),
         headlineMedium: TextStyle(
           fontSize: 34,
           fontWeight: FontWeight.w600,
           color: color(3),
-          fontFamily: 'Georgia',
+          fontFamily: 'packages/sane_ui/Newsreader',
         ),
         titleLarge: TextStyle(
           fontSize: 20,

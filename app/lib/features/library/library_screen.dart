@@ -163,14 +163,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         ),
         const SizedBox(width: SaneSpace.small),
         Text('Sane', style: Theme.of(context).textTheme.titleLarge),
-        const Spacer(),
-        Flexible(
+        Expanded(
           child: Text(
             data.pending > 0
                 ? 'Saving…'
                 : data.unsaved.isNotEmpty
                 ? 'Not saved'
                 : 'Saved on device',
+            textAlign: TextAlign.end,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelMedium,

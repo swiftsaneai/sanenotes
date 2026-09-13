@@ -7,13 +7,18 @@ workspace:
   - packages/sane_core
   - packages/sane_ui
 dev_dependencies:
+  analyzer: ^13.3.0
   melos: ^7.0.0
+  path: ^1.9.1
+  test: ^1.31.1
   very_good_analysis: ^11.0.0
+  yaml: ^3.1.3
 melos:
   scripts:
     analyze: dart analyze --fatal-infos
     format: dart format --output=none --set-exit-if-changed app/lib app/test packages
-    test:
+    test: melos run test:flutter && melos run test:core && dart test tools/scripts/test
+    test:flutter:
       run: flutter test
       exec:
         concurrency: 1

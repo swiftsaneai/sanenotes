@@ -11,7 +11,7 @@ Use Flutter with Riverpod and go_router in `app/`, pure Dart note values and rep
 
 This slice stores standalone Markdown drafts in its own versioned schema. These are explicitly not the final hierarchical CRDT documents or `.sanenote` bundles. Future migration must preserve drafts rather than silently reinterpret or discard them. Each individual mutation is persisted through a serialized queue; the UI reports pending and failed saves honestly. Deletion requires confirmation and offers undo.
 
-Theme palettes and radii derive from the 17 committed looks. Material widgets provide adaptive, keyboard-accessible controls. Fonts use local platform fallbacks; CSS-specific gradients, shadows and backdrop effects are not claimed as full design parity.
+Theme palettes and radii derive from the 17 committed looks. Material widgets provide adaptive, keyboard-accessible controls. Karla and Newsreader fonts are bundled locally under the OFL; other per-look fonts use these fallbacks; CSS-specific gradients, shadows and backdrop effects are not claimed as full design parity.
 
 ## Alternatives considered
 Shared preferences/localStorage: simpler but inappropriate for durable note storage. Implementing all CRDT/crypto/ink/sync milestones before a usable app: much larger scope and requires device and external-service acceptance evidence.

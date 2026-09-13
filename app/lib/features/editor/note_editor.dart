@@ -102,7 +102,7 @@ class _NoteEditorState extends ConsumerState<NoteEditor> {
       Expanded(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final split = constraints.maxWidth >= 1050;
+            final split = constraints.maxWidth >= 760;
             return Column(
               children: [
                 Padding(
