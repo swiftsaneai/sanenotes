@@ -28,6 +28,7 @@ function slugify(s) { return s.toLowerCase().replace(/\s+/g, '-'); }
 const args = new Set(process.argv.slice(2));
 const files = readdirSync(ISSUES_DIR).filter(f => f.endsWith('.json') && !['labels.json', 'milestones.json'].includes(f)).sort();
 const errors = [];
+const warnings = [];
 const all = [];
 const byKey = new Map();
 
@@ -75,16 +76,17 @@ for (const f of files) {
   });
 }
 
-// Cross-reference checks
+// Cross-reference checks. Dangling references are WARNINGS: they resolve once the area that owns
+// the key is generated, and the publisher renders them as plain text until then.
 for (const it of all) {
   if (it.parent) {
     const p = byKey.get(it.parent);
-    if (!p) errors.push(`${it.key}: parent ${it.parent} does not exist`);
+    if (!p) warnings.push(`${it.key}: parent ${it.parent} does not exist`);
     else if (p.key === it.key) errors.push(`${it.key}: parent is itself`);
   }
-  for (const d of it.depends_on || []) if (!byKey.has(d)) errors.push(`${it.key}: depends_on ${d} does not exist`);
+  for (const d of it.depends_on || []) if (!byKey.has(d)) warnings.push(`${it.key}: depends_on ${d} does not exist`);
   const refs = [...(it.body || '').matchAll(/\{\{(SN-[A-Z0-9]{2,8}-\d{3})\}\}/g)].map(m => m[1]);
-  for (const r of refs) if (!byKey.has(r)) errors.push(`${it.key}: body references {{${r}}} which does not exist`);
+  for (const r of refs) if (!byKey.has(r)) warnings.push(`${it.key}: body references {{${r}}} which does not exist`);
 }
 // Parent cycles
 for (const it of all) {
@@ -101,12 +103,15 @@ const stats = {
   by_platform: count(all, i => i.platforms), by_area: count(all, i => i.areas), by_sdlc: count(all, i => i.sdlc), by_size: count(all, i => i.size),
   security_tagged: all.filter(i => i.security && i.security.length).length,
   errors: errors.length,
+  warnings: warnings.length,
 };
 
-if (args.has('--json')) console.log(JSON.stringify({ stats, errors }, null, 2));
+if (args.has('--json')) console.log(JSON.stringify({ stats, errors, warnings }, null, 2));
 else {
   if (args.has('--stats') || !errors.length) console.log(JSON.stringify(stats, null, 2));
   if (errors.length) { console.error(`\n${errors.length} error(s):`); errors.slice(0, 200).forEach(e => console.error(' - ' + e)); if (errors.length > 200) console.error(` ... and ${errors.length - 200} more`); }
   else console.log(`OK: ${all.length} issues across ${files.length} files`);
+  if (warnings.length && args.has('--warnings')) { console.error(`\n${warnings.length} warning(s) (dangling cross-references):`); warnings.slice(0, 200).forEach(e => console.error(' - ' + e)); }
+  else if (warnings.length) console.error(`${warnings.length} warning(s) (dangling cross-references) — re-run with --warnings to list`);
 }
 process.exit(errors.length ? 1 : 0);

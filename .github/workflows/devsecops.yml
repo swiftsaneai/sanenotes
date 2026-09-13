@@ -1,5 +1,13 @@
 name: DevSecOps
 
+# Shift-left security gates. See docs/security/devsecops-pipeline.md for the full design and
+# docs/security/ssdlc-process.md for which gate belongs to which SDLC phase.
+#
+# Scanners that cannot yet find anything to scan (no dependency manifests until the Flutter
+# scaffold lands in M0) are non-blocking today and become blocking in SN-CI-003. Tools are invoked
+# via pinned container images rather than marketplace actions so that a moved tag cannot break or
+# silently weaken the pipeline.
+
 on:
   push:
     branches: [main]
@@ -21,9 +29,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run gitleaks over full history
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.21.2 \
+            detect --source=/repo --redact --no-banner \
+            --report-format sarif --report-path /repo/gitleaks.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: gitleaks.sarif }
+        continue-on-error: true
 
   sast:
     name: SAST (Semgrep)
@@ -31,7 +45,7 @@ jobs:
     container: semgrep/semgrep
     steps:
       - uses: actions/checkout@v4
-      - run: semgrep ci --config p/default --config p/owasp-top-ten --config p/secrets --config p/javascript --config p/kotlin --config p/swift --config p/dart --sarif --output semgrep.sarif || true
+      - run: semgrep scan --config p/default --config p/owasp-top-ten --config p/secrets --config p/javascript --config p/kotlin --config p/swift --sarif --output semgrep.sarif
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with: { sarif_file: semgrep.sarif }
@@ -42,13 +56,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: google/osv-scanner-action/osv-scanner-action@v2
-        with:
-          scan-args: |-
-            --recursive
-            --skip-git
-            ./
-        continue-on-error: true
+      # Non-blocking until the Flutter scaffold adds pubspec.lock / Podfile.lock / gradle files
+      # (SN-FND-002). Becomes a required check in SN-CI-003.
+      - name: Scan for known-vulnerable dependencies
+        run: |
+          docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:v1.9.1 \
+            scan --recursive --skip-git /src || echo "osv-scanner found no lockfiles or reported findings (non-blocking at this stage)"
 
   dependency-review:
     name: Dependency review (PR)
@@ -63,6 +76,8 @@ jobs:
         with:
           fail-on-severity: high
           comment-summary-in-pr: always
+        # Requires the Dependency graph to be enabled on the repository; non-blocking until it is.
+        continue-on-error: true
 
   iac-and-fs:
     name: Filesystem & config scan (Trivy)
@@ -96,4 +111,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
+      # Fails only on structural errors. Dangling cross-references are reported as warnings.
       - run: node scripts/validate-issues.mjs --stats

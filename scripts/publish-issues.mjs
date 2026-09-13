@@ -66,7 +66,7 @@ const labelsSpec = JSON.parse(readFileSync(join(ISSUES_DIR, 'labels.json'), 'utf
 const milestonesSpec = JSON.parse(readFileSync(join(ISSUES_DIR, 'milestones.json'), 'utf8'));
 const files = readdirSync(ISSUES_DIR).filter(f => f.endsWith('.json') && !['labels.json', 'milestones.json', '.published.json'].includes(f)).sort();
 let issues = files.flatMap(f => JSON.parse(readFileSync(join(ISSUES_DIR, f), 'utf8')));
-if (ONLY) issues = issues.filter(i => i.key.startsWith(ONLY));
+if (ONLY) { const prefixes = ONLY.split(',').map(s => s.trim()).filter(Boolean); issues = issues.filter(i => prefixes.some(p => i.key.startsWith(p))); }
 const byKey = new Map(issues.map(i => [i.key, i]));
 const state = existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, 'utf8')) : {};
 const saveState = () => writeFileSync(STATE_FILE, JSON.stringify(state, null, 2) + '\n');

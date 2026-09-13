@@ -1,3 +1,7 @@
+# Only ecosystems whose manifests actually exist are enabled. The Flutter/iOS/Android/npm entries
+# below are enabled by SN-FND-002 (monorepo scaffold) once app/ and packages/ contain real
+# manifests — Dependabot errors on directories with no manifest, which would make the security
+# dashboard noisy and train us to ignore it.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -5,16 +9,18 @@ updates:
     schedule: { interval: weekly }
     groups:
       actions: { patterns: ["*"] }
-  - package-ecosystem: pub
-    directory: /app
-    schedule: { interval: weekly }
-    open-pull-requests-limit: 10
-  - package-ecosystem: npm
-    directory: /
-    schedule: { interval: weekly }
-  - package-ecosystem: gradle
-    directory: /app/android
-    schedule: { interval: weekly }
-  - package-ecosystem: swift
-    directory: /app/ios
-    schedule: { interval: weekly }
+
+  # Enable with the monorepo scaffold (SN-FND-002):
+  # - package-ecosystem: pub
+  #   directory: /app
+  #   schedule: { interval: weekly }
+  #   open-pull-requests-limit: 10
+  # - package-ecosystem: npm
+  #   directory: /
+  #   schedule: { interval: weekly }
+  # - package-ecosystem: gradle
+  #   directory: /app/android
+  #   schedule: { interval: weekly }
+  # - package-ecosystem: swift
+  #   directory: /app/ios
+  #   schedule: { interval: weekly }
