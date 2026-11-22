@@ -27,7 +27,7 @@ jobs:
     name: Secret scanning (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - name: Run gitleaks over full history
         run: |
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     container: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: semgrep scan --config p/default --config p/owasp-top-ten --config p/secrets --config p/javascript --config p/kotlin --config p/swift --sarif --output semgrep.sarif
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -55,7 +55,7 @@ jobs:
     name: Dependency vulnerabilities (OSV-Scanner)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Non-blocking until the Flutter scaffold adds pubspec.lock / Podfile.lock / gradle files
       # (SN-FND-002). Becomes a required check in SN-CI-003.
       - name: Scan for known-vulnerable dependencies
@@ -71,8 +71,8 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/checkout@v7
+      - uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
           comment-summary-in-pr: always
@@ -83,7 +83,7 @@ jobs:
     name: Filesystem & config scan (Trivy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
@@ -101,15 +101,15 @@ jobs:
     name: Workflow lint (actionlint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: raven-actions/actionlint@v2
 
   issues-schema:
     name: Issue files valid
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with: { node-version: 22 }
       # Fails only on structural errors. Dangling cross-references are reported as warnings.
       - run: node scripts/validate-issues.mjs --stats
